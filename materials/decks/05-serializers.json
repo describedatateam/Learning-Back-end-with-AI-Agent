@@ -1,0 +1,131 @@
+{
+  "exercise": "05-serializers",
+  "subtitle": "Turn untrusted JSON into clean, checked data with a DRF serializer.",
+  "notes": "This deck goes with exercise 5. By the end you should be able to write a serializer with field rules, a check for one field, and a check across several fields.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Anything a client sends is **untrusted**: a title might be missing, a date might be `\"next friday\"`, a priority `\"URGENT!!!\"`. It's like a messy spreadsheet from someone else: check every column before you use it.\n\nA **serializer** is a bouncer with a checklist. Each field is checked on its own, then the whole thing together. You get **clean data** or a dict of **errors**.",
+      "notes": "Data might come from your own website, but just as well from a script, a typo, an old app version or someone trying to break things. Saving it unchecked gives broken data or crashes."
+    },
+    {
+      "type": "code",
+      "title": "What the tests do",
+      "caption": "The tests create your `TaskSerializer` with some data, then check the result.",
+      "code": "serializer = TaskSerializer(data={\"title\": \"Write docs\", \"priority\": \"low\",\n                                  \"due_date\": TOMORROW})\nserializer.is_valid()\nserializer.errors            # the test checks this dict\nserializer.validated_data    # and sometimes this one",
+      "notes": "TOMORROW and YESTERDAY are worked out from today's date when the tests run, as text like \"2026-09-27\" (YYYY-MM-DD)."
+    },
+    {
+      "type": "code",
+      "title": "What they expect back",
+      "caption": "Error messages must match exactly, full stop included.",
+      "code": "{\"title\": \"Write docs\"}\n#   valid, and priority becomes \"medium\"\n{\"title\": \"  Deploy  \"}\n#   valid, and title becomes \"Deploy\"\n{\"title\": \"  ab  \"}\n#   title: \"Title must be at least 3 characters.\"\n{\"title\": \"Write docs\", \"priority\": \"urgent\"}\n#   an error on priority\n{\"title\": \"Write docs\", \"due_date\": YESTERDAY}\n#   due_date: \"Due date cannot be in the past.\"\n{\"title\": \"Fix outage\", \"priority\": \"high\"}\n#   due_date: \"High priority tasks need a due date.\"",
+      "notes": "Also: no title at all is an error on title; due_date set to None is valid; high priority with a due date tomorrow is valid."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "serializer", "meaning": "A DRF class listing the expected fields and their rules."},
+        {"term": "is_valid()", "meaning": "Runs every check. Gives `True` or `False`."},
+        {"term": "validated_data", "meaning": "The clean dict, once `is_valid()` gave `True`."},
+        {"term": "errors", "meaning": "Field name → list of messages. `{}` when all is fine."},
+        {"term": "ValidationError", "meaning": "What you `raise` to say \"this is not allowed\"."},
+        {"term": "attrs", "meaning": "The dict of all field values, passed to `validate()`."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: a Serializer class",
+      "caption": "Fields are one line each, like a model. Use it with `data=...`, then `.is_valid()`.",
+      "code": "class PetSerializer(serializers.Serializer):\n    name = serializers.CharField(max_length=20)\n    age = serializers.IntegerField(min_value=0)\n\ngood = PetSerializer(data={\"name\": \"  Rex  \", \"age\": \"3\"})\nprint(good.is_valid())        # True\nprint(good.validated_data)    # {'name': 'Rex', 'age': 3}\n\nbad = PetSerializer(data={\"age\": -1})\nprint(bad.is_valid())         # False\nprint(bad.errors[\"name\"][0])  # This field is required.",
+      "notes": "Three free checks: CharField strips spaces, \"3\" became the number 3, and every field is required unless you say otherwise. Each message is an ErrorDetail; str(...) gives the plain text."
+    },
+    {
+      "type": "code",
+      "title": "Tools: ChoiceField and DateField",
+      "caption": "`default=` fills in a missing value. An optional date needs two different options.",
+      "code": "class ShirtSerializer(serializers.Serializer):\n    size = serializers.ChoiceField(choices=[\"S\", \"M\", \"L\"], default=\"M\")\n    gift_date = serializers.DateField(required=False, allow_null=True)\n\ns = ShirtSerializer(data={\"gift_date\": None})\ns.is_valid()\nprint(s.validated_data)     # {'size': 'M', 'gift_date': None}\n\ns = ShirtSerializer(data={\"size\": \"XL\", \"gift_date\": \"2026-12-24\"})\ns.is_valid()\nprint(s.errors[\"size\"][0])  # \"XL\" is not a valid choice.",
+      "notes": "required=False means the field may be left out. allow_null=True means it may be sent as None (null in JSON). It's like null and blank on a model. A valid date string becomes a real Python date."
+    },
+    {
+      "type": "code",
+      "title": "Tool: validate_<field> checks one field",
+      "caption": "DRF calls it after the field's own checks, with the cleaned value. Raise, or return the value.",
+      "code": "class UsernameSerializer(serializers.Serializer):\n    username = serializers.CharField()\n\n    def validate_username(self, value):\n        if value.lower() == \"admin\":\n            raise serializers.ValidationError(\"That name is reserved.\")\n        return value.lower()\n\ns = UsernameSerializer(data={\"username\": \" ADMIN \"})\nprint(s.is_valid(), s.errors[\"username\"][0])   # False That name is reserved.\ns = UsernameSerializer(data={\"username\": \" Grace \"})\nprint(s.is_valid(), s.validated_data)          # True {'username': 'grace'}",
+      "notes": "The name must be exactly validate_ plus the field name, or DRF never finds it. The value arrives already stripped. Forgetting return value makes the field silently become None."
+    },
+    {
+      "type": "code",
+      "title": "Tool: validate(self, attrs) checks fields together",
+      "caption": "Runs last, with all clean values in `attrs`. A dict puts the error on one field.",
+      "code": "class TripSerializer(serializers.Serializer):\n    start = serializers.IntegerField()\n    end = serializers.IntegerField()\n\n    def validate(self, attrs):\n        if attrs[\"end\"] < attrs[\"start\"]:\n            raise serializers.ValidationError(\n                {\"end\": \"The trip can't end before it starts.\"})\n        return attrs\n\ns = TripSerializer(data={\"start\": 10, \"end\": 4})\nprint(s.is_valid())        # False\nprint(s.errors[\"end\"][0])  # The trip can't end before it starts.",
+      "notes": "For optional fields use attrs.get(\"name\"), not attrs[\"name\"]: a field that was left out is simply not in the dict. Always return attrs at the end."
+    },
+    {
+      "type": "compare",
+      "title": "validate_<field> vs validate",
+      "left": {
+        "heading": "validate_title(self, value)",
+        "bullets": ["Checks **one** field", "Gets that field's clean `value`", "Raise with a plain message", "Must `return value`", "Example: the title is too short"]
+      },
+      "right": {
+        "heading": "validate(self, attrs)",
+        "bullets": ["Checks **several** fields together", "Gets `attrs`, a dict of all values", "Raise with `{\"field\": \"message\"}`", "Must `return attrs`", "Example: high priority needs a date"]
+      },
+      "notes": "Ask: does the rule need to look at more than one field? If yes, it goes in validate. A plain string raised in validate lands under non_field_errors instead of on a field."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: check for None, then compare dates",
+      "caption": "Dates compare like numbers. `and` stops early, so `None` is never compared.",
+      "code": "from datetime import date\n\nfor value in [None, date(2020, 1, 31), date(2099, 1, 1)]:\n    print(value, value is not None and value < date.today())",
+      "output": "None False\n2020-01-31 True\n2099-01-01 False",
+      "notes": "value < date.today() means 'in the past'. None < date.today() would crash with a TypeError, which is why the None check comes first."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Add `priority`: a `ChoiceField` of low, medium, high; default medium", "tests": "tests 2, 6"},
+        {"text": "Add `due_date`: a `DateField`, not required **and** allows `None`", "tests": "tests 1, 7"},
+        {"text": "`validate_title`: under 3 characters raises; otherwise return it", "tests": "test 4"},
+        {"text": "`validate_due_date`: not `None` and before today raises", "tests": "test 8"},
+        {"text": "`validate`: high priority with no due date raises on `due_date`", "tests": "test 9"}
+      ],
+      "notes": "The title field is already there, and it already makes tests 3 and 5 pass: CharField is required and strips spaces by default."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "No `return value` or `return attrs` at the end of a check",
+        "Only one of `required=False` and `allow_null=True`: you need both",
+        "`value < date.today()` without checking for `None` first",
+        "A plain string in `validate()`: it lands under `non_field_errors`",
+        "A wrong method name like `validate_titles`: DRF never calls it"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A to-do app posts a task with the title `\"ab\"` and the priority `\"URGENT\"`. Your API replies **400** with a message for each bad field, and nothing broken is saved.",
+      "bullets": [
+        "In a DRF view: `TaskSerializer(data=request.data)`, then `is_valid()`",
+        "If it fails: `Response(serializer.errors, status=400)`",
+        "Frontend checks are a courtesy; the server's checks protect your data"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "When can you read `serializer.validated_data`?",
+        "What's the difference between `required=False` and `allow_null=True`?",
+        "Where does a rule that looks at two fields belong, and why?",
+        "Why validate on the server if the frontend already checks?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,379 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Capstone: a private task API</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 4 · Exercise 16 · Putting it together</strong></p><h1>Capstone: a private task API</h1>
+<h2>The big idea</h2>
+<p>This exercise puts together the pieces you built one at a time: a model, a
+serializer, a viewset, a router, permissions and ownership. The result is a small
+to-do API where <strong>every user lives in their own bubble</strong>: Ada sees, changes and
+deletes only Ada's tasks, and Bob only Bob's. It's a small version of
+<code>core/api_views.py</code> in this project.</p>
+<p>Think of a hotel. Everyone walks through the same front door and uses the same
+corridors (the same URLs), but your key card only opens <strong>your</strong> room. The front
+desk (the permission check) turns away people who aren't guests at all, and the
+key card (the filtered list of tasks) decides which rooms you can open.</p>
+<p>In data-analysis terms: all users' tasks sit in one big table. For each request,
+you <strong>filter the table to the rows where <code>owner</code> is the logged-in user</strong>, and only
+ever work with that filtered table.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>authenticated</strong></td>
+<td>The request says who it's from (it's logged in). <code>request.user</code> is then a real user.</td>
+</tr>
+<tr>
+<td><strong>anonymous</strong></td>
+<td>A request that isn't logged in.</td>
+</tr>
+<tr>
+<td><strong>401 Unauthorized</strong></td>
+<td>"I don't know who you are. Log in first."</td>
+</tr>
+<tr>
+<td><strong>404 Not Found</strong></td>
+<td>"There's nothing here." Also used for other users' tasks, so strangers can't even tell they exist.</td>
+</tr>
+<tr>
+<td><strong>scope a queryset</strong></td>
+<td>Filter the database rows down to the ones this user may see.</td>
+</tr>
+<tr>
+<td><strong>read-only field</strong></td>
+<td>A field the API shows in responses but ignores in requests.</td>
+</tr>
+<tr>
+<td><strong>override a method</strong></td>
+<td>Write your own version of a method a class already has, so the framework calls yours instead.</td>
+</tr>
+<tr>
+<td><strong><code>self.request.user</code></strong></td>
+<td>Inside a viewset method: the user who sent the current request.</td>
+</tr>
+</tbody>
+</table>
+<h2>How the pieces fit together</h2>
+<p>Here's the recap map. Each row is a piece you've met before, and what it does in
+this exercise:</p>
+<table>
+<thead>
+<tr>
+<th>piece</th>
+<th>met in exercise</th>
+<th>its job here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Model</strong> <code>Task</code></td>
+<td>Design a model</td>
+<td>The table: <code>owner</code>, <code>title</code>, <code>done</code>, <code>created_at</code>. It's <strong>given</strong> to you in <code>sandbox/models.py</code>.</td>
+</tr>
+<tr>
+<td><strong>Ownership</strong> (<code>owner</code> foreign key)</td>
+<td>Users &amp; ownership</td>
+<td>Each task points to the user who owns it. <code>Task.objects.filter(owner=user)</code> gives one user's tasks.</td>
+</tr>
+<tr>
+<td><strong>Serializer</strong> <code>TaskSerializer</code></td>
+<td>Serializers, and A full CRUD API</td>
+<td>Turns a <code>Task</code> into a dict for JSON (and checks incoming data). You add a read-only <code>owner</code>.</td>
+</tr>
+<tr>
+<td><strong>Viewset</strong> <code>TaskViewSet</code></td>
+<td>A full CRUD API</td>
+<td>One class that handles list, create, read, update and delete.</td>
+</tr>
+<tr>
+<td><strong>Router</strong></td>
+<td>A full CRUD API</td>
+<td>Creates the URLs <code>/tasks/</code> and <code>/tasks/&lt;id&gt;/</code> and connects them to the viewset.</td>
+</tr>
+<tr>
+<td><strong>Permissions</strong></td>
+<td>Who may do what?</td>
+<td><code>IsAuthenticated</code>: anonymous requests are turned away with 401.</td>
+</tr>
+<tr>
+<td><strong>Scoped queryset</strong></td>
+<td>new here</td>
+<td><code>get_queryset()</code> only returns the current user's tasks.</td>
+</tr>
+<tr>
+<td><strong><code>perform_create</code></strong></td>
+<td>new here</td>
+<td>Sets <code>owner</code> to the logged-in user when a task is created.</td>
+</tr>
+</tbody>
+</table>
+<p>And here's what happens to one request, <code>GET /tasks/7/</code> sent by Ada, when task 7
+belongs to Bob:</p>
+<pre><code class="language-python"># 1. Router:       &quot;/tasks/7/&quot; matches the detail URL, so call TaskViewSet
+# 2. Permissions:  IsAuthenticated -&gt; is someone logged in?   No -&gt; 401. Yes (Ada) -&gt; go on
+# 3. get_queryset: take only Ada's tasks
+# 4. Look up id 7 inside Ada's tasks: it isn't there -&gt; 404
+#    (if it were Ada's task: the serializer turns it into JSON -&gt; 200)
+</code></pre>
+<p>The important trick is step 3. Because the viewset only ever looks inside <strong>Ada's</strong>
+tasks, Bob's tasks are invisible for reading, changing <strong>and</strong> deleting. You don't
+need a separate check for each action.</p>
+<h2>What your code receives and returns</h2>
+<p>This time there's no single function to call. <strong>The tests send HTTP requests to
+the URLs your router creates</strong>, like a real app would. They create two users, <code>ada</code>
+and <code>bob</code>, and one task for each: <code>"Ada's task"</code> and <code>"Bob's task"</code>. Then they log
+in as Ada (with <code>client.force_authenticate(ada)</code>) and send requests:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th>request</th>
+<th>expected response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>GET /tasks/</code>, <strong>not</strong> logged in</td>
+<td>status <strong>401</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>GET /tasks/</code> as Ada</td>
+<td><strong>200</strong>, and the titles are exactly <code>["Ada's task"]</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>GET /tasks/&lt;id of Ada's task&gt;/</code></td>
+<td><code>{"id": 1, "title": "Ada's task", "done": False, "owner": "ada"}</code> (with the real id)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>POST /tasks/</code> with body <code>{"title": "New", "owner": &lt;Bob's id&gt;}</code></td>
+<td><strong>201</strong>, and the new task's owner is <strong>Ada</strong>, not Bob</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>GET /tasks/&lt;id of Bob's task&gt;/</code></td>
+<td><strong>404</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>PATCH</code> or <code>DELETE /tasks/&lt;id of Bob's task&gt;/</code></td>
+<td><strong>404</strong>, and Bob's task is unchanged</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>PATCH /tasks/&lt;id of Ada's task&gt;/</code> with <code>{"done": True}</code>, then <code>DELETE</code> it</td>
+<td><strong>200</strong>, then <strong>204</strong></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>POST /tasks/</code> with an empty body <code>{}</code></td>
+<td><strong>400</strong> (a title is required)</td>
+</tr>
+</tbody>
+</table>
+<p>Notice test 3: <code>owner</code> is shown as the <strong>username</strong> <code>"ada"</code>, not a number. And
+test 4: the body tries to make Bob the owner, and your API must ignore that.</p>
+<blockquote>
+<p>The starter code runs, but it's wide open on purpose: <code>Task.objects.all()</code> lets
+everyone see everything, and the viewset isn't connected to any URL yet, so every
+request gets 404.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3>Overriding a method</h3>
+<ul>
+<li>A class like <code>ModelViewSet</code> already has methods that it calls for you, at the
+  right moment. When you write a method <strong>with the same name</strong> in your class, the
+  framework calls your version instead. That's called <strong>overriding</strong>.</li>
+<li><code>self</code> is the object itself. Inside a viewset method, <code>self.request</code> is the
+  request being handled right now.</li>
+</ul>
+<pre><code class="language-python">class Shop:
+    def opening_message(self):
+        return &quot;Welcome!&quot;
+
+    def open(self):
+        print(self.opening_message())
+
+
+class TeaShop(Shop):
+    def opening_message(self):          # replaces Shop's version
+        return &quot;Welcome! The tea is ready.&quot;
+
+
+TeaShop().open()   # Welcome! The tea is ready.
+</code></pre>
+<p><code>open</code> belongs to <code>Shop</code>, but it calls <strong>your</strong> <code>opening_message</code>. It's the same
+with <code>ModelViewSet</code>: its built-in code calls <code>self.get_queryset()</code> and
+<code>self.perform_create(serializer)</code>, and you provide your own versions.</p>
+<h3><code>serializers.ReadOnlyField(source="...")</code></h3>
+<ul>
+<li>Adds a field that is <strong>shown</strong> in responses but <strong>ignored</strong> in incoming data.</li>
+<li><code>source="owner.email"</code> means "follow <code>owner</code>, then take its <code>email</code>". The dot
+  follows the link from a task to its user.</li>
+<li>It's a class variable in the serializer (next to <code>class Meta</code>), and its name must
+  also be listed in <code>Meta.fields</code>.</li>
+</ul>
+<pre><code class="language-python">from django.contrib.auth.models import User
+from rest_framework import serializers
+from sandbox.models import Task
+
+grace = User.objects.create_user(&quot;grace&quot;, email=&quot;grace@example.com&quot;)
+task = Task.objects.create(owner=grace, title=&quot;Write report&quot;)
+
+class EmailDemoSerializer(serializers.ModelSerializer):
+    owner_email = serializers.ReadOnlyField(source=&quot;owner.email&quot;)
+
+    class Meta:
+        model = Task
+        fields = [&quot;title&quot;, &quot;owner_email&quot;]
+
+print(EmailDemoSerializer(task).data)
+# {'title': 'Write report', 'owner_email': 'grace@example.com'}
+
+incoming = EmailDemoSerializer(data={&quot;title&quot;: &quot;Plan&quot;, &quot;owner_email&quot;: &quot;evil@example.com&quot;})
+print(incoming.is_valid(), incoming.validated_data)
+# True {'title': 'Plan'}      &lt;- the read-only field was ignored
+</code></pre>
+<ul>
+<li>Common mistake: adding the field but forgetting to add its name to <code>fields</code>.
+  Then it never appears in the response.</li>
+</ul>
+<h3><code>serializer.save(owner=...)</code></h3>
+<ul>
+<li><code>save()</code> creates the database row from the checked data. Anything you pass as a
+  keyword is <strong>added</strong> to that data, so the server can fill in values the client
+  isn't allowed to choose.</li>
+</ul>
+<pre><code class="language-python">from django.contrib.auth.models import User
+from rest_framework import serializers
+from sandbox.models import Task
+
+grace = User.objects.create_user(&quot;grace&quot;)
+
+class TitleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = [&quot;id&quot;, &quot;title&quot;]
+
+incoming = TitleSerializer(data={&quot;title&quot;: &quot;Plan the trip&quot;})
+incoming.is_valid()
+task = incoming.save(owner=grace)
+print(task.owner.username, task.title)   # grace Plan the trip
+</code></pre>
+<h3><code>.filter(...)</code> and <code>.order_by(...)</code></h3>
+<ul>
+<li>You met these in "Users &amp; ownership". <code>filter</code> keeps the matching rows, and
+  <code>order_by("field")</code> sorts them (like <code>df.sort_values("field")</code> in pandas).</li>
+</ul>
+<pre><code class="language-python">from sandbox.models import Task
+from django.contrib.auth.models import User
+
+grace = User.objects.create_user(&quot;grace&quot;)
+Task.objects.create(owner=grace, title=&quot;B task&quot;, done=True)
+Task.objects.create(owner=grace, title=&quot;A task&quot;, done=True)
+Task.objects.create(owner=grace, title=&quot;C task&quot;)
+
+finished = Task.objects.filter(done=True).order_by(&quot;title&quot;)
+print([t.title for t in finished])   # ['A task', 'B task']
+</code></pre>
+<h3><code>router.register(prefix, ViewSet, basename=...)</code></h3>
+<ul>
+<li>Connects a viewset to URLs. It's a <strong>method</strong> of the router object, called with
+  a dot. In "A full CRUD API" you wrote
+  <code>router.register("books", BookViewSet, basename="book")</code>, which created
+  <code>/books/</code> and <code>/books/&lt;id&gt;/</code>.</li>
+<li><code>basename</code> is the name Django uses for the URLs (<code>book-list</code>, <code>book-detail</code>).
+  Normally the router guesses it from the class's <code>queryset</code> line. When you replace
+  that line with a <code>get_queryset()</code> method, there's nothing to guess from, and
+  without <code>basename</code> your file stops with this error:</li>
+</ul>
+<blockquote>
+<p>AssertionError: `basename` argument not specified, and could not automatically
+determine the name from the viewset, as it does not have a `.queryset` attribute.</p>
+</blockquote>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h3>Check your API yourself</h3>
+<p>Paste this at the bottom of your file, highlight it and press <strong>Shift+Enter</strong>. It
+sends a request to your API as a user called <code>zoe</code> (different users and titles from
+the tests):</p>
+<pre><code class="language-python">from django.contrib.auth.models import User
+from django.test import override_settings
+from rest_framework.test import APIClient
+from sandbox.models import Task
+
+zoe = User.objects.create_user(&quot;zoe&quot;)
+sam = User.objects.create_user(&quot;sam&quot;)
+Task.objects.create(owner=zoe, title=&quot;Water plants&quot;)
+Task.objects.create(owner=sam, title=&quot;Sam's secret&quot;)
+
+with override_settings(ROOT_URLCONF=&quot;api&quot;):    # use the URLs from your api.py
+    client = APIClient()
+    client.force_authenticate(zoe)             # &quot;log in&quot; as zoe
+    response = client.get(&quot;/tasks/&quot;)
+    print(response.status_code)
+    if response.status_code == 200:
+        print(response.json())
+</code></pre>
+<p>With the starter code you'll see <code>404</code>. When you're finished you should see <code>200</code>
+and then <code>[{'id': 1, 'title': 'Water plants', 'done': False, 'owner': 'zoe'}]</code>, and
+no sign of Sam's secret. Django may also print a line like <code>Not Found: /tasks/</code>;
+that's just its log.</p>
+<blockquote>
+<p><strong>Delete the snippet from your file before you run the tests.</strong> Code at the
+bottom of the file runs as soon as the file loads, before the test database
+exists, so leaving it in makes the tests crash.</p>
+</blockquote>
+<h2>Step by step</h2>
+<p>The step numbers match the <code>TODO</code> numbers in your file. Most tests can only pass
+once step 5 connects the viewset to a URL, so each step says which tests it helps.</p>
+<h3><code>TaskSerializer</code></h3>
+<p><strong>Step 1.</strong> Add a read-only <code>owner</code> field that shows the owner's <strong>username</strong>: a
+<code>ReadOnlyField</code> whose <code>source</code> goes from <code>owner</code> to <code>username</code>. Put it where the
+TODO comment is, above <code>class Meta</code>.</p>
+<p><strong>Step 2.</strong> Add <code>"owner"</code> to the <code>fields</code> list, so it's
+<code>["id", "title", "done", "owner"]</code>. <strong>→ helps test 3</strong></p>
+<h3><code>TaskViewSet</code></h3>
+<p><strong>Step 3.</strong> Add <code>permission_classes = [IsAuthenticated]</code> as a class variable (it's
+already imported). <strong>→ helps test 1</strong></p>
+<p><strong>Step 4.</strong> Replace the <code>queryset = Task.objects.all()</code> line with a
+<code>get_queryset(self)</code> method that returns only the tasks whose <code>owner</code> is
+<code>self.request.user</code>, ordered by <code>"id"</code>. <strong>→ helps tests 2, 5 and 6</strong></p>
+<h3>The router</h3>
+<p><strong>Step 5.</strong> Register the viewset on the router with the prefix <code>"tasks"</code> and
+<code>basename="task"</code>, where the TODO is (above <code>urlpatterns</code>). Now the URLs exist.
+<strong>→ tests 1, 2, 3, 5, 6, 7 and 8</strong></p>
+<h3>Back in <code>TaskViewSet</code></h3>
+<p><strong>Step 6.</strong> Add a <code>perform_create(self, serializer)</code> method that calls
+<code>serializer.save(...)</code> with <code>owner</code> set to <code>self.request.user</code>. <strong>→ test 4</strong></p>
+<p>Test 8 (empty body gives 400) needs no extra code: <code>title</code> is required in the
+model, so the serializer already rejects a missing title.</p>
+<h2>Common mistakes</h2>
+<ul>
+<li>Registering the viewset without <code>basename="task"</code> after removing <code>queryset</code>: you
+  get the <code>AssertionError</code> shown above, and nothing loads.</li>
+<li>Keeping <code>queryset = Task.objects.all()</code> <strong>and</strong> forgetting <code>get_queryset</code>: every
+  user sees everyone's tasks, so tests 2, 5 and 6 fail.</li>
+<li>Writing <code>request.user</code> instead of <code>self.request.user</code> inside the methods. There's
+  no variable called <code>request</code> there, so you get a <code>NameError</code>.</li>
+<li><code>ReadOnlyField(source="owner")</code> without <code>.username</code> hands over the whole user
+  object instead of a name, and the response breaks. Test 3 wants <code>"ada"</code>.</li>
+<li>Forgetting <code>"owner"</code> in <code>Meta.fields</code>, so the field never shows up.</li>
+<li>Taking the owner from the request body (<code>request.data["owner"]</code>). Never trust the
+  client to say who owns something.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>This is the shape of almost every real DRF endpoint that holds user data: log in,
+scope the queryset to the user, set the owner on the server. "Broken access
+control" (users reaching other users' data) is the most common serious web security
+bug, and scoping <code>get_queryset()</code> is the simplest, strongest defence against it.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/use-django-rest-framework-to-create-web-apis/">Use Django REST Framework to Create Web APIs (video course)</a> (freeCodeCamp, beginner). Start here: a free two-hour video that builds a full DRF API with models, serializers, viewsets, auth and tests.</li><li><a href="https://www.django-rest-framework.org/tutorial/4-authentication-and-permissions/">Tutorial 4: Authentication &amp; Permissions</a> (Django REST framework, beginner). Shows perform_create saving owner=self.request.user, the same trick your TaskViewSet uses.</li><li><a href="https://www.django-rest-framework.org/api-guide/filtering/#filtering-against-the-current-user">Filtering against the current user</a> (Django REST framework, intermediate). The official example of overriding get_queryset so each user only ever sees their own rows.</li><li><a href="https://www.django-rest-framework.org/api-guide/generic-views/">Generic views</a> (Django REST framework, intermediate). Reference for get_queryset, perform_create and the other hooks a ModelViewSet inherits.</li><li><a href="https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/">A01 Broken Access Control (OWASP Top 10:2025)</a> (OWASP, intermediate). Why letting one user read or edit another user&#x27;s task is the most common serious API bug.</li></ul></body></html>

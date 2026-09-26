@@ -1,0 +1,211 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Read an HTTP request</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 01 · HTTP</strong></p><h1>Read an HTTP request</h1>
+<h2>The big idea</h2>
+<p>When you open a website, your browser sends a short <strong>text message</strong> to a server
+asking for something, for example "please give me the list of tasks". That message
+is an <strong>HTTP request</strong>. A web page usually needs many of them: one for the HTML, and
+then more small requests for each image, CSS file and JavaScript file.</p>
+<p>A backend's first job is to <strong>read</strong> that message and pull out the useful parts:
+what the client wants to do, which address it asked for, and any extra details.</p>
+<p>If you've cleaned data before, this will feel familiar. A request arrives as one
+messy string, and you split it into tidy, labelled fields, just like turning a raw
+text column into separate columns.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>request</strong></td>
+<td>The text message a client (like a browser) sends to a server.</td>
+</tr>
+<tr>
+<td><strong>method</strong></td>
+<td>The verb at the start: <code>GET</code> = read something, <code>POST</code> = create something.</td>
+</tr>
+<tr>
+<td><strong>path</strong></td>
+<td>Which address was asked for, like <code>/api/tasks/</code>.</td>
+</tr>
+<tr>
+<td><strong>query string</strong></td>
+<td>Optional extras after a <code>?</code> in the address, like <code>?status=done&amp;page=2</code>.</td>
+</tr>
+<tr>
+<td><strong>headers</strong></td>
+<td><code>Name: value</code> lines with extra information, like which website it's for.</td>
+</tr>
+<tr>
+<td><strong>head</strong></td>
+<td>The request line plus the headers: everything before the first blank line.</td>
+</tr>
+<tr>
+<td><strong>body</strong></td>
+<td>Everything after the first blank line. <code>GET</code> requests usually have an empty body.</td>
+</tr>
+<tr>
+<td><strong>parameter</strong></td>
+<td>The name a function gives to the value it's called with, like <code>raw</code> in <code>def parse_request(raw):</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't type the request yourself. <strong>The tests call your function and pass the
+request in as the parameter <code>raw</code>.</strong> Inside <code>parse_request</code>, <code>raw</code> holds a string like
+this one, which is copied from the tests:</p>
+<pre><code class="language-python">raw = (
+    &quot;GET /api/tasks/?status=done&amp;page=2 HTTP/1.1\r\n&quot;
+    &quot;Host: localhost:8000\r\n&quot;
+    &quot;Accept:   application/json  \r\n&quot;
+    &quot;\r\n&quot;
+)
+</code></pre>
+<p><code>\r\n</code> is how HTTP ends each line (it means "new line"), and the <code>\r\n\r\n</code> at the
+end is the <strong>blank line</strong> that separates the head from the body.</p>
+<p>The tests then check that <code>parse_request(raw)</code> returns exactly this dictionary:</p>
+<pre><code class="language-python">{
+    &quot;method&quot;: &quot;GET&quot;,
+    &quot;path&quot;: &quot;/api/tasks/&quot;,
+    &quot;query&quot;: {&quot;status&quot;: &quot;done&quot;, &quot;page&quot;: &quot;2&quot;},
+    &quot;version&quot;: &quot;HTTP/1.1&quot;,
+    &quot;headers&quot;: {&quot;host&quot;: &quot;localhost:8000&quot;, &quot;accept&quot;: &quot;application/json&quot;},
+    &quot;body&quot;: &quot;&quot;,
+}
+</code></pre>
+<p>They also call <code>is_safe_method("GET")</code>, <code>is_safe_method("post")</code> and so on, and
+check for <code>True</code> or <code>False</code>.</p>
+<blockquote>
+<p>Because <code>raw</code> is a parameter, it only exists <strong>inside</strong> your function while a
+test is calling it. To experiment in the Console, make your own sample string
+first (see "Try it" below).</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3><code>text.partition(separator)</code></h3>
+<ul>
+<li>Splits a string at the <strong>first</strong> place the separator appears, and gives back
+  3 pieces: before, the separator itself, after.</li>
+<li>It's a <strong>method</strong>, so you call it on a string with a dot: <code>text.partition(...)</code>.</li>
+</ul>
+<pre><code class="language-python">before, sep, after = &quot;name: Ada Lovelace&quot;.partition(&quot;: &quot;)
+print(before)   # name
+print(sep)      # &quot;: &quot; (the separator itself)
+print(after)    # Ada Lovelace
+</code></pre>
+<ul>
+<li>It only splits once, which is exactly what you want for <code>"Host: localhost:8000"</code>:
+  only the first colon counts.</li>
+</ul>
+<h3>Unpacking: <code>a, b, c = ...</code></h3>
+<ul>
+<li>When something gives back several values, you can store each one in its own
+  variable in one line. The number of names on the left must match.</li>
+<li>Use <code>_</code> for a piece you don't need: <code>before, _, after = text.partition(":")</code>.</li>
+</ul>
+<pre><code class="language-python">first, last = &quot;Ada Lovelace&quot;.split(&quot; &quot;)
+print(first)   # Ada
+print(last)    # Lovelace
+</code></pre>
+<h3><code>text.split(separator)</code></h3>
+<ul>
+<li>Cuts a string at <strong>every</strong> separator and gives back a list.</li>
+</ul>
+<pre><code class="language-python">print(&quot;red,green,blue&quot;.split(&quot;,&quot;))          # ['red', 'green', 'blue']
+print(&quot;one\r\ntwo\r\nthree&quot;.split(&quot;\r\n&quot;))   # ['one', 'two', 'three']
+</code></pre>
+<h3><code>urlsplit(address)</code></h3>
+<ul>
+<li>Breaks a web address into named parts. It's a <strong>function</strong> (imported at the top of
+  your file), so you pass the text in brackets: <code>urlsplit(text)</code>, <strong>not</strong> <code>text.urlsplit()</code>.</li>
+<li>The result has <strong>attributes</strong>, which you read with a dot: <code>.path</code> and <code>.query</code>.
+  It's not a dictionary, so <code>parts["path"]</code> doesn't work.</li>
+</ul>
+<pre><code class="language-python">from urllib.parse import urlsplit
+
+parts = urlsplit(&quot;/shop/search/?item=tea&amp;size=large&quot;)
+print(parts.path)    # /shop/search/
+print(parts.query)   # item=tea&amp;size=large
+</code></pre>
+<h3><code>parse_qsl(query)</code> and <code>dict(...)</code></h3>
+<ul>
+<li><code>parse_qsl</code> turns a query string into a <strong>list of pairs</strong>. <code>dict(...)</code> turns a list
+  of pairs into a dictionary.</li>
+</ul>
+<pre><code class="language-python">from urllib.parse import parse_qsl
+
+pairs = parse_qsl(&quot;item=tea&amp;size=large&quot;)
+print(pairs)                  # [('item', 'tea'), ('size', 'large')]
+print(dict(pairs))            # {'item': 'tea', 'size': 'large'}
+print(dict(parse_qsl(&quot;&quot;)))    # {}  (an empty query gives an empty dict)
+</code></pre>
+<h3><code>.lower()</code>, <code>.upper()</code> and <code>.strip()</code></h3>
+<ul>
+<li><code>.lower()</code> / <code>.upper()</code> give back a copy of the text in lower / upper case.</li>
+<li><code>.strip()</code> removes spaces from both ends.</li>
+<li>You can chain them: <code>"  Hello ".strip().lower()</code> gives <code>"hello"</code>.</li>
+</ul>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The Console tab shows everything you <code>print()</code>, plus the value
+of the last line you highlighted.</p>
+<h2>Step by step</h2>
+<h3><code>parse_request(raw)</code></h3>
+<ol>
+<li><strong>Split the head from the body</strong> at the first blank line, <code>"\r\n\r\n"</code>, using
+   <code>partition</code>. Keep the part before (the head) and the part after (the body).
+   <strong>→ helps test 7</strong></li>
+<li><strong>Split the head into lines</strong> with <code>.split("\r\n")</code>. The first line is the
+   request line and the rest are header lines. (<code>first, *rest = some_list</code> puts
+   the first item in <code>first</code> and all the others in the list <code>rest</code>.)</li>
+<li><strong>Split the request line into three words</strong> at the spaces:
+   <code>method, target, version = ...</code>. <strong>→ test 1</strong></li>
+<li><strong>Split the target into path and query</strong> with <code>urlsplit(target)</code>. Use <code>.path</code> for
+   the path. For the query, pass <code>.query</code> to <code>parse_qsl</code> and wrap the result in
+   <code>dict(...)</code>. <strong>→ tests 2, 3 and 4</strong></li>
+<li><strong>Build a headers dictionary.</strong> Start with an empty dict, <code>headers = {}</code>. Loop
+   over the header lines. For each line, split it at the <strong>first</strong> colon with
+   <code>partition(":")</code>, make the name lower-case and strip the value, then store it:
+   <code>headers[name] = value</code>. <strong>→ tests 5 and 6</strong></li>
+<li><strong>Return one dictionary</strong> with the keys <code>method</code>, <code>path</code>, <code>query</code>, <code>version</code>,
+   <code>headers</code> and <code>body</code>. <strong>→ all of tests 1-7</strong></li>
+</ol>
+<p>Here's the same "loop and build a dict" pattern on different data, to copy the
+shape from:</p>
+<pre><code class="language-python">lines = [&quot;Fruit : Apple &quot;, &quot;Colour: Red&quot;]
+info = {}
+for line in lines:
+    key, _, value = line.partition(&quot;:&quot;)
+    info[key.strip().lower()] = value.strip()
+print(info)   # {'fruit': 'Apple', 'colour': 'Red'}
+</code></pre>
+<h3><code>is_safe_method(method)</code></h3>
+<p>Some requests only <strong>read</strong> data (<code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>); others <strong>change</strong> it
+(<code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>). Servers use a check like this to decide, for
+example, whether a visitor who isn't logged in may do something: reading is often
+allowed, changing is not.</p>
+<ol start="7">
+<li>Return <code>True</code> if the method is <code>GET</code>, <code>HEAD</code> or <code>OPTIONS</code>, in <strong>any</strong> capitalisation
+   (<code>"get"</code>, <code>"Get"</code>, <code>"GET"</code>), and <code>False</code> otherwise. Turn the method into upper
+   case first, then check whether it's in a set of the safe ones:
+   <code>"GET" in {"GET", "HEAD"}</code> gives <code>True</code>. <strong>→ tests 8 and 9</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li><code>raw.urlsplit(...)</code>: <code>urlsplit</code> is a function, so write <code>urlsplit(something)</code>.</li>
+<li><code>parts["path"]</code>: the result of <code>urlsplit</code> uses dots, <code>parts.path</code>.</li>
+<li>Splitting headers with <code>.split(":")</code> breaks <code>Host: localhost:8000</code> into three
+  pieces. <code>partition(":")</code> splits only at the first colon.</li>
+<li>Forgetting <code>dict(...)</code> around <code>parse_qsl(...)</code> gives a list of pairs, not a dict.</li>
+<li>Running a line that uses <code>raw</code> in the Console gives <code>NameError: name 'raw' is not
+  defined</code>. That's expected: make your own sample string to experiment with.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Django does all of this for you. Inside a Django view you get <code>request.method</code>,
+<code>request.path</code>, <code>request.GET</code> (the query), <code>request.headers</code> and <code>request.body</code>,
+ready to use. Now you know what's underneath them.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/what-is-http/">What is HTTP? Protocol Overview for Beginners</a> (freeCodeCamp, beginner). Start here: a friendly walk through what a request looks like, with the method, path, version, headers and body explained one by one.</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview">Overview of HTTP</a> (MDN Web Docs, beginner). The big picture of how a client and a server talk, so you know where the raw request you parse comes from.</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Messages">HTTP messages</a> (MDN Web Docs, beginner). Shows the exact layout of a request line, headers, the blank line and the body: the same structure your parser splits apart.</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods">HTTP request methods</a> (MDN Web Docs, beginner). A reference list of GET, POST, PUT, PATCH, DELETE and friends, including which ones are safe, for your is_safe_method function.</li><li><a href="https://docs.python.org/3/library/urllib.parse.html#urllib.parse.urlsplit">urllib.parse: Parse URLs into components</a> (Python docs, intermediate). The official reference for urlsplit and parse_qsl, the two functions you use to separate the path from the query string.</li></ul></body></html>

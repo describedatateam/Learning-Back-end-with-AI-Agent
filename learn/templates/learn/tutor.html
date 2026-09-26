@@ -1,0 +1,22 @@
+{% extends "learn/base.html" %}
+
+{% block title %}Study tutor · Backend Lab{% endblock %}
+
+{% block style %}
+  .tutor-page { max-width: 820px; margin: 0 auto; padding: 24px 24px 20px; height: calc(100vh - 58px); display: flex; flex-direction: column; }
+  .tutor-page header { margin-bottom: 12px; }
+  .tutor-page header p { margin: 4px 0 0; }
+  .tutor-page .panel { flex: 1; min-height: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; }
+{% endblock %}
+
+{% block content %}
+<main class="tutor-page">
+  <header>
+    <h1>Study tutor ✨</h1>
+    <p class="muted">Ask about any backend concept: HTTP, Django, REST, databases, testing, security… For help with a specific exercise, open its <strong>Tutor</strong> tab so the tutor can see your code.</p>
+  </header>
+  <div class="panel">
+    {% include "learn/_tutor.html" with tutor_topic="general" %}
+  </div>
+</main>
+{% endblock %}

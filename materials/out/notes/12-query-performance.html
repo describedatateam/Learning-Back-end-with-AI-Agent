@@ -1,0 +1,297 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Kill the N+1 query</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 3 · Exercise 12 · Query performance</strong></p><h1>Kill the N+1 query</h1>
+<h2>The big idea</h2>
+<p>Your data lives in a <strong>database</strong>, a separate program that stores tables. Every
+time your Python code needs rows from it, Django writes a question in SQL (the
+database's language), sends it over, waits, and reads the answer. One round trip
+like that is a <strong>query</strong>. A single query is fast, but each one has a fixed cost,
+like a trip to the shop: buying 100 things in <strong>one</strong> trip is fine, making <strong>100
+trips</strong> for one thing each is not.</p>
+<p>The most common way to make too many trips is the <strong>N+1 problem</strong>. This loop looks
+harmless:</p>
+<pre><code class="language-python">for task in Task.objects.all():   # 1 query: get all the tasks
+    print(task.project.name)      # +1 query for EACH task, to get its project
+</code></pre>
+<p>With 5 tasks that's 1 + 5 = <strong>6 queries</strong>. With 500 tasks it's <strong>501</strong>. On your
+laptop with a tiny database you won't notice; on a real server with real data,
+the page takes seconds to load.</p>
+<p>If you know pandas, the fix will feel familiar. Instead of looking up each task's
+project one row at a time, you <strong>merge</strong> the two tables once
+(<code>tasks.merge(projects, ...)</code>). Instead of counting each project's tasks in a loop,
+you <strong>group by</strong> project and count (<code>tasks.groupby("project").size()</code>). Django has
+the same two tools: <code>select_related</code> and <code>annotate</code>.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>database</strong></td>
+<td>The program that stores your tables (here, SQLite).</td>
+</tr>
+<tr>
+<td><strong>query</strong></td>
+<td>One question sent to the database and its answer: one round trip.</td>
+</tr>
+<tr>
+<td><strong>queryset</strong></td>
+<td>Django's description of a query, like <code>Task.objects.order_by("id")</code>. It only runs when you loop over it or call <code>list(...)</code> on it.</td>
+</tr>
+<tr>
+<td><strong>N+1 problem</strong></td>
+<td>1 query for a list of N things, then 1 more query for <strong>each</strong> thing: N+1 in total.</td>
+</tr>
+<tr>
+<td><strong>foreign key</strong></td>
+<td>A column that points to a row in another table. Each task has a <code>project</code> foreign key.</td>
+</tr>
+<tr>
+<td><strong>JOIN</strong></td>
+<td>Combining two tables in one query, like <code>pd.merge</code>.</td>
+</tr>
+<tr>
+<td><strong>aggregate</strong></td>
+<td>Summarise many rows into one number: a count, a sum, an average.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>This time your functions take <strong>no parameters</strong>. They read from the database
+instead. Two models (tables) are provided in <code>sandbox/models.py</code>:</p>
+<pre><code class="language-python">class Project(models.Model):
+    name = models.CharField(max_length=120)
+
+
+class Task(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name=&quot;tasks&quot;)
+    title = models.CharField(max_length=200)
+    done = models.BooleanField(default=False)
+</code></pre>
+<p><code>related_name="tasks"</code> means that from a project you can reach its tasks as
+<code>project.tasks</code>.</p>
+<p>Before each test, <strong>the tests fill the database</strong> with this data (copied from the
+tests):</p>
+<table>
+<thead>
+<tr>
+<th>task id</th>
+<th>project</th>
+<th>title</th>
+<th>done</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Website</td>
+<td>Design homepage</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>API</td>
+<td>Add auth</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Website</td>
+<td>Write copy</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>API</td>
+<td>Paginate</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Website</td>
+<td>Launch</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<p>There's also a third project, <strong>Zine</strong>, with no tasks.</p>
+<p>The tests then call your functions and check both the <strong>answer</strong> and the <strong>number
+of queries</strong>:</p>
+<pre><code class="language-python">task_labels()
+# [&quot;Website: Design homepage&quot;, &quot;API: Add auth&quot;, &quot;Website: Write copy&quot;,
+#  &quot;API: Paginate&quot;, &quot;Website: Launch&quot;]
+
+list(project_summaries())
+# [{&quot;name&quot;: &quot;API&quot;, &quot;task_count&quot;: 2, &quot;done_count&quot;: 1},
+#  {&quot;name&quot;: &quot;Website&quot;, &quot;task_count&quot;: 3, &quot;done_count&quot;: 1},
+#  {&quot;name&quot;: &quot;Zine&quot;, &quot;task_count&quot;: 0, &quot;done_count&quot;: 0}]
+</code></pre>
+<p>The starter code <strong>already gives these right answers</strong>, so tests 1 and 3 pass
+straight away. But it's slow:</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>queries now (5 tasks, 3 projects)</th>
+<th>after test 5 adds 20 more of each</th>
+<th>goal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>task_labels()</code></td>
+<td>1 + 5 = <strong>6</strong></td>
+<td>1 + 25 = <strong>26</strong></td>
+<td><strong>1</strong></td>
+</tr>
+<tr>
+<td><code>project_summaries()</code></td>
+<td>1 + 3 × 2 = <strong>7</strong></td>
+<td>1 + 23 × 2 = <strong>47</strong></td>
+<td><strong>1</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Tests 2, 4 and 5 use Django's <code>assertNumQueries(1)</code>, which fails if your function
+runs any number of queries other than exactly one.</p>
+<h2>Tools you'll use</h2>
+<p>Each Console run starts with an <strong>empty</strong> database. So first, here's some sample
+data (different from the tests). Highlight it <strong>together with</strong> each example below.</p>
+<pre><code class="language-python">from django.db import connection
+from django.db.models import Count, Q
+from django.test.utils import CaptureQueriesContext
+from sandbox.models import Project, Task
+
+garden = Project.objects.create(name=&quot;Garden&quot;)
+kitchen = Project.objects.create(name=&quot;Kitchen&quot;)
+Task.objects.create(project=garden, title=&quot;Water plants&quot;)
+Task.objects.create(project=kitchen, title=&quot;Buy flour&quot;)
+Task.objects.create(project=kitchen, title=&quot;Bake bread&quot;, done=True)
+</code></pre>
+<h3>Counting queries: <code>CaptureQueriesContext(connection)</code></h3>
+<ul>
+<li>Records every query that runs inside the <code>with</code> block. <code>len(...)</code> gives how
+  many. This is how you can see the N+1 problem for yourself.</li>
+</ul>
+<pre><code class="language-python">with CaptureQueriesContext(connection) as queries:
+    for task in Task.objects.all():
+        print(task.title, &quot;-&gt;&quot;, task.project.name)
+
+print(len(queries), &quot;queries&quot;)
+# Water plants -&gt; Garden
+# Buy flour -&gt; Kitchen
+# Bake bread -&gt; Kitchen
+# 4 queries      &lt;- 1 for the tasks + 1 per task for its project
+</code></pre>
+<h3><code>.select_related("project")</code></h3>
+<ul>
+<li>Tells Django: "when you fetch the tasks, fetch each task's project <strong>in the same
+  query</strong>" (with a JOIN, like <code>pd.merge</code>). Afterwards <code>task.project.name</code> needs no
+  extra trip.</li>
+<li>It's a <strong>method</strong> on a queryset, and you pass the <strong>name of the foreign key
+  field</strong> as a string. You can chain it with other queryset methods, like
+  <code>.filter(...)</code> or <code>.order_by(...)</code>.</li>
+</ul>
+<pre><code class="language-python">with CaptureQueriesContext(connection) as queries:
+    task = Task.objects.get(title=&quot;Bake bread&quot;)
+    print(task.project.name)      # Kitchen
+print(len(queries), &quot;queries&quot;)    # 2 queries
+
+with CaptureQueriesContext(connection) as queries:
+    task = Task.objects.select_related(&quot;project&quot;).get(title=&quot;Bake bread&quot;)
+    print(task.project.name)      # Kitchen
+print(len(queries), &quot;queries&quot;)    # 1 queries
+</code></pre>
+<h3><code>.annotate(new_name=Count("tasks"))</code></h3>
+<ul>
+<li>Adds a calculated column to every row, worked out <strong>by the database</strong>. With
+  <code>Count("tasks")</code> the database counts each project's tasks, like
+  <code>groupby("project").size()</code> in pandas, all in one query.</li>
+<li><code>new_name</code> is any name you choose. It becomes an attribute of each project.</li>
+<li>Unlike a pandas <code>groupby</code>, projects with <strong>no</strong> tasks are kept, with a count
+  of <code>0</code>.</li>
+</ul>
+<pre><code class="language-python">for project in Project.objects.annotate(n_tasks=Count(&quot;tasks&quot;)):
+    print(project.name, project.n_tasks)
+# Garden 1
+# Kitchen 2
+</code></pre>
+<h3><code>Count("tasks", filter=Q(...))</code></h3>
+<ul>
+<li>Counts only the related rows that match a condition. <code>Q(...)</code> holds the
+  condition. To reach a field <strong>on the tasks</strong> from a project, join the names with
+  a <strong>double underscore</strong>: <code>tasks__title</code>, <code>tasks__done</code>.</li>
+</ul>
+<pre><code class="language-python">for project in Project.objects.annotate(
+    n_buy=Count(&quot;tasks&quot;, filter=Q(tasks__title__startswith=&quot;Buy&quot;))
+):
+    print(project.name, project.n_buy)
+# Garden 0
+# Kitchen 1
+</code></pre>
+<h3><code>.order_by("field")</code> and <code>.values("field", ...)</code></h3>
+<ul>
+<li><code>.order_by("name")</code> sorts A to Z. <code>"-name"</code> sorts Z to A.</li>
+<li><code>.values(...)</code> gives back <strong>dictionaries</strong> with only the fields you name, like
+  picking columns and calling <code>df.to_dict("records")</code>. Annotated names work too.</li>
+<li><code>list(...)</code> runs the query and gives a normal list.</li>
+</ul>
+<pre><code class="language-python">list(Project.objects.order_by(&quot;-name&quot;).values(&quot;name&quot;))
+# [{'name': 'Kitchen'}, {'name': 'Garden'}]
+</code></pre>
+<ul>
+<li>Common mistake: call <code>.annotate(...)</code> <strong>before</strong> <code>.values(...)</code>. The other way
+  round changes what gets grouped together.</li>
+</ul>
+<p><strong>Try it:</strong> paste the sample data and one example into the editor, highlight both
+and press <strong>Shift+Enter</strong> to see the result in the Console. (The Console shows what
+you <code>print</code>, plus the value of the last line.)</p>
+<h2>Step by step</h2>
+<h3><code>task_labels()</code></h3>
+<ol>
+<li><strong>Fetch the projects in the same query.</strong> In the starter, the loop goes over
+   <code>Task.objects.order_by("id")</code>. Add <code>.select_related("project")</code> to that
+   queryset. Keep <code>.order_by("id")</code>, so the labels stay in task id order, and keep
+   the <code>f"{task.project.name}: {task.title}"</code> part as it is.
+   <strong>→ test 2, and the first half of test 5</strong> (test 1 keeps passing)</li>
+</ol>
+<h3><code>project_summaries()</code></h3>
+<ol start="2">
+<li><strong>Start from one query that counts.</strong> Replace the <code>for</code> loop with a single
+   queryset: <code>Project.objects.annotate(task_count=Count("tasks"), ...)</code>.
+   <code>Count</code> and <code>Q</code> are already imported at the top of your file.</li>
+<li><strong>Add the done count in the same <code>annotate</code></strong>: a second argument,
+   <code>done_count=Count(...)</code>, that counts only tasks where <code>done</code> is <code>True</code>. Use
+   <code>filter=Q(...)</code> with the double-underscore path to the <code>done</code> field.</li>
+<li><strong>Sort by name</strong> with <code>.order_by("name")</code>, so it's API, Website, Zine.</li>
+<li><strong>Keep only the three fields and return a list</strong>: add
+   <code>.values("name", "task_count", "done_count")</code> and return <code>list(...)</code> of the
+   queryset. <strong>→ tests 3, 4 and 5</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li>Calling <code>.count()</code> or <code>.filter(...)</code> on <code>project.tasks</code> inside a loop. Each call
+  is a new query: that's the N+1 problem again.</li>
+<li>Forgetting <code>.order_by("id")</code> in <code>task_labels</code>. The answer might come back in a
+  different order and test 1 would fail.</li>
+<li>Writing <code>select_related("projects")</code> or <code>select_related(Project)</code>. It takes the
+  <strong>field name</strong> as a string, and the field on <code>Task</code> is <code>project</code>.</li>
+<li>Writing <code>tasks.done</code> or <code>tasks_done</code> in <code>Q(...)</code>. Django's path syntax uses a
+  <strong>double</strong> underscore: <code>tasks__done</code>.</li>
+<li>Using <code>.values(...)</code> before <code>.annotate(...)</code>. Put <code>annotate</code> first, then
+  <code>order_by</code>, then <code>values</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>In a DRF API, a serializer that shows <code>task.project.name</code> for a list of tasks hits
+exactly this problem, one extra query per task on every page. Adding
+<code>select_related</code> or <code>annotate</code> to the view's <code>queryset</code> is one of the most common
+and most effective speed fixes in real Django projects. For the reverse direction
+(a project with <strong>all</strong> its tasks), Django also has <code>prefetch_related("tasks")</code>,
+which uses 2 queries in total instead of 1 + N.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/how-to-optimize-django-rest-apis-for-performance/">How to Optimize Django REST APIs for Performance</a> (freeCodeCamp, beginner). Start here: explains the N+1 problem (100 posts, 101 queries) and how select_related and prefetch_related fix it.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/optimization/">Database access optimization</a> (Django docs, intermediate). Django&#x27;s own checklist for fewer queries, including &#x27;retrieve everything at once&#x27; and doing counting in the database.</li><li><a href="https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-related">QuerySet API reference: select_related</a> (Django docs, intermediate). Reference for select_related, which joins Task and Project in one query for your task_labels report.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/aggregation/#filtering-on-annotations">Aggregation: filtering on annotations</a> (Django docs, intermediate). Shows annotate() with Count and Count(filter=Q(...)), the tools behind your one-query project summary.</li></ul></body></html>

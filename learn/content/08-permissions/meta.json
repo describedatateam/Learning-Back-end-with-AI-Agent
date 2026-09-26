@@ -1,0 +1,35 @@
+{
+  "title": "Who may do what?",
+  "week": 2,
+  "concept": "Permissions",
+  "file": "permissions.py",
+  "lesson": "lessons/week-2/day-09-authentication-and-permissions-lesson.md",
+  "summary": "Write permission classes: anyone logged in can read, only the owner can change, only staff can delete.",
+  "hints": [
+    "Each method just returns <code>True</code> (allowed) or <code>False</code> (not allowed). The tests call them directly with a fake request.",
+    "<code>request.user.is_authenticated</code> is <code>True</code> for a logged-in user and <code>False</code> for <code>AnonymousUser</code>. It's an attribute, so no brackets.",
+    "<code>SAFE_METHODS</code> is the tuple <code>('GET', 'HEAD', 'OPTIONS')</code>. <code>request.method in SAFE_METHODS</code> tells you whether the request only reads.",
+    "The owner check goes in <code>has_object_permission</code>, the only method that gets <code>obj</code>. Compare with <code>obj.owner == request.user</code>.",
+    "In <code>IsStaffForDelete</code>: <code>if request.method == 'DELETE':</code> return <code>request.user.is_staff</code>, and after the <code>if</code> return <code>True</code>."
+  ],
+  "quiz": [
+    {
+      "question": "What's the difference between authentication and authorization?",
+      "options": ["They're the same", "Authentication = who are you? Authorization = what may you do?", "Authentication is for admins only", "Authorization happens first"],
+      "answer": 1,
+      "explanation": "Authentication identifies the user (Basic, session, token). Permissions then decide whether that user may do this action."
+    },
+    {
+      "question": "An anonymous request hits a view with <code>IsAuthenticated</code> and Basic auth. What does the client get?",
+      "options": ["200", "401 Unauthorized", "403 Forbidden", "404"],
+      "answer": 1,
+      "explanation": "401 means 'you need to log in'. 403 means 'you're logged in, but you can't do this'."
+    },
+    {
+      "question": "Why do many APIs return 404 instead of 403 for other users' objects?",
+      "options": ["It's a bug", "So attackers can't learn which IDs exist", "404 is faster", "403 is deprecated"],
+      "answer": 1,
+      "explanation": "If <code>get_queryset()</code> is scoped to the owner, other users' objects simply 'don't exist' for you. That leaks less information."
+    }
+  ]
+}

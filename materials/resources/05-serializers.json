@@ -1,0 +1,45 @@
+{
+  "exercise": "05-serializers",
+  "resources": [
+    {
+      "title": "Tutorial 1: Serialization",
+      "url": "https://www.django-rest-framework.org/tutorial/1-serialization/",
+      "source": "Django REST framework",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: builds a serializer from scratch and shows is_valid(), validated_data and errors in the Python shell."
+    },
+    {
+      "title": "Use Django REST Framework to Create Web APIs (video course)",
+      "url": "https://www.freecodecamp.org/news/use-django-rest-framework-to-create-web-apis/",
+      "source": "freeCodeCamp",
+      "kind": "video",
+      "level": "beginner",
+      "why": "A free two-hour video that builds a DRF API with serializers, viewsets and tests; handy if you prefer watching."
+    },
+    {
+      "title": "Serializers: validation",
+      "url": "https://www.django-rest-framework.org/api-guide/serializers/#validation",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The official reference for validate_<field> and validate(attrs), the two hooks your TaskSerializer uses."
+    },
+    {
+      "title": "Serializer fields",
+      "url": "https://www.django-rest-framework.org/api-guide/fields/",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Lists every field type and option (required, max_length, allow_null) so you can describe the input shape precisely."
+    },
+    {
+      "title": "Validators",
+      "url": "https://www.django-rest-framework.org/api-guide/validators/",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reusable validation rules you can attach to fields once your own validate methods start repeating themselves."
+    }
+  ]
+}

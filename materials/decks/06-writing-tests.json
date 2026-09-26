@@ -1,0 +1,152 @@
+{
+  "exercise": "06-writing-tests",
+  "subtitle": "Swap roles: write the tests yourself, and make them catch planted bugs.",
+  "notes": "This deck goes with exercise 6. By the end you should be able to write a unittest test class and choose inputs that expose a specific bug.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Until now, **the tests checked your code**. This time you **write the tests**, for a function someone else wrote.\n\nA test says: \"call this with **this**, expect **that** back\". It's like `assert df[\"price\"].min() >= 0` in a notebook, kept in its own file and re-run every time the code changes.\n\nA test is only useful if it **fails when the code is wrong**. A smoke alarm that never beeps protects nothing.",
+      "notes": "Real backends have hundreds or thousands of tests. They let a team change code without being afraid of breaking something that used to work."
+    },
+    {
+      "type": "code",
+      "title": "The function you'll test",
+      "caption": "`make_slug(text)` lives in `slugs.py`, next to your file. You don't write or change it.",
+      "code": "make_slug(\"hello world\")          # \"hello-world\"\nmake_slug(\"  Hello, World!  \")    # \"hello-world\"     lower-case, ends trimmed\nmake_slug(\"Django & DRF 101\")     # \"django-drf-101\"  a run of symbols = ONE \"-\"\nmake_slug(\"word \" * 30)           # at most 50 characters, never ends with \"-\"\nmake_slug(\"!!!\")                  # raises ValueError: nothing usable is left",
+      "notes": "A slug is the tidy, URL-friendly version of a title, as in /blog/hello-world/. Each line here is one behaviour your tests should check."
+    },
+    {
+      "type": "compare",
+      "title": "How the grader runs your tests",
+      "left": {
+        "heading": "Run 1: the correct make_slug",
+        "bullets": [
+          "The grader runs **all** your test methods",
+          "Every one must **pass** (test 2)",
+          "Fails here? Your expected value is wrong",
+          "You need at least **4** test methods (test 1)"
+        ]
+      },
+      "right": {
+        "heading": "Runs 2-5: one planted bug each",
+        "bullets": [
+          "No lower-case: `\"Hello-World\"` (test 3)",
+          "No collapse: `\"django---drf\"` (test 4)",
+          "No length limit: 149 characters (test 5)",
+          "No error: `\"!!!\"` gives `\"\"` (test 6)",
+          "At least one of your tests must **fail**"
+        ]
+      },
+      "notes": "You don't call your tests yourself. The grader loads your class and runs it five times, each time with a different make_slug swapped in. For runs 2-5, a failing test is good news: it spotted the bug."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "test", "meaning": "A small function that calls some code and checks the result."},
+        {"term": "unittest", "meaning": "Python's built-in testing library."},
+        {"term": "test case class", "meaning": "Inherits from `unittest.TestCase`; each `test...` method is one test."},
+        {"term": "assertion", "meaning": "A check like `self.assertEqual(a, b)`. If it's false, the test fails."},
+        {"term": "bug / mutant", "meaning": "A copy of the function with one small mistake planted in it."},
+        {"term": "raise an error", "meaning": "The function stops and reports a problem, like `ValueError`."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: a test case class",
+      "caption": "Inherit from `unittest.TestCase`; every method whose name starts with `test` is one test.",
+      "code": "import unittest\n\nclass ShoutTests(unittest.TestCase):\n    def test_makes_upper_case(self):\n        result = \"tea\".upper()           # 1. call the code\n        self.assertEqual(result, \"TEA\")  # 2. check the answer",
+      "notes": "Shape of a good test: set up the input, call the code once, check the result. One behaviour per test, so the name tells you what broke. Every method takes self, and checks are called as self.assertEqual."
+    },
+    {
+      "type": "code",
+      "title": "Tool: assertEqual(actual, expected)",
+      "caption": "Outside a class, borrow the checks from a plain `unittest.TestCase()` to try them in the Console.",
+      "code": "import unittest\n\ncheck = unittest.TestCase()\ncheck.assertEqual(\"tea\".upper(), \"TEA\")\nprint(\"first check passed\")\ncheck.assertEqual(\"tea\".upper(), \"Tea\")",
+      "output": "first check passed\nAssertionError: 'TEA' != 'Tea'",
+      "notes": "The second check fails, and the error shows both values. That's what a failing test looks like."
+    },
+    {
+      "type": "code",
+      "title": "Tools: True/False, size and errors",
+      "caption": "`assertRaises` passes only if the code **inside** the `with` block raises that error.",
+      "code": "check = unittest.TestCase()\nname = \"  Grace Hopper \"\ncheck.assertTrue(name.startswith(\" \"))\ncheck.assertFalse(name.endswith(\"r\"))\ncheck.assertLessEqual(len(name.strip()), 12)\nwith check.assertRaises(ValueError):\n    int(\"twelve\")\nprint(\"all four checks passed\")",
+      "output": "all four checks passed",
+      "notes": "with is new syntax: the line ends in a colon and the code to check is indented underneath, like the body of an if. On its own int(\"twelve\") would crash; inside assertRaises that crash is exactly what was expected."
+    },
+    {
+      "type": "compare",
+      "title": "Inside vs outside the with block",
+      "left": {
+        "heading": "Outside: the test crashes",
+        "bullets": [
+          "`make_slug(\"!!!\")` is **not** indented under `with`",
+          "The `ValueError` happens outside, so nothing catches it",
+          "Correct code: the test **crashes** (test 2 fails)",
+          "Fix: indent the call one level under `with`"
+        ]
+      },
+      "right": {
+        "heading": "Inside: the error is checked",
+        "bullets": [
+          "`make_slug(\"!!!\")` **is** indented under `with`",
+          "Error raised (correct code): the test **passes**",
+          "No error (the bug): the test **fails**"
+        ]
+      },
+      "notes": "Indentation decides what is inside the with block, exactly like an if. Only the indented line is watched for the error."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: one test per behaviour",
+      "caption": "The same shape as your task, for a different function:",
+      "code": "import unittest\n\ndef make_tag(text):\n    tag = text.strip().lower().replace(\" \", \"_\")\n    if not tag:\n        raise ValueError(\"empty tag\")\n    return tag\n\nclass MakeTagTests(unittest.TestCase):\n    def test_lowercases(self):\n        self.assertEqual(make_tag(\" Data Science \"), \"data_science\")\n    def test_blank_raises(self):\n        with self.assertRaises(ValueError):\n            make_tag(\"   \")",
+      "notes": "Each test pokes one behaviour with an input chosen to show it: capitals for lower-casing, blank text for the error. Both pass on this correct code. If someone removed .lower(), test_lowercases would fail and catch it."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Keep the example `test_basic_title`: it passes on the correct code", "tests": "tests 1-2"},
+        {"text": "Test capitals: `\"  Hello, World!  \"` should give `\"hello-world\"`", "tests": "test 3"},
+        {"text": "Test a run of symbols: `\"Django & DRF 101\"` gives `\"django-drf-101\"`", "tests": "test 4"},
+        {"text": "Long title `\"word \" * 30`: length at most 50, doesn't end with `\"-\"`", "tests": "test 5"},
+        {"text": "Put `make_slug(\"!!!\")` inside `with self.assertRaises(ValueError):`", "tests": "test 6"}
+      ],
+      "notes": "Give every method a different name starting with test_. The starter's example uses \"hello world\": no capitals, no symbols, short. It passes on all five versions, so it catches none of the bugs."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "A method named `check_lowercase` never runs: names must start with `test`",
+        "Two methods with the same name: only the last one counts",
+        "Expecting `\"Hello-World\"`: run `make_slug(...)` in the Console first",
+        "`make_slug(\"!!!\")` outside the `with` block crashes the test",
+        "`assertEqual(...)` without `self.` gives `NameError`"
+      ],
+      "notes": "If test 2 fails, one of your tests is wrong about what the correct code does. The message names the test."
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A teammate \"tidies up\" the blog's slug code and forgets `.lower()`. Without a test, links like `/blog/Hello-World/` go live. With your test, the change fails before anyone ships it.",
+      "bullets": [
+        "Django's `TestCase` builds on `unittest.TestCase`, with the same `assert...` methods",
+        "Every exercise in this course is graded by tests written this way",
+        "Real projects add a test for each endpoint, so changes can't quietly break it"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why does the example test with `\"hello world\"` catch none of the bugs?",
+        "Your tests pass on a buggy version. What does that tell you?",
+        "What happens if two test methods have the same name?",
+        "Why must `make_slug(\"!!!\")` be indented under the `with` line?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "exercise": "10-pagination",
+  "subtitle": "Send a long list one page at a time, with numbers that say where you are.",
+  "notes": "This deck goes with exercise 10. By the end you should be able to cut a list into pages, check the numbers a client sends, and explain the metadata that comes back.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "An API with 50,000 tasks can't send them all at once: the response would be huge and slow. So it sends **pages**: a small slice, plus a few numbers that say where you are.\n\nYou already do this with `df.head(10)` and `df.iloc[10:20]`. Pagination is the same idea, done by the server, with the **client** choosing the chunk.",
+      "notes": "Think of search results: Google shows 10 at a time with 'Next' at the bottom. Nobody downloads all million results."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives",
+      "caption": "The client writes `?page=2&page_size=10`. The tests call your function and pass these in:",
+      "code": "ITEMS = list(range(1, 43))    # [1, 2, 3, ..., 42] -> 42 items\n\npaginate(ITEMS, page=1, page_size=10)\npaginate(ITEMS, page=\"2\", page_size=\"20\")     # text, like a real URL\npaginate(ITEMS, page=\"abc\", page_size=10)     # must raise ValueError\npaginate(ITEMS, page=6, page_size=10)         # ValueError(\"Invalid page.\")\npaginate(list(range(200)), page=1, page_size=1000, max_page_size=50)\npaginate([], page=1)                          # an empty list",
+      "notes": "Everything in a web address is text, so ?page=2 arrives as the string \"2\". items, page and page_size only exist inside your function while a test calls it."
+    },
+    {
+      "type": "code",
+      "title": "What your function must return",
+      "caption": "`paginate(ITEMS, page=1, page_size=10)` gives one page plus **metadata**:",
+      "code": "{\n    \"count\": 42,           # how many items exist in total\n    \"page\": 1,             # which page this is (a number, not \"1\")\n    \"total_pages\": 5,      # 42 items at 10 per page -> 5 pages\n    \"next_page\": 2,        # None on the last page\n    \"previous_page\": None, # None on page 1\n    \"results\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],\n}",
+      "notes": "Page 5 has only [41, 42]: the last page can be shorter. An empty list still has one empty page."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "pagination", "meaning": "Splitting a long list into pages and returning one at a time."},
+        {"term": "page / page size", "meaning": "Which chunk (page 1 is first) / how many items per chunk."},
+        {"term": "metadata", "meaning": "Facts about the data, like `count` and `total_pages`."},
+        {"term": "clamp", "meaning": "Push a number back inside a limit: too big, use the limit."},
+        {"term": "exception", "meaning": "An error that stops the code, like `ValueError`."},
+        {"term": "raise", "meaning": "Make an exception happen on purpose: \"this input is wrong\"."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tools: int, try / except, raise",
+      "code": "def check_age(value):          # a number typed into a form\n    try:\n        age = int(value)\n    except (TypeError, ValueError):\n        raise ValueError(\"age must be a whole number\")\n    if age < 0:\n        raise ValueError(\"age cannot be negative\")\n    return age\nprint(check_age(\"30\"))\ncheck_age(\"old\")",
+      "output": "30\nValueError: age must be a whole number",
+      "notes": "Same idea as your task, on different data: checking a number typed into a form. int(\"old\") raises ValueError, but int(None) raises a TypeError. The tests pass None too, so catch both in brackets. raise stops the function and hands the error back to the caller."
+    },
+    {
+      "type": "code",
+      "title": "Tools: min, max and math.ceil",
+      "caption": "`min` clamps a number to a limit; `math.ceil` rounds **up**.",
+      "code": "import math\n\nprint(min(80, 25))          # no more than 25\nprint(max(1, 0))            # at least 1\nprint(math.ceil(23 / 5))    # 23 / 5 is 4.6 -> 5 pages",
+      "output": "25\n1\n5",
+      "notes": "All three are functions: pass values in round brackets. math is already imported at the top of the exercise file."
+    },
+    {
+      "type": "compare",
+      "title": "Rounding down vs rounding up",
+      "left": {
+        "heading": "count // page_size",
+        "bullets": ["Rounds **down**", "`42 // 10` gives `4`", "Page 5 with `[41, 42]` disappears", "Wrong for counting pages"]
+      },
+      "right": {
+        "heading": "math.ceil(count / page_size)",
+        "bullets": ["Rounds **up**", "`math.ceil(42 / 10)` gives `5`", "A half-full last page still counts", "Wrap in `max(1, ...)` for empty lists"]
+      },
+      "notes": "Any leftover items need one more page, so page counts always round up."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: cut out one page",
+      "code": "songs = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\", \"s6\", \"s7\"]\npage, page_size, last_page = 2, 3, 3\nstart = (page - 1) * page_size                  # (2 - 1) * 3 = 3\nprint(songs[start:start + page_size])           # stops BEFORE 6\nprint(songs[6:9])                               # past the end: shorter\nprint(page + 1 if page < last_page else None)   # next page\nprint(page - 1 if page > 1 else None)           # previous page",
+      "output": "['s4', 's5', 's6']\n['s7']\n3\n1",
+      "notes": "Different data, same pattern. Slices stop before the stop position, and page 1 starts at position 0. The one-line if picks between two values: value_if_true if condition else value_if_false. That's how you get None on the first and last pages."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Turn `page` into a number with `int`; raise `ValueError` if bad or below 1", "tests": "test 5"},
+        {"text": "Do the same for `page_size` (a small helper saves writing it twice)", "tests": "tests 4-5"},
+        {"text": "Clamp first: `page_size = min(page_size, max_page_size)`", "tests": "test 6"},
+        {"text": "`count = len(items)`; `total_pages = max(1, math.ceil(...))`", "tests": "tests 1, 8"},
+        {"text": "If `page > total_pages`, raise `ValueError(\"Invalid page.\")`", "tests": "test 7"},
+        {"text": "Slice from `(page - 1) * page_size`; work out next and previous", "tests": "tests 1-3"},
+        {"text": "Return one dict with all six keys, using the **number** `page`", "tests": "tests 1-8"}
+      ],
+      "notes": "Order matters: clamp page_size before counting pages, or test 6 gets 1 page instead of 4."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Catching only `ValueError`: `int(None)` raises a `TypeError`",
+        "Returning the original `page`: `\"2\"` must come back as `2`",
+        "Slicing from `page * page_size`: page 1 must start at 0",
+        "Using `//` for pages: 42 items at 10 per page loses 41 and 42",
+        "Counting pages **before** clamping `page_size`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A shop's mobile app shows products in a scrolling list. Each time you reach the bottom, it asks `GET /api/products/?page=3` and adds 10 more.",
+      "bullets": [
+        "DRF's `PageNumberPagination` does this: `count`, `next`, `previous`, `results`",
+        "This project sets it in `core/pagination.py`: `page_size = 10`, `max_page_size = 50`",
+        "A page past the end becomes a `404` with `\"Invalid page.\"`"
+      ],
+      "notes": "The max page size matters for safety: without it, anyone could ask for a million rows in one request and slow the server down."
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why does `?page=2` arrive as the string `\"2\"`?",
+        "Which two errors can `int(value)` raise, and when?",
+        "Where does page 3 start with 10 items per page?",
+        "Why cap `page_size` at a maximum?"
+      ]
+    }
+  ]
+}

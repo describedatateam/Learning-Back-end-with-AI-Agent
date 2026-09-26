@@ -1,0 +1,36 @@
+{
+  "title": "Paginate a list",
+  "week": 2,
+  "concept": "Pagination",
+  "file": "pagination.py",
+  "lesson": "lessons/week-2/day-12-pagination-and-ordering-lesson.md",
+  "summary": "Implement page-number pagination with limits and helpful metadata, as DRF does.",
+  "hints": [
+    "Query parameters arrive as text, so turn them into numbers with <code>int(page)</code>. Wrap it in <code>try:</code> / <code>except (TypeError, ValueError):</code> because <code>int(\"abc\")</code> raises ValueError but <code>int(None)</code> raises TypeError. In the <code>except</code> block, <code>raise ValueError(\"page must be a whole number\")</code>.",
+    "After converting, check the number is at least 1. If not, <code>raise ValueError(...)</code>. Do the same checks for <code>page_size</code> (a small helper function saves writing it twice).",
+    "Keep the page size under the limit with <code>page_size = min(page_size, max_page_size)</code>. Do this before you work out the number of pages.",
+    "Number of pages: <code>max(1, math.ceil(count / page_size))</code>. <code>math.ceil</code> rounds up, so 42 items at 10 per page gives 5 pages, and <code>max(1, ...)</code> gives an empty list one empty page.",
+    "If <code>page &gt; total_pages</code>, <code>raise ValueError(\"Invalid page.\")</code>, with the full stop.",
+    "Page 1 starts at position 0: <code>start = (page - 1) * page_size</code>, then <code>items[start:start + page_size]</code>. For the neighbours: <code>page + 1 if page &lt; total_pages else None</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Why cap <code>page_size</code> (e.g. at 50)?",
+      "options": ["To look tidy", "So one request can't ask for a million rows and overload the server", "Browsers can't show more", "SQL requires it"],
+      "answer": 1,
+      "explanation": "Unbounded page sizes are an easy denial-of-service. Always clamp values the client controls."
+    },
+    {
+      "question": "What should <code>?page=999</code> return when there are only 3 pages?",
+      "options": ["The last page", "An empty 200 response", "404 'Invalid page.'", "500"],
+      "answer": 2,
+      "explanation": "DRF's PageNumberPagination returns 404 'Invalid page.'. That's clearer than silently returning something else."
+    },
+    {
+      "question": "What's a downside of page-number pagination on a list that changes quickly?",
+      "options": ["It's slow for page 1", "Items can shift between pages, so the client may see duplicates or miss items", "It needs a cache", "None"],
+      "answer": 1,
+      "explanation": "Cursor pagination (DRF's <code>CursorPagination</code>) avoids this by paging from a stable position instead of an offset."
+    }
+  ]
+}

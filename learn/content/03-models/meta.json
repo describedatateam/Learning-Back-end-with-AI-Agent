@@ -1,0 +1,35 @@
+{
+  "title": "Design a model",
+  "week": 1,
+  "concept": "Models & ORM",
+  "file": "sandbox/models.py",
+  "lesson": "lessons/week-1/day-03-models-and-migrations-lesson.md",
+  "summary": "Describe a database table with a Django model: fields, defaults, ordering and methods.",
+  "hints": [
+    "Every new field is one line inside <code>Book</code>, lined up with <code>title</code>. For example <code>author = models.CharField(max_length=100)</code>.",
+    "An optional number needs both options: <code>null=True</code> (the database may store no value) and <code>blank=True</code> (input checks allow it to be empty).",
+    "<code>default=True</code> sets <code>is_available</code> when nobody gives a value. <code>auto_now_add=True</code> makes Django fill in <code>created_at</code> by itself when the book is first saved.",
+    "Default ordering goes in a small class inside <code>Book</code>: a line <code>class Meta:</code>, then indented under it <code>ordering = ['title']</code> (a list, with square brackets).",
+    "Methods take <code>self</code>: <code>def is_classic(self):</code>, and use <code>self.published_year</code> inside. <code>None &lt; 1950</code> crashes, so check <code>self.published_year is not None and ...</code> first."
+  ],
+  "quiz": [
+    {
+      "question": "What does <code>null=True</code> on a model field control?",
+      "options": ["Whether forms allow an empty value", "Whether the database column can store NULL", "Whether the field has a default", "Whether the field is indexed"],
+      "answer": 1,
+      "explanation": "<code>null</code> is about the database. <code>blank</code> is about validation in forms and serializers. Optional non-text fields usually need both."
+    },
+    {
+      "question": "You added a field to a model. What must happen before the database has the new column?",
+      "options": ["Nothing, Django adds it on the fly", "Run <code>makemigrations</code>, then <code>migrate</code>", "Restart the server", "Run <code>collectstatic</code>"],
+      "answer": 1,
+      "explanation": "<code>makemigrations</code> writes a migration file that describes the change. <code>migrate</code> applies it to the database."
+    },
+    {
+      "question": "Why define <code>__str__</code> on a model?",
+      "options": ["It's required or Django crashes", "It controls how the object appears in the admin, shell and logs", "It changes the table name", "It's used as the primary key"],
+      "answer": 1,
+      "explanation": "Without it you'll see <code>Book object (1)</code> everywhere. A readable <code>__str__</code> makes the admin and debugging much nicer."
+    }
+  ]
+}

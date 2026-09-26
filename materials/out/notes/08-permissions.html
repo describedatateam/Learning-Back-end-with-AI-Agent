@@ -1,0 +1,309 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Who may do what?</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 2 · Exercise 08 · Permissions</strong></p><h1>Who may do what?</h1>
+<h2>The big idea</h2>
+<p>Your API from the last exercise lets anyone change or delete any book. A real API
+needs rules: <em>you</em> may edit <em>your</em> notes, but not somebody else's.</p>
+<p>Answering "may this request go ahead?" takes two separate questions:</p>
+<ol>
+<li><strong>Authentication: who are you?</strong> The request carries some proof, like a
+   username and password or a token. Django checks it and works out which user is
+   calling. The result is stored on the request as <strong><code>request.user</code></strong>.</li>
+<li><strong>Permissions: are you allowed to do this?</strong> Now that we know who it is, a
+   <strong>permission class</strong> looks at the user, the HTTP method and sometimes the object,
+   and answers <strong>yes</strong> (<code>True</code>) or <strong>no</strong> (<code>False</code>).</li>
+</ol>
+<p>Think of an office building. Showing your badge at the door is authentication. The
+rules about which rooms your badge opens are permissions. In this exercise you
+write the rules. The badge check is already done for you.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>authentication</strong></td>
+<td>Working out <em>who</em> is making the request.</td>
+</tr>
+<tr>
+<td><strong>permission</strong></td>
+<td>A rule that decides whether this user may do this action.</td>
+</tr>
+<tr>
+<td><strong><code>request.user</code></strong></td>
+<td>The user making the request. Django fills it in before your code runs.</td>
+</tr>
+<tr>
+<td><strong><code>AnonymousUser</code></strong></td>
+<td>What <code>request.user</code> is when nobody logged in: a stand-in "nobody" user.</td>
+</tr>
+<tr>
+<td><strong><code>is_authenticated</code></strong></td>
+<td><code>True</code> for a real, logged-in user; <code>False</code> for <code>AnonymousUser</code>.</td>
+</tr>
+<tr>
+<td><strong><code>is_staff</code></strong></td>
+<td><code>True</code> for team members (admins), <code>False</code> for normal users.</td>
+</tr>
+<tr>
+<td><strong>owner</strong></td>
+<td>The user an object belongs to, stored in a field like <code>note.owner</code>.</td>
+</tr>
+<tr>
+<td><strong>safe method</strong></td>
+<td>A method that only reads: <code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>. The others (<code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) change data.</td>
+</tr>
+<tr>
+<td><strong><code>401</code> / <code>403</code></strong></td>
+<td>The replies DRF sends when a permission says no: <code>401</code> usually means "log in first", <code>403</code> means "you're logged in, but not allowed".</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't call these methods yourself, and there is no real web request. <strong>The
+tests build fake requests and call your methods directly</strong>, passing the request
+in as <code>request</code> and the object in as <code>obj</code>. This is how they set things up
+(copied from the tests):</p>
+<pre><code class="language-python">owner = User.objects.create_user(&quot;owner&quot;, password=&quot;x&quot;)
+other = User.objects.create_user(&quot;other&quot;, password=&quot;x&quot;)
+staff = User.objects.create_user(&quot;staff&quot;, password=&quot;x&quot;, is_staff=True)
+note = SimpleNamespace(owner=owner)           # a pretend object with an owner
+
+request = RequestFactory().patch(&quot;/notes/1/&quot;)  # a fake PATCH request
+request.user = other                           # made by the user &quot;other&quot;
+</code></pre>
+<p>Then they call, for example:</p>
+<pre><code class="language-python">IsOwnerOrReadOnly().has_permission(request, None)                 # view is None
+IsOwnerOrReadOnly().has_object_permission(request, None, note)
+</code></pre>
+<p>and check that you return <code>True</code> or <code>False</code>:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th>method called</th>
+<th>who</th>
+<th>request</th>
+<th>expected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>IsOwnerOrReadOnly.has_permission</code></td>
+<td><code>AnonymousUser()</code></td>
+<td><code>GET</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>IsOwnerOrReadOnly.has_permission</code></td>
+<td><code>other</code></td>
+<td><code>GET</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>IsOwnerOrReadOnly.has_object_permission</code></td>
+<td><code>other</code></td>
+<td><code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>IsOwnerOrReadOnly.has_object_permission</code></td>
+<td><code>owner</code></td>
+<td><code>PATCH</code>, <code>PUT</code>, <code>DELETE</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>IsOwnerOrReadOnly.has_object_permission</code></td>
+<td><code>other</code></td>
+<td><code>PATCH</code>, <code>PUT</code>, <code>DELETE</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>IsStaffForDelete.has_permission</code></td>
+<td><code>other</code></td>
+<td><code>GET</code>, <code>POST</code>, <code>PATCH</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>IsStaffForDelete.has_permission</code></td>
+<td><code>staff</code> / <code>other</code> / <code>AnonymousUser()</code></td>
+<td><code>DELETE</code></td>
+<td><code>True</code> / <code>False</code> / <code>False</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The starter's methods all <code>return True</code>, so tests 2, 3, 4 and 6 already pass.
+That's fine: your job is to make the "no" answers (tests 1, 5 and 7) come out
+<code>False</code> without breaking the "yes" ones.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3>A permission class: <code>has_permission</code> and <code>has_object_permission</code></h3>
+<ul>
+<li>A permission class inherits from <code>BasePermission</code> and has up to two methods.
+  In a real API, DRF calls them for you at two moments:</li>
+</ul>
+<pre><code class="language-python">class SomePermission(BasePermission):
+    def has_permission(self, request, view):
+        # Called for EVERY request, before anything else happens.
+        # &quot;May this user use this endpoint at all?&quot;
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        # Called only when the request is about ONE object,
+        # like GET /notes/1/ or DELETE /notes/1/, after that object is loaded.
+        # &quot;May this user do this to THIS object?&quot;
+        return True
+</code></pre>
+<ul>
+<li>If a method returns <code>False</code>, DRF stops and sends back an error (<code>401</code> or <code>403</code>),
+  and the view's code never runs.</li>
+<li>Both methods get the <code>request</code>, so they can read <code>request.method</code> (like
+  <code>"DELETE"</code>) and <code>request.user</code>. <code>has_object_permission</code> also gets <code>obj</code>, the
+  object being read or changed. <code>view</code> is the view being called; you won't need it.</li>
+<li>You switch permissions on in a view with a list, for example
+  <code>permission_classes = [IsOwnerOrReadOnly, IsStaffForDelete]</code>. Every class in the
+  list must say yes.</li>
+</ul>
+<p>The examples below all run in the Console: Django's user model and a practice
+database are ready for you, and the imports at the top of your file are loaded.
+The database starts empty on every run.</p>
+<h3><code>request.user</code>, <code>.is_authenticated</code> and <code>.is_staff</code></h3>
+<ul>
+<li><code>request.user</code> is a user object. Read facts about it with a dot, like
+  <code>request.user.is_staff</code>. These are <strong>attributes</strong>, not methods, so there are no
+  brackets: <code>is_authenticated</code>, not <code>is_authenticated()</code>.</li>
+</ul>
+<pre><code class="language-python">from django.contrib.auth.models import AnonymousUser, User
+
+ada = User.objects.create_user(&quot;ada&quot;, password=&quot;x&quot;)
+boss = User.objects.create_user(&quot;boss&quot;, password=&quot;x&quot;, is_staff=True)
+visitor = AnonymousUser()
+print(ada.is_authenticated, ada.is_staff)
+print(boss.is_authenticated, boss.is_staff)
+print(visitor.is_authenticated, visitor.is_staff)
+# True False
+# True True
+# False False
+</code></pre>
+<p>They're already <code>True</code> or <code>False</code>, so you can <code>return</code> them directly.</p>
+<h3><code>SAFE_METHODS</code> and <code>in</code></h3>
+<ul>
+<li><code>SAFE_METHODS</code> is imported at the top of your file. It's a tuple of the methods
+  that only read. <code>x in something</code> checks whether <code>x</code> is one of the items.</li>
+</ul>
+<pre><code class="language-python">print(SAFE_METHODS)
+print(&quot;GET&quot; in SAFE_METHODS)
+print(&quot;PATCH&quot; in SAFE_METHODS)
+# ('GET', 'HEAD', 'OPTIONS')
+# True
+# False
+</code></pre>
+<p><code>request.method</code> is always in capitals, like <code>"GET"</code> or <code>"DELETE"</code>.</p>
+<h3>Comparing users with <code>==</code></h3>
+<ul>
+<li><code>obj.owner == request.user</code> is <code>True</code> when they are the same user. Django
+  compares users by their id, so two separate objects for the same user count as
+  equal.</li>
+<li>The tests' "object" is a <code>SimpleNamespace</code>: a quick pretend object whose
+  attributes you read with a dot, just like a real model.</li>
+</ul>
+<pre><code class="language-python">from types import SimpleNamespace
+from django.contrib.auth.models import User
+
+ada = User.objects.create_user(&quot;ada&quot;, password=&quot;x&quot;)
+grace = User.objects.create_user(&quot;grace&quot;, password=&quot;x&quot;)
+recipe = SimpleNamespace(title=&quot;Pancakes&quot;, owner=ada)
+print(recipe.title, recipe.owner)
+print(recipe.owner == ada)
+print(recipe.owner == grace)
+print(recipe.owner == User.objects.get(username=&quot;ada&quot;))
+# Pancakes ada
+# True
+# False
+# True
+</code></pre>
+<h3>Calling a permission method yourself</h3>
+<p>Here's a made-up permission with a different, silly rule, called the same way the
+tests call yours:</p>
+<pre><code class="language-python">from django.contrib.auth.models import User
+from django.test import RequestFactory
+
+class NoMondays(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.username != &quot;monday&quot;
+
+ada = User.objects.create_user(&quot;ada&quot;, password=&quot;x&quot;)
+request = RequestFactory().post(&quot;/recipes/&quot;)
+request.user = ada
+print(request.method, request.user)
+print(NoMondays().has_permission(request, None))
+# POST ada
+# True
+</code></pre>
+<p><code>RequestFactory().post(...)</code> makes a fake <code>POST</code> request; <code>.get(...)</code>, <code>.patch(...)</code>
+and <code>.delete(...)</code> make the other kinds.</p>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab. Delete it again afterwards.</p>
+<h2>Step by step</h2>
+<h3><code>IsOwnerOrReadOnly</code></h3>
+<ol>
+<li><strong>In <code>has_permission</code>, let only logged-in users in.</strong> Replace <code>return True</code> so
+   it returns <code>request.user.is_authenticated</code>. An anonymous visitor gets <code>False</code>,
+   anyone logged in gets <code>True</code>. <strong>→ tests 1 and 2</strong></li>
+<li><strong>In <code>has_object_permission</code>, let everyone read.</strong> First check whether
+   <code>request.method</code> is in <code>SAFE_METHODS</code>. If it is, return <code>True</code> straight away.
+   <strong>→ test 3</strong></li>
+<li><strong>Otherwise, only the owner may change it.</strong> After that <code>if</code>, the request
+   must be a change (<code>PATCH</code>, <code>PUT</code> or <code>DELETE</code>). Return whether the object's owner,
+   <code>obj.owner</code>, is the same user as <code>request.user</code>. <strong>→ tests 4 and 5</strong></li>
+</ol>
+<p>Here's the same "answer early, otherwise decide" shape on different data:</p>
+<pre><code class="language-python">def can_enter(age, has_ticket):
+    if age &lt; 5:
+        return True        # small children always get in
+    return has_ticket      # everyone else needs a ticket
+
+print(can_enter(3, False), can_enter(30, True), can_enter(30, False))
+# True True False
+</code></pre>
+<h3><code>IsStaffForDelete</code></h3>
+<p>This class only needs <code>has_permission</code>: the rule doesn't depend on which object.</p>
+<ol start="4">
+<li><strong>Only staff may delete.</strong> If <code>request.method</code> is <code>"DELETE"</code>, return
+   <code>request.user.is_staff</code>. For every other method, return <code>True</code>.
+   <code>AnonymousUser</code> has <code>is_staff</code> too (it's always <code>False</code>), so you don't need a
+   separate check for it. <strong>→ tests 6 and 7</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li><strong>Brackets after an attribute</strong>: <code>request.user.is_authenticated()</code> gives
+  <code>TypeError: 'bool' object is not callable</code>. Write it without <code>()</code>.</li>
+<li><strong>Checking the owner in <code>has_permission</code></strong>: there is no <code>obj</code> there. The owner
+  check belongs in <code>has_object_permission</code>.</li>
+<li><strong>Returning nothing</strong>: if a path through your method has no <code>return</code>, it
+  returns <code>None</code>, which DRF treats as "no". Make sure every path returns
+  <code>True</code> or <code>False</code>.</li>
+<li><strong>Lower-case methods</strong>: <code>request.method == "delete"</code> is never true.
+  <code>request.method</code> is <code>"DELETE"</code>.</li>
+<li><strong>Comparing usernames by hand</strong>, like <code>obj.owner.username == request.user.username</code>,
+  works but is fragile. Compare the users themselves: <code>obj.owner == request.user</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every real API has rules like these. In a DRF view you'd write
+<code>permission_classes = [IsOwnerOrReadOnly, IsStaffForDelete]</code>, and DRF would call
+your methods on every request, answering <code>401</code> or <code>403</code> for you when they say no.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/http-401-error-vs-http-403-error-status-code-responses-explained/">HTTP 401 Error vs HTTP 403 Error – Status Code Responses Explained</a> (freeCodeCamp, beginner). Start here: the difference between &#x27;who are you?&#x27; (401) and &#x27;you may not do that&#x27; (403), which permissions decide.</li><li><a href="https://www.django-rest-framework.org/tutorial/4-authentication-and-permissions/">Tutorial 4: Authentication &amp; Permissions</a> (Django REST framework, beginner). Builds an IsOwnerOrReadOnly permission step by step, almost the same class you write here.</li><li><a href="https://www.django-rest-framework.org/api-guide/permissions/#custom-permissions">Permissions: custom permissions</a> (Django REST framework, intermediate). Official reference for BasePermission, has_permission, has_object_permission and SAFE_METHODS.</li><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html">Authorization Cheat Sheet</a> (OWASP, intermediate). Security rules of thumb such as &#x27;deny by default&#x27; and &#x27;check on every request&#x27;, to read after the exercise.</li></ul></body></html>

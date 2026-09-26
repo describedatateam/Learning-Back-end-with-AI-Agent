@@ -1,0 +1,132 @@
+{% extends "learn/base.html" %}
+
+{% block style %}
+  .hero { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 8px; }
+  .hero .intro { flex: 1 1 420px; }
+  .week-title { display: flex; align-items: baseline; gap: 10px; }
+  .week-title small { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card {
+    display: flex; flex-direction: column; gap: 6px; padding: 16px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .card:hover { border-color: var(--accent); text-decoration: none; }
+  .card .row { display: flex; align-items: center; gap: 8px; }
+  .card .num { font-family: var(--mono); color: var(--muted); font-size: 13px; }
+  .card h3 { margin: 0; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card .meta { margin-top: auto; padding-top: 6px; font-size: 12.5px; color: var(--muted); display: flex; gap: 12px; }
+  .card .row .badge { margin-left: auto; }
+  .card .meta .xp { margin-left: auto; font-weight: 700; color: var(--xp); }
+  .card .meta .xp.todo { color: var(--muted); font-weight: 600; }
+
+  .profile { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: center; flex: 0 1 400px;
+    background: linear-gradient(135deg, var(--xp-soft), var(--surface) 70%); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .profile .ring { grid-row: span 3; width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(var(--xp) calc(var(--p) * 1%), var(--border) 0); }
+  .profile .ring div { width: 60px; height: 60px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; text-align: center; line-height: 1.05; }
+  .profile .ring small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .profile .ring strong { font-size: 24px; color: var(--xp); }
+  .profile .rank { font-weight: 800; font-size: 17px; }
+  .profile .sub { font-size: 13px; color: var(--muted); }
+  .profile .pstats { display: flex; gap: 2px 14px; font-size: 13px; flex-wrap: wrap; }
+  .profile .pstats b { font-size: 15px; }
+  .xpbar-lg { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .xpbar-lg span { display: block; height: 100%; background: linear-gradient(90deg, var(--xp), var(--xp-2)); }
+
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .badge-card { display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .badge-card .icon { font-size: 26px; width: 34px; text-align: center; }
+  .badge-card strong { display: block; font-size: 14px; }
+  .badge-card small { color: var(--muted); font-size: 12.5px; line-height: 1.3; display: block; }
+  .badge-card.locked .icon { filter: grayscale(1); opacity: .35; }
+  .badge-card.locked strong { color: var(--muted); }
+  .badge-card.earned { border-color: var(--xp); }
+  .lower { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .lower { grid-template-columns: 1fr; } }
+  .log { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 14px; font-size: 13.5px; }
+  .log div { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); }
+  .log div:first-child { border-top: 0; }
+  .log .amt { color: var(--xp); font-weight: 700; min-width: 56px; }
+  .log time { margin-left: auto; color: var(--muted); white-space: nowrap; }
+  .how { font-size: 13px; color: var(--muted); margin-top: 10px; }
+{% endblock %}
+
+{% block content %}
+<main>
+  <section class="hero">
+    <div class="intro">
+      <h1>Learn backend by writing it</h1>
+      <p class="muted">Each exercise is a short lesson followed by code you write in the browser. Click <strong>Run tests</strong> to grade your code against real Django &amp; DRF tests, then check yourself with a quick quiz.</p>
+    </div>
+    <div class="profile" id="profile">
+      <div class="ring" style="--p: {{ player.level.percent }}"><div><span><small>Level</small><br><strong>{{ player.level.number }}</strong></span></div></div>
+      <div class="rank">{{ player.level.title }}</div>
+      <div>
+        <div class="xpbar-lg"><span style="width: {{ player.level.percent }}%"></span></div>
+        <div class="sub" style="margin-top:4px">
+          {{ player.xp }} XP{% if player.level.next %} · {{ player.level.to_next }} XP to level {{ player.level.number|add:1 }}{% else %} · max level!{% endif %}
+        </div>
+      </div>
+      <div class="pstats">
+        <span>🔥 <b>{{ player.streak }}</b> day streak</span>
+        <span>✅ <b>{{ done }}</b>/{{ total }} passed</span>
+        <span>🏅 <b>{{ badges_earned }}</b>/{{ badges|length }} badges</span>
+      </div>
+    </div>
+  </section>
+
+  {% for week in weeks %}
+    <h2 class="week-title">Week {{ week.number }} <small>{{ week.title }}</small></h2>
+    <div class="grid">
+      {% for ex in week.exercises %}
+        <a class="card" href="{% url 'learn:exercise' ex.slug %}">
+          <div class="row">
+            <span class="num">#{{ ex.number|stringformat:"02d" }}</span>
+            <h3>{{ ex.title }}</h3>
+            {% if ex.progress.passed %}<span class="badge done">Passed</span>
+            {% elif ex.progress %}<span class="badge wip">In progress</span>
+            {% else %}<span class="badge new">Not started</span>{% endif %}
+          </div>
+          <p>{{ ex.summary }}</p>
+          <div class="meta">
+            <span>{{ ex.concept }}</span>
+            {% if ex.progress.tests_total %}<span>Tests {{ ex.progress.tests_passed }}/{{ ex.progress.tests_total }}</span>{% endif %}
+            {% if ex.progress.quiz_total %}<span>Quiz {{ ex.progress.quiz_correct }}/{{ ex.progress.quiz_total }}</span>{% endif %}
+            {% if ex.xp_earned %}<span class="xp">★ {{ ex.xp_earned }} XP</span>{% else %}<span class="xp todo">{{ ex.xp_max }}+ XP</span>{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="lower">
+    <section>
+      <h2>Badges <small class="muted" style="font-weight:400;font-size:14px">{{ badges_earned }} of {{ badges|length }} unlocked</small></h2>
+      <div class="badges">
+        {% for item in badges %}
+          <div class="badge-card {% if item.earned %}earned{% else %}locked{% endif %}">
+            <span class="icon">{{ item.badge.icon }}</span>
+            <div><strong>{{ item.badge.name }}</strong><small>{{ item.badge.description }} · +{{ item.badge.xp }} XP</small></div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section>
+      <h2>Recent XP</h2>
+      <div class="log">
+        {% for event in recent_xp %}
+          <div><span class="amt">+{{ event.amount }}</span><span>{{ event.label }}</span><time datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|timesince }} ago</time></div>
+        {% empty %}
+          <div class="muted">No XP yet. Pass your first tests to get started!</div>
+        {% endfor %}
+      </div>
+      <p class="how">
+        <strong>How to earn XP:</strong> 5 per passing test · 100–250 per completed exercise (harder weeks pay more)
+        · +50 without opening the solution · +25 if you pass on the first run · 10 per correct quiz answer on your
+        first attempt (+20 if all correct) · 10 for practising each day · bonus XP for badges.
+      </p>
+    </section>
+  </div>
+</main>
+{% endblock %}

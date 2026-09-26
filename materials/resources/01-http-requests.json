@@ -1,0 +1,45 @@
+{
+  "exercise": "01-http-requests",
+  "resources": [
+    {
+      "title": "What is HTTP? Protocol Overview for Beginners",
+      "url": "https://www.freecodecamp.org/news/what-is-http/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: a friendly walk through what a request looks like, with the method, path, version, headers and body explained one by one."
+    },
+    {
+      "title": "Overview of HTTP",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview",
+      "source": "MDN Web Docs",
+      "kind": "article",
+      "level": "beginner",
+      "why": "The big picture of how a client and a server talk, so you know where the raw request you parse comes from."
+    },
+    {
+      "title": "HTTP messages",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Messages",
+      "source": "MDN Web Docs",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Shows the exact layout of a request line, headers, the blank line and the body: the same structure your parser splits apart."
+    },
+    {
+      "title": "HTTP request methods",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods",
+      "source": "MDN Web Docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "A reference list of GET, POST, PUT, PATCH, DELETE and friends, including which ones are safe, for your is_safe_method function."
+    },
+    {
+      "title": "urllib.parse: Parse URLs into components",
+      "url": "https://docs.python.org/3/library/urllib.parse.html#urllib.parse.urlsplit",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The official reference for urlsplit and parse_qsl, the two functions you use to separate the path from the query string."
+    }
+  ]
+}

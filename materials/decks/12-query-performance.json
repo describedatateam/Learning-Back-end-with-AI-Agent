@@ -1,0 +1,118 @@
+{
+  "exercise": "12-query-performance",
+  "subtitle": "Get the same answers from the database in one trip instead of dozens.",
+  "notes": "This deck goes with exercise 12. By the end you should be able to spot the N+1 problem and fix it with select_related and annotate.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Each time Django asks the database for rows, that's one **query**: a round trip, like a trip to the shop. Buying 100 things in **one** trip is fine; **100 trips** is not.\n\nThe classic mistake is the **N+1 problem**: 1 query for a list of tasks, then 1 more **per task** to get its project. 500 tasks means 501 trips.",
+      "notes": "It looks fine on your laptop with 5 rows. With real data, the page takes seconds. The pandas fix feels familiar: merge the tables once, or group by and count, instead of looking things up row by row."
+    },
+    {
+      "type": "code",
+      "title": "What the tests put in the database",
+      "caption": "Your functions take **no parameters**. Before each test, the tests create these rows:",
+      "code": "website = Project.objects.create(name=\"Website\")\napi = Project.objects.create(name=\"API\")\nProject.objects.create(name=\"Zine\")      # a project with no tasks\n\nTask.objects.create(project=website, title=\"Design homepage\", done=True)\nTask.objects.create(project=api, title=\"Add auth\")\nTask.objects.create(project=website, title=\"Write copy\")\nTask.objects.create(project=api, title=\"Paginate\", done=True)\nTask.objects.create(project=website, title=\"Launch\")",
+      "notes": "Each Task has a project foreign key. related_name=\"tasks\" means that from a project you can reach its tasks as project.tasks."
+    },
+    {
+      "type": "code",
+      "title": "What your functions must return",
+      "caption": "The starter already gives these answers. Your job is to cut the **number of queries**.",
+      "code": "task_labels()\n# [\"Website: Design homepage\", \"API: Add auth\", \"Website: Write copy\",\n#  \"API: Paginate\", \"Website: Launch\"]\n\nlist(project_summaries())\n# [{\"name\": \"API\", \"task_count\": 2, \"done_count\": 1},\n#  {\"name\": \"Website\", \"task_count\": 3, \"done_count\": 1},\n#  {\"name\": \"Zine\", \"task_count\": 0, \"done_count\": 0}]\n\n# Queries now: 6 and 7.  Goal: exactly 1 each (tests 2, 4, 5)",
+      "notes": "Tests 1 and 3 pass straight away. Tests 2, 4 and 5 use assertNumQueries(1). Test 5 adds 20 more projects and tasks, which would push the starter to 26 and 47 queries."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "query", "meaning": "One question sent to the database and its answer: one round trip."},
+        {"term": "queryset", "meaning": "Django's description of a query. It runs when you loop or `list(...)` it."},
+        {"term": "N+1 problem", "meaning": "1 query for N things, then 1 more for **each** thing."},
+        {"term": "foreign key", "meaning": "A column pointing to a row in another table, like `task.project`."},
+        {"term": "JOIN", "meaning": "Combining two tables in one query, like `pd.merge`."},
+        {"term": "aggregate", "meaning": "Summarise many rows into one number: a count, a sum."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: select_related",
+      "code": "# uses the lesson's Garden / Kitchen sample data\nwith CaptureQueriesContext(connection) as queries:\n    task = Task.objects.get(title=\"Bake bread\")\n    print(task.project.name)\nprint(len(queries), \"queries\")\nwith CaptureQueriesContext(connection) as queries:\n    task = Task.objects.select_related(\"project\").get(title=\"Bake bread\")\n    print(task.project.name)\nprint(len(queries), \"queries\")",
+      "output": "Kitchen\n2 queries\nKitchen\n1 queries",
+      "notes": "CaptureQueriesContext records every query inside the with block, so len(queries) counts the trips. select_related is a method on a queryset. Pass the name of the foreign key field as a string: \"project\", not Project or \"projects\". It chains with order_by and filter."
+    },
+    {
+      "type": "code",
+      "title": "Tool: annotate with Count and Q",
+      "code": "# the database counts each project's tasks, like groupby().size()\nfor project in Project.objects.annotate(n_tasks=Count(\"tasks\")):\n    print(project.name, project.n_tasks)\n\n# count only the tasks that match a condition\nfor project in Project.objects.annotate(\n    n_buy=Count(\"tasks\", filter=Q(tasks__title__startswith=\"Buy\"))\n):\n    print(project.name, project.n_buy)",
+      "output": "Garden 1\nKitchen 2\nGarden 0\nKitchen 1",
+      "notes": "n_tasks is any name you choose; it becomes an attribute of each project. Q holds a condition, and a double underscore walks from a project to its tasks' fields: tasks__title, tasks__done. Unlike groupby, projects with no tasks are kept with 0."
+    },
+    {
+      "type": "compare",
+      "title": "select_related vs annotate",
+      "left": {
+        "heading": "select_related(\"project\")",
+        "bullets": ["Follows a foreign key: task to **its** project", "Like `pd.merge`: a JOIN", "Gives whole related objects", "You need it in `task_labels`"]
+      },
+      "right": {
+        "heading": "annotate(n=Count(\"tasks\"))",
+        "bullets": ["Counts the rows pointing **back**", "Like `groupby(...).size()`", "Gives one number per row", "You need it in `project_summaries`"]
+      },
+      "notes": "One task has one project, so fetch it alongside. One project has many tasks, so let the database summarise them."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: one chained queryset",
+      "caption": "Annotate, sort, then pick columns, like `df.to_dict(\"records\")`:",
+      "code": "rows = (\n    Project.objects\n    .annotate(n_tasks=Count(\"tasks\"))\n    .order_by(\"-name\")\n    .values(\"name\", \"n_tasks\")\n)\nprint(list(rows))",
+      "output": "[{'name': 'Kitchen', 'n_tasks': 2}, {'name': 'Garden', 'n_tasks': 1}]",
+      "notes": "The brackets around the chain let you split it over several lines. \"-name\" sorts Z to A. Put annotate before values. Nothing runs until list(...), and then it's one query."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Run the tests on the starter: answers pass, query counts fail", "tests": "tests 1, 3"},
+        {"text": "`task_labels`: add `.select_related(\"project\")`, keep `.order_by(\"id\")`", "tests": "tests 2, 5"},
+        {"text": "Replace the loop with `Project.objects.annotate(task_count=...)`", "tests": ""},
+        {"text": "In the same `annotate`, add `done_count`: `Count` with `filter=Q(...)`", "tests": ""},
+        {"text": "Sort by name with `.order_by(\"name\")`: API, Website, Zine", "tests": ""},
+        {"text": "Add `.values(...)` with the three fields, and return `list(...)`", "tests": "tests 3-5"}
+      ],
+      "notes": "Keep the answers the same and only change how you get them. Steps 3 to 6 all build one chained queryset in project_summaries: annotate, then order_by, then values(\"name\", \"task_count\", \"done_count\")."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`.count()` or `.filter()` on `project.tasks` inside a loop: N+1 again",
+        "Dropping `.order_by(\"id\")`: labels come back in another order",
+        "`select_related(\"projects\")`: use the field name, `\"project\"`",
+        "`tasks.done` or `tasks_done` in `Q(...)`: it's `tasks__done`",
+        "`.values(...)` before `.annotate(...)`: annotate comes first"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A DRF endpoint lists 50 tasks, and its serializer shows `task.project.name`. Every page load quietly runs 51 queries, and the API feels slow.",
+      "bullets": [
+        "Fix it in the view: `queryset = Task.objects.select_related(\"project\")`",
+        "Dashboards with counts per project use `annotate(Count(...))`",
+        "For a project with all its tasks, use `prefetch_related(\"tasks\")`: 2 queries"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "How many queries does a loop over 30 tasks printing `task.project.name` run?",
+        "When do you use `select_related`, and when `annotate`?",
+        "What does the double underscore in `tasks__done` mean?",
+        "Why let the database count instead of `len(project.tasks.all())`?"
+      ]
+    }
+  ]
+}

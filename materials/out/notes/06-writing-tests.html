@@ -1,0 +1,264 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Write tests that catch bugs</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 06 · Testing</strong></p><h1>Write tests that catch bugs</h1>
+<h2>The big idea</h2>
+<p>In every exercise so far, <strong>the tests checked your code</strong>. Someone wrote small
+programs that call your function with an input and compare the answer with the
+right one. This time the roles swap: <strong>you write the tests</strong>, for a function that
+someone else wrote.</p>
+<p>A <strong>test</strong> is a tiny program that says "when I call this function with <em>this</em>,
+I expect to get back <em>that</em>". You write it once, and then the computer can re-check
+it in a second, every time the code changes. Real backends have hundreds or
+thousands of them. They are how a team changes code without being afraid of
+breaking something that used to work.</p>
+<p>Think of a data-cleaning notebook. After cleaning, you might check
+<code>assert df["price"].min() &gt;= 0</code> to be sure no negative prices slipped through. A
+test is the same idea, kept in its own file and run again and again.</p>
+<p>A test is only useful if it <strong>fails when the code is wrong</strong>. A test that always
+passes protects nothing. So in this exercise the tests plant bugs in the function
+on purpose and check that your tests notice them.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>test</strong></td>
+<td>A small function that calls some code and checks the result.</td>
+</tr>
+<tr>
+<td><strong>unit test</strong></td>
+<td>A test of one small piece ("unit") of code, such as one function.</td>
+</tr>
+<tr>
+<td><strong>slug</strong></td>
+<td>The tidy, URL-friendly version of a title: <code>"Hello, World!"</code> becomes <code>hello-world</code>, as in <code>/blog/hello-world/</code>.</td>
+</tr>
+<tr>
+<td><strong><code>unittest</code></strong></td>
+<td>Python's built-in testing library.</td>
+</tr>
+<tr>
+<td><strong>test case class</strong></td>
+<td>A class that inherits from <code>unittest.TestCase</code>. Each method whose name starts with <code>test</code> is one test.</td>
+</tr>
+<tr>
+<td><strong>assertion</strong></td>
+<td>A check like <code>self.assertEqual(a, b)</code>. If it's false, the test <strong>fails</strong>.</td>
+</tr>
+<tr>
+<td><strong>pass / fail</strong></td>
+<td>A test passes when all its assertions are true, and fails as soon as one is false.</td>
+</tr>
+<tr>
+<td><strong>bug / mutant</strong></td>
+<td>A copy of the function with one small mistake planted in it.</td>
+</tr>
+<tr>
+<td><strong>raise an error</strong></td>
+<td>When a function stops and reports a problem, for example <code>ValueError</code>, instead of returning a value.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>This exercise works the other way round from the others.</p>
+<p><strong>The function to test</strong> is <code>make_slug(text)</code>. It lives in a file called <code>slugs.py</code>
+that is already there next to yours. You don't write or change it. This is how it
+behaves (these examples come from its documentation):</p>
+<pre><code class="language-python">make_slug(&quot;hello world&quot;)          # &quot;hello-world&quot;
+make_slug(&quot;  Hello, World!  &quot;)    # &quot;hello-world&quot;      lower-case, spaces at the ends removed
+make_slug(&quot;Django &amp; DRF 101&quot;)     # &quot;django-drf-101&quot;   a run of symbols becomes ONE &quot;-&quot;
+make_slug(&quot;word &quot; * 30)           # at most 50 characters, and never ends with &quot;-&quot;
+make_slug(&quot;!!!&quot;)                  # raises ValueError: nothing usable is left
+</code></pre>
+<p><strong>Your file</strong>, <code>test_slugs.py</code>, holds one class, <code>MakeSlugTests</code>, full of test
+methods. You don't call your tests yourself. When you run the tests, the grader
+loads your class and runs <strong>all</strong> your test methods <strong>five times</strong>, each time with
+a different version of <code>make_slug</code> swapped in:</p>
+<table>
+<thead>
+<tr>
+<th>run</th>
+<th>version of <code>make_slug</code></th>
+<th>what's wrong with it</th>
+<th>what your tests must do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the correct one</td>
+<td>nothing</td>
+<td><strong>all pass</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>"no lower-case" bug</td>
+<td><code>"Hello World"</code> gives <code>"Hello-World"</code></td>
+<td>at least one <strong>fails</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>"no collapse" bug</td>
+<td><code>"Django &amp; DRF 101"</code> gives <code>"django---drf-101"</code> (one <code>-</code> per symbol)</td>
+<td>at least one <strong>fails</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>"no length limit" bug</td>
+<td><code>"word " * 30</code> gives a slug 149 characters long</td>
+<td>at least one <strong>fails</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>"no error" bug</td>
+<td><code>"!!!"</code> gives <code>""</code> instead of raising <code>ValueError</code></td>
+<td>at least one <strong>fails</strong></td>
+</tr>
+</tbody>
+</table>
+<p>So for runs 2-5, a failing test of yours is <strong>good news</strong>: it means your test
+spotted the bug.</p>
+<p>The tests are:</p>
+<ul>
+<li><strong>test 1</strong>: your class has <strong>at least 4</strong> test methods.</li>
+<li><strong>test 2</strong>: all your tests pass on the correct <code>make_slug</code> (run 1).</li>
+<li><strong>tests 3-6</strong>: your tests catch each bug (runs 2-5).</li>
+</ul>
+<blockquote>
+<p>The starter's one example test, <code>make_slug("hello world") == "hello-world"</code>,
+passes on <strong>all five</strong> versions, because <code>"hello world"</code> has no capitals, no
+symbols and is short. That's why it catches none of the bugs. Each new test
+needs an input that "pokes" one specific behaviour.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3>A test case class</h3>
+<ul>
+<li>You make a class that <strong>inherits</strong> from <code>unittest.TestCase</code> (that's what the
+  <code>(unittest.TestCase)</code> after the class name means). It gives your class all the
+  <code>assert...</code> methods.</li>
+<li>Each method whose name <strong>starts with <code>test</code></strong> is one test. The name after that
+  is up to you, so use it to say what the test checks.</li>
+<li>Every method takes <code>self</code> as its first parameter, and you call the checks as
+  <code>self.assertEqual(...)</code>, with <code>self.</code> in front.</li>
+</ul>
+<pre><code class="language-python">import unittest
+
+class ShoutTests(unittest.TestCase):
+    def test_makes_upper_case(self):
+        result = &quot;tea&quot;.upper()          # 1. call the code
+        self.assertEqual(result, &quot;TEA&quot;)  # 2. check the answer
+</code></pre>
+<p>A good test has this shape: <strong>set up the input, call the code once, check the
+result</strong>. Keep one behaviour per test, so the test's name tells you what broke.</p>
+<h3><code>self.assertEqual(actual, expected)</code></h3>
+<ul>
+<li>Checks that two values are equal. If they aren't, the test fails and shows you
+  both values.</li>
+</ul>
+<p>In the Console there's no test class around your code, so you can borrow the
+checks from a plain <code>unittest.TestCase()</code> object to try them:</p>
+<pre><code class="language-python">import unittest
+
+check = unittest.TestCase()
+check.assertEqual(&quot;tea&quot;.upper(), &quot;TEA&quot;)
+print(&quot;first check passed&quot;)
+check.assertEqual(&quot;tea&quot;.upper(), &quot;Tea&quot;)
+# first check passed
+# AssertionError: 'TEA' != 'Tea'
+</code></pre>
+<p>The second line fails, and the error shows both values. That's what a failing test
+looks like.</p>
+<h3><code>assertTrue</code>, <code>assertFalse</code> and <code>assertLessEqual</code></h3>
+<ul>
+<li><code>self.assertTrue(x)</code> fails unless <code>x</code> is true. <code>self.assertFalse(x)</code> fails
+  unless <code>x</code> is false. They're handy with methods that answer yes/no, like
+  <code>text.endswith("-")</code>.</li>
+<li><code>self.assertLessEqual(a, b)</code> fails unless <code>a &lt;= b</code>. Use it with <code>len(...)</code> to
+  check that something is <strong>not too long</strong>.</li>
+</ul>
+<h3><code>with self.assertRaises(SomeError):</code></h3>
+<ul>
+<li>Checks that the code <strong>inside</strong> the <code>with</code> block raises that error. If the error
+  happens, the test passes. If the code finishes without raising it, the test fails.</li>
+<li><code>with</code> is new syntax: write the line ending in a colon, then indent the code to
+  check underneath it, like the body of an <code>if</code>.</li>
+</ul>
+<pre><code class="language-python">import unittest
+
+check = unittest.TestCase()
+name = &quot;  Grace Hopper &quot;
+check.assertTrue(name.startswith(&quot; &quot;))
+check.assertFalse(name.endswith(&quot;r&quot;))
+check.assertLessEqual(len(name.strip()), 12)
+with check.assertRaises(ValueError):
+    int(&quot;twelve&quot;)
+print(&quot;all four checks passed&quot;)
+# all four checks passed
+</code></pre>
+<p>On its own, <code>int("twelve")</code> would crash with <code>ValueError</code>. Inside
+<code>assertRaises(ValueError)</code>, that error is exactly what was expected, so the check
+passes.</p>
+<h3>Calling <code>make_slug</code> to explore</h3>
+<p><code>make_slug</code> is already imported at the top of your file, so you can call it in the
+Console to see what it does:</p>
+<pre><code class="language-python">print(make_slug(&quot;Learn Python in 30 Days&quot;))
+print(len(make_slug(&quot;Learn Python in 30 Days&quot;)))
+# learn-python-in-30-days
+# 23
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab. Delete the example again
+afterwards, so only your real tests are left in the file.</p>
+<h2>Step by step</h2>
+<p>Add each new test as a method inside <code>MakeSlugTests</code>, indented under the class like
+<code>test_basic_title</code>. Give every test a <strong>different name</strong> starting with <code>test_</code>: if
+two methods have the same name, the second one silently replaces the first.</p>
+<ol>
+<li><strong>Keep the example test</strong>, <code>test_basic_title</code>. It already passes on the correct
+   code. <strong>→ counts towards test 1 and test 2</strong></li>
+<li><strong>Write a test for capital letters.</strong> Call <code>make_slug</code> with a title that has
+   capital letters (and maybe spaces or a comma at the ends), and use
+   <code>assertEqual</code> to check it comes back all lower-case, for example
+   <code>"  Hello, World!  "</code> should give <code>"hello-world"</code>. <strong>→ test 3</strong></li>
+<li><strong>Write a test for runs of symbols.</strong> Use a title where two words are separated
+   by <strong>several</strong> symbols in a row, like <code>"Django &amp; DRF 101"</code> (space, <code>&amp;</code>, space),
+   and check the result has only <strong>one</strong> <code>-</code> there: <code>"django-drf-101"</code>. <strong>→ test 4</strong></li>
+<li><strong>Write a test for long titles.</strong> Make a long title, for example
+   <code>"word " * 30</code> (the word repeated 30 times). Store the slug in a variable, then
+   check two things with two assertions: its <code>len(...)</code> is <strong>at most 50</strong>
+   (<code>assertLessEqual</code>), and it does <strong>not</strong> end with <code>"-"</code> (<code>assertFalse</code> with
+   <code>.endswith("-")</code>). <strong>→ test 5</strong></li>
+<li><strong>Write a test for "nothing usable".</strong> Use <code>with self.assertRaises(ValueError):</code>
+   and call <code>make_slug("!!!")</code> inside the block. <strong>→ test 6</strong></li>
+</ol>
+<p>With these four new tests and the example, you have 5 test methods. <strong>→ test 1</strong></p>
+<p>Now run the tests. If <strong>test 2</strong> fails, one of your tests is wrong about what the
+correct code does: read the message, which names the test, and fix the expected
+value. If one of <strong>tests 3-6</strong> fails, none of your tests pokes that behaviour yet.</p>
+<h2>Common mistakes</h2>
+<ul>
+<li><strong>A test method whose name doesn't start with <code>test</code></strong> (for example
+  <code>check_lowercase</code>) is never run, so it can't catch anything.</li>
+<li><strong>Two methods with the same name</strong>: only the last one counts, so you have fewer
+  tests than you think (test 1).</li>
+<li><strong>Expecting the wrong answer.</strong> If your test says <code>"Hello-World"</code> or
+  <code>"django--drf-101"</code>, it fails on the correct code (test 2). Run
+  <code>make_slug(...)</code> in the Console first to see the real result.</li>
+<li><strong>Calling <code>make_slug("!!!")</code> outside the <code>with</code> block</strong>: the <code>ValueError</code> then
+  crashes the test instead of being checked. Put the call on the indented line
+  under <code>with self.assertRaises(ValueError):</code>.</li>
+<li><strong>Forgetting <code>self.</code></strong>: inside a test method, write <code>self.assertEqual(...)</code>, not
+  <code>assertEqual(...)</code>, or you get <code>NameError</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Django has its own <code>TestCase</code> that builds on <code>unittest.TestCase</code>, and every
+exercise's tests in this course are written this way. In a real project you'll
+write a test for every endpoint, so that the next change can't quietly break it.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/unit-testing-in-python/">How to Write Unit Tests in Python – with Example Test Code</a> (freeCodeCamp, beginner). Start here: writes a TestCase for a small function using assertEqual and assertRaises, the same pattern as your slug tests.</li><li><a href="https://docs.djangoproject.com/en/5.2/intro/tutorial05/">Writing your first Django app, part 5 (testing)</a> (Django docs, beginner). Shows how to find a real bug, write a test that exposes it, then fix it: exactly the mindset this exercise trains.</li><li><a href="https://docs.python.org/3/library/unittest.html">unittest: Unit testing framework</a> (Python docs, intermediate). The official list of assert methods and how test discovery works; keep it open while writing tests.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/testing/overview/">Writing and running tests</a> (Django docs, intermediate). How Django builds on unittest with its own TestCase and test database, for when you test models and views.</li></ul></body></html>

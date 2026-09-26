@@ -1,0 +1,35 @@
+{
+  "title": "All or nothing: transactions",
+  "week": 3,
+  "concept": "Transactions",
+  "file": "banking.py",
+  "lesson": "lessons/week-3/day-17-transactions-and-safety-lesson.md",
+  "summary": "Move money between accounts safely: validate, lock rows and roll back everything if any step fails.",
+  "hints": [
+    "Check the input before touching the database: <code>if not isinstance(amount, int) or amount &lt;= 0:</code> raise <code>ValueError</code>. Check the type first, because <code>\"100\" &lt;= 0</code> crashes. Don't use <code>int(amount)</code>: <code>12.5</code> and <code>\"100\"</code> must be rejected, not converted.",
+    "Also raise <code>ValueError</code> when <code>source_id == destination_id</code>.",
+    "Put every <code>get</code>, <code>save</code> and <code>create</code> inside one <code>with transaction.atomic():</code> block (indented under it). If any line in there raises, all the saves in the block are undone. Don't catch the error: let it leave your function.",
+    "Fetch both accounts before changing anything: <code>Account.objects.select_for_update().get(pk=source_id)</code>, then the same for the destination. A missing account raises <code>Account.DoesNotExist</code> by itself.",
+    "Check <code>source.balance &lt; amount</code> and <code>raise InsufficientFunds(...)</code>. Then subtract, add, <code>save()</code> both, and <code>return TransferLog.objects.create(...)</code>, all still inside the atomic block."
+  ],
+  "quiz": [
+    {
+      "question": "Halfway through a transfer, after the debit is saved, the server crashes. Without a transaction...",
+      "options": ["Everything is rolled back automatically", "The money vanishes: debited but never credited", "Django retries", "The database refuses the debit"],
+      "answer": 1,
+      "explanation": "Each <code>save()</code> commits on its own by default. <code>transaction.atomic()</code> groups the steps so either all happen or none do."
+    },
+    {
+      "question": "What does <code>select_for_update()</code> protect against?",
+      "options": ["SQL injection", "Two concurrent requests reading the same balance and both spending it", "Slow queries", "Deleting rows"],
+      "answer": 1,
+      "explanation": "It locks the selected rows until the transaction ends, so a second transfer waits instead of reading a stale balance. This is a classic race condition."
+    },
+    {
+      "question": "Why store money as integer cents instead of a float?",
+      "options": ["Floats are slower", "Floats can't represent many decimals exactly (0.1 + 0.2 != 0.3)", "Databases don't support floats", "No reason"],
+      "answer": 1,
+      "explanation": "Use integer cents or <code>DecimalField</code> for money. Floats pick up rounding errors."
+    }
+  ]
+}

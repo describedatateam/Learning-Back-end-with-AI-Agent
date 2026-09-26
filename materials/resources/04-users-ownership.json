@@ -1,0 +1,45 @@
+{
+  "exercise": "04-users-ownership",
+  "resources": [
+    {
+      "title": "Django Tutorial Part 8: User authentication and permissions",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Django/Authentication",
+      "source": "MDN Web Docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: a guided tutorial on Django users, logging in and showing each user only their own records."
+    },
+    {
+      "title": "Using the Django authentication system: creating users",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/auth/default/#creating-users",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "Shows User.objects.create_user, which stores a hashed password instead of the plain text one."
+    },
+    {
+      "title": "Making queries",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/queries/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Covers filter(), exists(), create() and lookups like __iexact, which you use to check usernames and fetch a user's notes."
+    },
+    {
+      "title": "Password management in Django",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/auth/passwords/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Explains how Django hashes and checks passwords, so you understand why you never save them yourself."
+    },
+    {
+      "title": "A01 Broken Access Control (OWASP Top 10:2025)",
+      "url": "https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/",
+      "source": "OWASP",
+      "kind": "article",
+      "level": "intermediate",
+      "why": "Why returning another user's data is the number one web security risk, and how filtering by owner prevents it."
+    }
+  ]
+}

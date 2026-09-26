@@ -1,0 +1,34 @@
+{
+  "title": "A full CRUD API in 15 lines",
+  "week": 2,
+  "concept": "ViewSets & routers",
+  "file": "api.py",
+  "lesson": "lessons/week-2/day-08-viewsets-and-routers-lesson.md",
+  "summary": "Use a ModelSerializer, a ModelViewSet and a router to expose list/create/retrieve/update/delete.",
+  "hints": [
+    "If the tests get HTML back or fail with 404, your URLs don't exist yet: check that the router is registered at <code>'books'</code> and that <code>urlpatterns</code> is set to <code>router.urls</code> after the register line.",
+    "Inside <code>BookSerializer</code>, write <code>class Meta:</code> and, indented under it, <code>model = Book</code> and <code>fields = ['id', 'title', 'author', 'published_year']</code>. The <code>id</code> is read-only automatically.",
+    "A <code>ModelViewSet</code> needs two class attributes: <code>queryset = Book.objects.order_by('id')</code> and <code>serializer_class = BookSerializer</code> (the class, without brackets).",
+    "<code>router = DefaultRouter()</code>, then <code>router.register('books', BookViewSet, basename='book')</code> and finally <code>urlpatterns = router.urls</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Which URL + method does a router map to <code>ModelViewSet.partial_update</code>?",
+      "options": ["<code>PUT /books/</code>", "<code>PATCH /books/{id}/</code>", "<code>POST /books/{id}/</code>", "<code>GET /books/{id}/edit/</code>"],
+      "answer": 1,
+      "explanation": "Collection URL: GET = list, POST = create. Detail URL: GET = retrieve, PUT = update, PATCH = partial_update, DELETE = destroy."
+    },
+    {
+      "question": "What status code should a successful DELETE return?",
+      "options": ["200 with the deleted object", "201 Created", "204 No Content", "410 Gone"],
+      "answer": 2,
+      "explanation": "Once the resource is gone there is nothing left to send back, so DRF's destroy returns 204."
+    },
+    {
+      "question": "What's the difference between PUT and PATCH?",
+      "options": ["None", "PUT replaces the whole resource. PATCH changes only the fields you send", "PATCH creates, PUT updates", "PUT is for files only"],
+      "answer": 1,
+      "explanation": "With PUT, missing required fields are validation errors. PATCH (<code>partial=True</code>) validates only what you sent."
+    }
+  ]
+}

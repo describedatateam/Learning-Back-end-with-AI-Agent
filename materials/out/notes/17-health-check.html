@@ -1,0 +1,298 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Health checks &amp; logging</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 4 · Exercise 17 · Observability</strong></p><h1>Health checks &amp; logging</h1>
+<h2>The big idea</h2>
+<p>When an app runs in production, nobody sits and watches it. Instead, other
+programs check on it all the time. They visit a special address, usually
+<code>/health/</code>, every few seconds and ask "are you OK?". That address is a <strong>health
+check</strong>.</p>
+<p>Who asks? Often a <strong>load balancer</strong>: a program that sits in front of several copies
+of your server and shares the visitors between them. Imagine three copies are
+running and one loses its connection to the database. If its health check says
+"not OK", the load balancer stops sending visitors to it, and they go to the two
+healthy copies instead. Deployment tools and uptime monitors (services that email
+you when your site is down) call health checks too.</p>
+<p>It's like a nurse checking a patient's pulse: asking "how are you?" isn't enough,
+you have to actually <strong>measure</strong> something. This project's <code>/health/</code> view always
+answers <code>ok</code>, even when the database is down, which makes it useless. Yours will
+really run a tiny query on the database.</p>
+<p>When something does go wrong, a person needs to find out <strong>why</strong>. That's what
+<strong>logging</strong> is for: the app writes a note about the problem into its log, like a
+ship's logbook, so a developer can read it later. The health check's public answer
+stays short, and the details go into the log.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>health check</strong></td>
+<td>An address that other programs call to ask "is this server working?".</td>
+</tr>
+<tr>
+<td><strong>load balancer</strong></td>
+<td>A program that shares incoming visitors between several copies of your server.</td>
+</tr>
+<tr>
+<td><strong>dependency</strong></td>
+<td>Something your app needs in order to work, like the database.</td>
+</tr>
+<tr>
+<td><strong>status code</strong></td>
+<td>The number at the top of every response. Programs read it to know what happened.</td>
+</tr>
+<tr>
+<td><strong>503 Service Unavailable</strong></td>
+<td>"I'm running, but I can't do my job right now. Try later, or try another server."</td>
+</tr>
+<tr>
+<td><strong>log</strong></td>
+<td>The app's diary: lines of text describing what happened, for developers to read.</td>
+</tr>
+<tr>
+<td><strong>logger</strong></td>
+<td>The object you write log lines with, like <code>logger.error("...")</code>. Each logger has a name.</td>
+</tr>
+<tr>
+<td><strong>log level</strong></td>
+<td>How serious a log line is: <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>, <code>CRITICAL</code>.</td>
+</tr>
+<tr>
+<td><strong>traceback</strong></td>
+<td>The "Traceback (most recent call last): ..." report that shows where an error happened.</td>
+</tr>
+<tr>
+<td><strong>exception</strong></td>
+<td>Python's word for an error that happens while code runs, like <code>ValueError</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3>Why 503, and not 200 or 500?</h3>
+<p>Status codes come in families: <code>2xx</code> means success, <code>4xx</code> means "the client did
+something wrong", <code>5xx</code> means "the server has a problem".</p>
+<ul>
+<li><strong>200</strong> would be a lie: the load balancer would keep sending visitors to a broken
+  server.</li>
+<li><strong>500 Internal Server Error</strong> usually means "my code crashed", a bug.</li>
+<li><strong>503 Service Unavailable</strong> says exactly the right thing: "I'm alive, but a
+  dependency is down, so don't send me traffic for now". Load balancers read the
+  <strong>number</strong>, not the text, so the number has to be right.</li>
+</ul>
+<h2>What your code receives and returns</h2>
+<p><strong>The tests build a fake request and call your view directly</strong>, like this:</p>
+<pre><code class="language-python"># from the tests (they use Django's RequestFactory to make the request)
+response = views.health(factory.get(&quot;/health/&quot;))
+</code></pre>
+<p>So <code>request</code> is a normal Django request object for <code>GET /health/</code>. Here's what
+the tests expect:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th>situation</th>
+<th>expected response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>the database works</td>
+<td>status <strong>200</strong>, body <code>{"status": "ok", "checks": {"database": "ok"}}</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>the database is down</td>
+<td>anything <strong>but</strong> 200 (so you must really query it)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>the database is down</td>
+<td>status <strong>503</strong>, body <code>{"status": "error", "checks": {"database": "error"}}</code>, and an <code>ERROR</code> line in the log</td>
+</tr>
+<tr>
+<td>4</td>
+<td>the database is down</td>
+<td>the log line includes the <strong>traceback</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>the database is down</td>
+<td>the body does <strong>not</strong> contain the secret error details</td>
+</tr>
+<tr>
+<td>6</td>
+<td>a <code>POST /health/</code> request</td>
+<td>status <strong>405</strong> (Method Not Allowed)</td>
+</tr>
+</tbody>
+</table>
+<p>How do the tests make the database "go down"? They swap the <code>connection</code> object in
+your file for a fake one. When your code calls <code>connection.cursor()</code> on the fake,
+it raises an <code>OperationalError</code> with the message
+<code>could not connect to server: password=hunter2</code>.</p>
+<p>Look at that message: it contains a password! That's why test 5 checks that
+<code>hunter2</code> is <strong>not</strong> in your response. Error messages often contain secrets, so
+they belong in the log, never in a public response.</p>
+<blockquote>
+<p>The starter code runs, but always answers <code>{"status": "ok"}</code> with status 200,
+whatever happens. Keep <code>from django.db import DatabaseError, connection</code> at the
+top of the file: the tests replace <code>connection</code> there to fake the outage.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3><code>with connection.cursor() as cursor:</code> and <code>cursor.execute(...)</code></h3>
+<ul>
+<li><code>connection</code> is Django's link to the database. <code>connection.cursor()</code> opens a way
+  to send it raw SQL, and <code>with ... as cursor:</code> closes it again when the block ends.</li>
+<li><code>cursor.execute("SQL here")</code> sends one SQL command. A tiny query like
+  <code>SELECT 1</code> is the cheapest way to prove "the database answers".</li>
+</ul>
+<pre><code class="language-python">from django.db import connection
+
+with connection.cursor() as cursor:
+    cursor.execute(&quot;SELECT 2 + 3&quot;)
+    print(cursor.fetchone())   # (5,)
+</code></pre>
+<h3><code>try</code> / <code>except DatabaseError:</code></h3>
+<ul>
+<li>Code inside <code>try:</code> runs normally. If it raises an error of the type named in
+  <code>except</code>, Python jumps into the <code>except</code> block instead of crashing.</li>
+<li><code>DatabaseError</code> is the <strong>family</strong> name for all database errors. <code>OperationalError</code>
+  (the one the tests raise) is one member of that family, so <code>except DatabaseError:</code>
+  catches it.</li>
+</ul>
+<pre><code class="language-python">from django.db import DatabaseError, OperationalError
+
+print(issubclass(OperationalError, DatabaseError))   # True: it's part of the family
+</code></pre>
+<ul>
+<li>Common mistake: opening the cursor <strong>before</strong> the <code>try</code>. In the tests, it's
+  <code>connection.cursor()</code> itself that fails, so that line must be inside <code>try:</code>.</li>
+</ul>
+<h3>Loggers: <code>logging.getLogger(__name__)</code></h3>
+<ul>
+<li>Your file already creates one at the top: <code>logger = logging.getLogger(__name__)</code>.
+  <code>__name__</code> is the name of the current file without <code>.py</code>, so in <code>views.py</code> the
+  logger is called <code>"views"</code>. The tests listen to exactly that logger.</li>
+<li>Write a line with <code>logger.info(...)</code>, <code>logger.warning(...)</code>, <code>logger.error(...)</code>.
+  Without extra setup, only <code>WARNING</code> and more serious levels are shown.</li>
+</ul>
+<pre><code class="language-python">import logging
+
+log = logging.getLogger(&quot;shop&quot;)
+log.info(&quot;A customer opened the shop&quot;)   # not shown: INFO is below WARNING
+log.warning(&quot;Only 2 cups of tea left&quot;)
+log.error(&quot;The till is broken&quot;)
+# Only 2 cups of tea left
+# The till is broken
+</code></pre>
+<h3><code>logger.exception("...")</code></h3>
+<ul>
+<li>Writes an <code>ERROR</code> line <strong>and</strong> the traceback of the error being handled. Use it
+  only inside an <code>except</code> block.</li>
+<li>The program then carries on, so you can still return a response.</li>
+</ul>
+<pre><code class="language-python">import logging
+
+log = logging.getLogger(&quot;shop&quot;)
+try:
+    price = int(&quot;ten&quot;)
+except ValueError:
+    log.exception(&quot;Could not read the price&quot;)
+print(&quot;the program keeps going&quot;)
+# Could not read the price
+# Traceback (most recent call last):
+#   File &quot;&lt;selection&gt;&quot;, line 5, in &lt;module&gt;
+# ValueError: invalid literal for int() with base 10: 'ten'
+# the program keeps going
+</code></pre>
+<ul>
+<li>Common mistake: <code>logger.error("...")</code> in the <code>except</code> block logs the message but
+  <strong>not</strong> the traceback, so test 4 fails. Another: putting the error message
+  (<code>str(e)</code>) into the response instead of the log.</li>
+</ul>
+<h3><code>JsonResponse(data, status=...)</code></h3>
+<ul>
+<li>Turns a dictionary into a JSON response. The status is 200 unless you pass
+  <code>status=</code> as a keyword.</li>
+</ul>
+<pre><code class="language-python">from django.http import JsonResponse
+
+response = JsonResponse({&quot;tea&quot;: &quot;hot&quot;}, status=202)
+print(response.status_code)   # 202
+print(response.content)       # b'{&quot;tea&quot;: &quot;hot&quot;}'
+</code></pre>
+<h3><code>@require_GET</code>: a decorator</h3>
+<ul>
+<li>A <strong>decorator</strong> is a line starting with <code>@</code>, written directly above a <code>def</code>. It
+  wraps the function with extra behaviour.</li>
+<li><code>@require_GET</code> (already imported) lets only <code>GET</code> requests through. Anything else
+  gets a <strong>405 Method Not Allowed</strong> response, and your function isn't even run.
+  Here's its sister <code>@require_POST</code> on a different view:</li>
+</ul>
+<pre><code class="language-python">from django.http import HttpResponse
+from django.test import RequestFactory
+from django.views.decorators.http import require_POST
+
+@require_POST
+def ping(request):
+    return HttpResponse(&quot;pong&quot;)
+
+factory = RequestFactory()
+print(ping(factory.post(&quot;/ping/&quot;)).status_code)   # 200
+print(ping(factory.get(&quot;/ping/&quot;)).status_code)    # 405
+</code></pre>
+<p>You'll also see <code>Method Not Allowed (GET): /ping/</code> in the Console. That's Django
+logging the refused request, the same kind of log line you're about to write.</p>
+<p><strong>Try it:</strong> paste any example from this section into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<ol>
+<li><strong>Allow only <code>GET</code>.</strong> Put <code>@require_GET</code> on the line directly above
+   <code>def health(request):</code>. <strong>→ test 6</strong></li>
+<li><strong>Really check the database.</strong> Inside a <code>try:</code> block, open a cursor with
+   <code>with connection.cursor() as cursor:</code> and run <code>cursor.execute("SELECT 1")</code>.</li>
+<li>
+<p><strong>Handle the failure.</strong> Add <code>except DatabaseError:</code>. Inside it:</p>
+<ul>
+<li>call <code>logger.exception(...)</code> with a short message of your own, like
+  <code>"Health check failed: database unavailable"</code> <strong>→ test 4</strong></li>
+<li>return a <code>JsonResponse</code> with <code>{"status": "error", "checks": {"database": "error"}}</code>
+  and <code>status=503</code>. Write this dictionary yourself; don't put the error's
+  message in it. <strong>→ tests 2, 3 and 5</strong></li>
+</ul>
+</li>
+<li>
+<p><strong>Handle success.</strong> After the <code>try</code> / <code>except</code>, replace the starter's <code>return</code>
+   with a <code>JsonResponse</code> of <code>{"status": "ok", "checks": {"database": "ok"}}</code>. It
+   uses the default status, 200. <strong>→ test 1</strong></p>
+</li>
+</ol>
+<p>The shape of steps 2-4 is the same as the <code>int("ten")</code> example above: risky work in
+<code>try</code>, log and give a safe answer in <code>except</code>, and carry on normally otherwise.</p>
+<h2>Common mistakes</h2>
+<ul>
+<li>Returning <code>{"status": "ok", ...}</code> without running a query. Test 2 notices,
+  because the fake broken database never gets asked.</li>
+<li>Calling <code>connection.cursor()</code> outside the <code>try</code>. The error then escapes and the
+  test crashes instead of getting a 503.</li>
+<li>Importing <code>connection</code> again <strong>inside</strong> the function. Your code then uses the
+  real database, not the tests' broken one, and tests 2-5 fail. Use the one imported
+  at the top.</li>
+<li><code>logger.error(...)</code> instead of <code>logger.exception(...)</code>: no traceback, so test 4
+  fails.</li>
+<li>Putting <code>str(error)</code> or the exception into the response. It contains
+  <code>password=hunter2</code>, so test 5 fails, and in real life you'd leak a password.</li>
+<li>Forgetting <code>@require_GET</code>, or writing it inside the function instead of above it.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every real deployment platform (Kubernetes, Render, Railway, AWS load balancers)
+lets you set a health check URL and acts on its status code. And good logging is
+how you fix production problems you can't reproduce on your laptop: when something
+breaks at 3 a.m., the log line with its traceback is often the only clue you have.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/what-are-logs-in-programming/">What Are Logs in Programming?</a> (freeCodeCamp, beginner). Start here: what logs are for and the five levels (DEBUG to CRITICAL), with Python logging examples.</li><li><a href="https://docs.python.org/3/howto/logging.html">Logging HOWTO</a> (Python docs, beginner). The official beginner tutorial for logging.getLogger(__name__) and logger.exception, used when the database check fails.</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/503">503 Service Unavailable</a> (MDN Web Docs, beginner). What the 503 status means and why a health endpoint returns it when the database is down.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/sql/#executing-custom-sql-directly">Performing raw SQL queries: executing custom SQL directly</a> (Django docs, intermediate). Shows connection.cursor() and cursor.execute, which your health check uses to run a tiny &#x27;SELECT 1&#x27; test query.</li><li><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring">Health Endpoint Monitoring pattern</a> (Microsoft Learn, intermediate). The bigger picture: how monitoring tools call /health, what to check (like the database) and how to keep it safe.</li></ul></body></html>

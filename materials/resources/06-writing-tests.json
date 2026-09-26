@@ -1,0 +1,37 @@
+{
+  "exercise": "06-writing-tests",
+  "resources": [
+    {
+      "title": "How to Write Unit Tests in Python – with Example Test Code",
+      "url": "https://www.freecodecamp.org/news/unit-testing-in-python/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: writes a TestCase for a small function using assertEqual and assertRaises, the same pattern as your slug tests."
+    },
+    {
+      "title": "Writing your first Django app, part 5 (testing)",
+      "url": "https://docs.djangoproject.com/en/5.2/intro/tutorial05/",
+      "source": "Django docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Shows how to find a real bug, write a test that exposes it, then fix it: exactly the mindset this exercise trains."
+    },
+    {
+      "title": "unittest: Unit testing framework",
+      "url": "https://docs.python.org/3/library/unittest.html",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The official list of assert methods and how test discovery works; keep it open while writing tests."
+    },
+    {
+      "title": "Writing and running tests",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/testing/overview/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "How Django builds on unittest with its own TestCase and test database, for when you test models and views."
+    }
+  ]
+}

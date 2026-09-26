@@ -1,0 +1,158 @@
+{
+  "exercise": "08-permissions",
+  "subtitle": "Write the rules: anyone logged in reads, only the owner changes, only staff delete.",
+  "notes": "This deck goes with exercise 8. By the end you should be able to write a permission class and say which of its two methods runs when.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "\"May this request go ahead?\" is two questions.\n\n**Authentication: who are you?** Django checks the proof and stores the user in `request.user`.\n\n**Permissions: are you allowed?** A permission class looks at the user, the method and the object, and answers `True` or `False`.",
+      "notes": "Office building analogy: showing your badge at the door is authentication. The rules about which rooms your badge opens are permissions. The badge check is already done for you; you write the room rules."
+    },
+    {
+      "type": "code",
+      "title": "What your methods receive",
+      "caption": "No real web request: the tests build fake ones and call your methods directly.",
+      "code": "owner = User.objects.create_user(\"owner\", password=\"x\")\nother = User.objects.create_user(\"other\", password=\"x\")\nstaff = User.objects.create_user(\"staff\", password=\"x\", is_staff=True)\nnote = SimpleNamespace(owner=owner)            # a pretend object\n\nrequest = RequestFactory().patch(\"/notes/1/\")  # a fake PATCH request\nrequest.user = other                           # made by \"other\"\n\nIsOwnerOrReadOnly().has_permission(request, None)        # view is None\nIsOwnerOrReadOnly().has_object_permission(request, None, note)",
+      "notes": "The tests pass the request in as request and the object in as obj. Your methods just return True or False."
+    },
+    {
+      "type": "compare",
+      "title": "What the tests expect back",
+      "left": {
+        "heading": "Must say yes (True)",
+        "bullets": [
+          "Logged in: `has_permission` (test 2)",
+          "Anyone reads the note (test 3)",
+          "`owner` changes the note (test 4)",
+          "Not `DELETE`: `IsStaffForDelete` (test 6)",
+          "`staff` sends `DELETE` (test 7)"
+        ]
+      },
+      "right": {
+        "heading": "Must say no (False)",
+        "bullets": [
+          "Anonymous: `has_permission` (test 1)",
+          "`other` changes the note (test 5)",
+          "Not staff, sends `DELETE` (test 7)"
+        ]
+      },
+      "notes": "Reads means GET, HEAD or OPTIONS; changes means PATCH, PUT or DELETE.The starter's methods all return True, so the yes-tests 2, 3, 4 and 6 already pass. Your job is to make the no-answers come out False without breaking the yes ones."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "request.user", "meaning": "The user making the request, filled in before your code runs."},
+        {"term": "AnonymousUser", "meaning": "What `request.user` is when nobody logged in."},
+        {"term": "is_authenticated", "meaning": "`True` for a logged-in user, `False` for `AnonymousUser`."},
+        {"term": "is_staff", "meaning": "`True` for team members (admins), `False` for normal users."},
+        {"term": "owner", "meaning": "The user an object belongs to, like `note.owner`."},
+        {"term": "safe method", "meaning": "Only reads: `GET`, `HEAD`, `OPTIONS`. Others change data."},
+        {"term": "401 / 403", "meaning": "\"Log in first\" / \"logged in, but not allowed\"."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: a permission class",
+      "caption": "Up to two methods. In a real API, DRF calls them for you; `False` stops the request.",
+      "code": "class SomePermission(BasePermission):\n    def has_permission(self, request, view):\n        # EVERY request, first: may this user use this endpoint?\n        return True\n\n    def has_object_permission(self, request, view, obj):\n        # Only for ONE object, like DELETE /notes/1/, after it's loaded:\n        # may this user do this to THIS object?\n        return True",
+      "notes": "You switch them on in a view with permission_classes = [IsOwnerOrReadOnly, IsStaffForDelete]. Every class in the list must say yes. view is the view being called; you won't need it."
+    },
+    {
+      "type": "code",
+      "title": "Tool: user attributes (no brackets)",
+      "code": "from django.contrib.auth.models import AnonymousUser, User\n\nada = User.objects.create_user(\"ada\", password=\"x\")\nboss = User.objects.create_user(\"boss\", password=\"x\", is_staff=True)\nvisitor = AnonymousUser()\nprint(ada.is_authenticated, ada.is_staff)\nprint(boss.is_authenticated, boss.is_staff)\nprint(visitor.is_authenticated, visitor.is_staff)",
+      "output": "True False\nTrue True\nFalse False",
+      "notes": "These are attributes, not methods: read them with a dot and no brackets. They're already True or False, so you can return them directly. is_authenticated() with brackets gives TypeError: 'bool' object is not callable."
+    },
+    {
+      "type": "code",
+      "title": "Tool: SAFE_METHODS and in",
+      "caption": "`x in something` checks whether `x` is one of the items.",
+      "code": "print(SAFE_METHODS)\nprint(\"GET\" in SAFE_METHODS)\nprint(\"PATCH\" in SAFE_METHODS)",
+      "output": "('GET', 'HEAD', 'OPTIONS')\nTrue\nFalse",
+      "notes": "SAFE_METHODS is already imported at the top of your file. request.method is always in capitals, like \"GET\" or \"DELETE\"."
+    },
+    {
+      "type": "code",
+      "title": "Tool: comparing users with ==",
+      "code": "from types import SimpleNamespace\nfrom django.contrib.auth.models import User\n\nada = User.objects.create_user(\"ada\", password=\"x\")\ngrace = User.objects.create_user(\"grace\", password=\"x\")\nrecipe = SimpleNamespace(title=\"Pancakes\", owner=ada)\nprint(recipe.owner == ada)\nprint(recipe.owner == grace)\nprint(recipe.owner == User.objects.get(username=\"ada\"))",
+      "output": "True\nFalse\nTrue",
+      "notes": "Django compares users by id, so two separate objects for the same user are equal (the last line). SimpleNamespace is a quick pretend object: you read its attributes with a dot, just like a real model. The tests' note is one of these."
+    },
+    {
+      "type": "compare",
+      "title": "has_permission vs has_object_permission",
+      "left": {
+        "heading": "has_permission(request, view)",
+        "bullets": [
+          "Runs for **every** request, first",
+          "No object: it can't see an owner",
+          "Good for: logged in? is it a `DELETE`?",
+          "Tests 1-2, 6-7"
+        ]
+      },
+      "right": {
+        "heading": "has_object_permission(..., obj)",
+        "bullets": [
+          "Runs only for **one** object, like `/notes/1/`",
+          "Gets `obj`, so it can check `obj.owner`",
+          "Good for: is this user the owner?",
+          "Tests 3-5"
+        ]
+      },
+      "notes": "A common mistake is checking the owner in has_permission. There is no obj there, so the owner check must go in has_object_permission."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: answer early, otherwise decide",
+      "caption": "The same shape as `has_object_permission`, on different data:",
+      "code": "def can_enter(age, has_ticket):\n    if age < 5:\n        return True        # small children always get in\n    return has_ticket      # everyone else needs a ticket\n\nprint(can_enter(3, False), can_enter(30, True), can_enter(30, False))",
+      "output": "True True False",
+      "notes": "Once return runs, the function stops, so the line after the if only runs when the if was false. Every path returns True or False: a missing return gives None, which DRF treats as no."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "`has_permission`: return `request.user.is_authenticated`", "tests": "tests 1-2"},
+        {"text": "`has_object_permission`: method in `SAFE_METHODS`? Return `True`", "tests": "test 3"},
+        {"text": "Otherwise return whether `obj.owner` is the same user as `request.user`", "tests": "tests 4-5"},
+        {"text": "`IsStaffForDelete`: `\"DELETE\"` → `request.user.is_staff`, else `True`", "tests": "tests 6-7"}
+      ],
+      "notes": "Steps 1-3 are in IsOwnerOrReadOnly.AnonymousUser has is_staff too, and it's always False, so step 4 needs no separate check for anonymous visitors."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`is_authenticated()` with brackets: `TypeError`, it's an attribute",
+        "Checking the owner in `has_permission`: there's no `obj` there",
+        "A path with no `return` gives `None`, which counts as no",
+        "`request.method == \"delete\"` is never true: it's `\"DELETE\"`",
+        "Compare users, `obj.owner == request.user`, not their usernames"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A notes app: everyone on the team can read every note, but only you can edit yours, and only an admin can delete anything.",
+      "bullets": [
+        "In a DRF view: `permission_classes = [IsOwnerOrReadOnly, IsStaffForDelete]`",
+        "DRF calls your methods on every request and replies `401` or `403` when they say no",
+        "The view's code never runs for a refused request"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What's the difference between authentication and permissions?",
+        "Why must the owner check go in `has_object_permission`?",
+        "Why write `is_authenticated` without brackets?",
+        "An anonymous user sends `DELETE`. Why don't you need a separate check?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "exercise": "15-security",
+  "resources": [
+    {
+      "title": "SQL Injection Tutorial – What is SQL Injection and How to Prevent it",
+      "url": "https://www.freecodecamp.org/news/what-is-sql-injection-how-to-prevent-it/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: shows how string-built SQL gets hijacked and why parameterized queries stop it."
+    },
+    {
+      "title": "Security in Django",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/security/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "A tour of what Django protects you from automatically and where you still have to be careful."
+    },
+    {
+      "title": "Unvalidated Redirects and Forwards Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",
+      "source": "OWASP",
+      "kind": "article",
+      "level": "intermediate",
+      "why": "Explains the open-redirect attack your safe_next_url function blocks with url_has_allowed_host_and_scheme."
+    },
+    {
+      "title": "hmac.compare_digest",
+      "url": "https://docs.python.org/3/library/hmac.html#hmac.compare_digest",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reference for the constant-time comparison you use for API keys, so timing does not leak the secret."
+    },
+    {
+      "title": "Performing raw SQL queries: passing parameters",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/sql/#passing-parameters-into-raw",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Shows the safe way to pass values to cursor.execute with placeholders instead of string formatting."
+    }
+  ]
+}

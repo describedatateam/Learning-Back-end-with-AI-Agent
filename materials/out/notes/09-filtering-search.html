@@ -1,0 +1,359 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Filter, search &amp; order</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 2 · Exercise 09 · Querysets</strong></p><h1>Filter, search &amp; order</h1>
+<h2>The big idea</h2>
+<p>A list endpoint like <code>GET /api/tasks/</code> could send back every task. But users
+don't want everything: they want <em>"my high-priority tasks due before Friday, most
+urgent first"</em>. The client asks for that by adding <strong>query parameters</strong> to the
+address:</p>
+<pre><code>GET /api/tasks/?status=todo&amp;priority=high&amp;due_before=2025-03-01&amp;ordering=due_date
+</code></pre>
+<p>The backend reads those parameters and turns them into a database question: which
+rows, and in what order. In Django that question is called a <strong>queryset</strong>.</p>
+<p>If you've used pandas, you already know the idea. <code>?status=todo</code> is like
+<code>df[df["status"] == "todo"]</code>, <code>?search=deploy</code> is like
+<code>df[df["title"].str.contains("deploy", case=False)]</code>, and <code>?ordering=-due_date</code>
+is like <code>df.sort_values("due_date", ascending=False)</code>. You're writing the backend
+half of a filter panel.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>query parameters</strong></td>
+<td>The <code>name=value</code> pairs after the <code>?</code> in an address, joined by <code>&amp;</code>.</td>
+</tr>
+<tr>
+<td><strong><code>request.query_params</code></strong></td>
+<td>Where DRF puts them, as a dictionary-like object: <code>{"status": "todo", ...}</code>.</td>
+</tr>
+<tr>
+<td><strong>queryset</strong></td>
+<td>A description of which rows to fetch from a table, and in what order. Django turns it into SQL for you.</td>
+</tr>
+<tr>
+<td><strong>filter</strong></td>
+<td>Keep only the rows that match a condition. Several filters together mean "all of these must match" (AND).</td>
+</tr>
+<tr>
+<td><strong>lookup</strong></td>
+<td>An extra word after a field name with <code>__</code> (two underscores), like <code>title__icontains</code> or <code>due_date__lte</code>, that changes how it compares.</td>
+</tr>
+<tr>
+<td><strong>case-insensitive</strong></td>
+<td>Capital and small letters count as the same: <code>"DEPLOY"</code> matches <code>"Deploy"</code>.</td>
+</tr>
+<tr>
+<td><strong>ordering</strong></td>
+<td>The sort order. <code>"title"</code> is A to Z; <code>"-title"</code> (with a minus) is Z to A.</td>
+</tr>
+<tr>
+<td><strong>whitelist</strong></td>
+<td>A fixed list of allowed values. Anything not on it is ignored.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't call <code>filter_tasks</code> yourself. <strong>The tests call it and pass in two
+things</strong>: <code>queryset</code>, which is all the tasks (<code>Task.objects.all()</code>), and <code>params</code>,
+a dictionary of query parameters. In a real view, <code>params</code> would be
+<code>request.query_params</code>; the tests use a plain dict, which works the same way.</p>
+<p>Before the tests run, they create these four tasks (copied from the tests). The
+<code>Task</code> model has the fields <code>title</code>, <code>status</code>, <code>priority</code> and <code>due_date</code>:</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>title</th>
+<th>status</th>
+<th>priority</th>
+<th>due_date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Deploy API</td>
+<td>todo</td>
+<td>high</td>
+<td>2025-03-01</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Write docs</td>
+<td>done</td>
+<td>low</td>
+<td>2025-02-01</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Fix deploy script</td>
+<td>todo</td>
+<td>low</td>
+<td><em>(none)</em></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Answer email</td>
+<td>in_progress</td>
+<td>medium</td>
+<td>2025-04-01</td>
+</tr>
+</tbody>
+</table>
+<p>Your function must <strong>return a queryset</strong>. The tests take the titles from it, in
+order, and compare them with the expected list:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th><code>params</code></th>
+<th>expected titles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>{}</code></td>
+<td><code>["Deploy API", "Write docs", "Fix deploy script", "Answer email"]</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>{"status": "todo"}</code></td>
+<td><code>["Deploy API", "Fix deploy script"]</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>{"priority": "low"}</code></td>
+<td><code>["Write docs", "Fix deploy script"]</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>{"status": "todo", "priority": "low"}</code></td>
+<td><code>["Fix deploy script"]</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>{"search": "DEPLOY"}</code></td>
+<td><code>["Deploy API", "Fix deploy script"]</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>{"due_before": "2025-03-01"}</code></td>
+<td><code>["Deploy API", "Write docs"]</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>{"due_before": "next friday"}</code></td>
+<td>raises <code>ValueError</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>{"ordering": "title"}</code></td>
+<td><code>["Answer email", "Deploy API", "Fix deploy script", "Write docs"]</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>{"ordering": "-title"}</code></td>
+<td><code>["Write docs", "Fix deploy script", "Deploy API", "Answer email"]</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>{"ordering": "status"}</code> or <code>{"ordering": "nonexistent_field"}</code></td>
+<td>same as test 1 (id order)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>{"status": "", "search": "", "ordering": ""}</code></td>
+<td>all 4 tasks</td>
+</tr>
+</tbody>
+</table>
+<p>Notice that test 6 keeps a task due <strong>exactly on</strong> 2025-03-01, and leaves out
+"Fix deploy script", which has no due date at all.</p>
+<blockquote>
+<p>The starter just returns the queryset unchanged, so tests 1, 9 and 10 already
+pass: the database happens to hand back tasks in id order. You still need to
+sort by <code>id</code> on purpose, so that stays true.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<p>These examples run in the Console, with a practice database and the <code>Task</code> model.
+The database starts empty on every run, so each example creates its own tasks
+(different ones from the tests). <code>date</code> is already imported at the top of your file.</p>
+<h3><code>queryset.filter(field=value)</code></h3>
+<ul>
+<li>Gives back a <strong>new</strong> queryset with only the matching rows. It doesn't change
+  the old one, so store the result: <code>qs = qs.filter(...)</code>, just like
+  <code>df = df[...]</code> in pandas.</li>
+<li>You can chain as many filters as you like; each one narrows the result further.</li>
+<li><code>filter</code> is a <strong>method</strong>, and the condition is written like a keyword argument:
+  <code>field=value</code>, with <code>=</code>, not <code>==</code>.</li>
+</ul>
+<pre><code class="language-python">from sandbox.models import Task
+
+Task.objects.create(title=&quot;Buy milk&quot;, status=&quot;done&quot;, priority=&quot;low&quot;, due_date=date(2024, 5, 10))
+Task.objects.create(title=&quot;Book dentist&quot;, status=&quot;todo&quot;, priority=&quot;high&quot;, due_date=date(2024, 6, 1))
+Task.objects.create(title=&quot;Call Milo&quot;, status=&quot;todo&quot;, priority=&quot;low&quot;)
+
+qs = Task.objects.all()
+print(qs)
+qs = qs.filter(status=&quot;todo&quot;)
+print(qs)
+qs = qs.filter(priority=&quot;high&quot;)
+print(qs)
+# &lt;QuerySet [&lt;Task: Buy milk&gt;, &lt;Task: Book dentist&gt;, &lt;Task: Call Milo&gt;]&gt;
+# &lt;QuerySet [&lt;Task: Book dentist&gt;, &lt;Task: Call Milo&gt;]&gt;
+# &lt;QuerySet [&lt;Task: Book dentist&gt;]&gt;
+</code></pre>
+<p>A queryset is <strong>lazy</strong>: building it doesn't touch the database. The query only
+runs when the results are used, for example when they're printed or looped over.
+That's why chaining filters is cheap.</p>
+<h3>Lookups: <code>__icontains</code> and <code>__lte</code></h3>
+<ul>
+<li>Put a lookup after the field name with <strong>two</strong> underscores.</li>
+<li><code>title__icontains="mil"</code> means "the title contains <code>mil</code>, ignoring case".</li>
+<li><code>due_date__lte=some_date</code> means "<code>due_date</code> is less than or equal to (on or
+  before) that date". Rows with no due date are left out.</li>
+</ul>
+<pre><code class="language-python">from sandbox.models import Task
+
+Task.objects.create(title=&quot;Buy milk&quot;, status=&quot;done&quot;, priority=&quot;low&quot;, due_date=date(2024, 5, 10))
+Task.objects.create(title=&quot;Book dentist&quot;, status=&quot;todo&quot;, priority=&quot;high&quot;, due_date=date(2024, 6, 1))
+Task.objects.create(title=&quot;Call Milo&quot;, status=&quot;todo&quot;, priority=&quot;low&quot;)
+
+print(Task.objects.filter(title__icontains=&quot;MIL&quot;))
+print(Task.objects.filter(due_date__lte=date(2024, 5, 31)))
+print(Task.objects.order_by(&quot;title&quot;))
+print(Task.objects.order_by(&quot;-title&quot;))
+# &lt;QuerySet [&lt;Task: Buy milk&gt;, &lt;Task: Call Milo&gt;]&gt;
+# &lt;QuerySet [&lt;Task: Buy milk&gt;]&gt;
+# &lt;QuerySet [&lt;Task: Book dentist&gt;, &lt;Task: Buy milk&gt;, &lt;Task: Call Milo&gt;]&gt;
+# &lt;QuerySet [&lt;Task: Call Milo&gt;, &lt;Task: Buy milk&gt;, &lt;Task: Book dentist&gt;]&gt;
+</code></pre>
+<p>There's also <code>title__contains</code> without the <code>i</code>. On some databases (like
+PostgreSQL) it cares about capital letters, so use <code>icontains</code> for search.</p>
+<h3><code>queryset.order_by("field")</code></h3>
+<ul>
+<li>Sorts the queryset by a field, given as a string. A <code>-</code> in front sorts
+  backwards. (See the last two lines of the example above.)</li>
+<li>If the field doesn't exist, Django raises an error when the query runs:</li>
+</ul>
+<pre><code class="language-python">from sandbox.models import Task
+
+print(Task.objects.order_by(&quot;colour&quot;))
+# django.core.exceptions.FieldError: Cannot resolve keyword 'colour' into field.
+# Choices are: due_date, id, priority, status, title
+</code></pre>
+<p>In a real API that error would become a crash (a <code>500</code> error) for anyone who
+types a wrong value. It even tells them your field names. That's one reason to
+<strong>whitelist</strong> the allowed orderings. The other: with related models, a client
+could sort by something private, like <code>owner__password</code>, and learn about it from
+the order of the results. So you only allow the sorts you've chosen to support,
+and quietly fall back to <code>id</code> for anything else, even for real fields like
+<code>status</code> that aren't on the list.</p>
+<h3><code>params.get("name")</code></h3>
+<ul>
+<li>Reads a value from a dictionary, but gives <code>None</code> instead of crashing when the
+  key isn't there. (<code>params["name"]</code> would raise <code>KeyError</code>.)</li>
+<li>Both <code>None</code> and the empty string <code>""</code> count as false in an <code>if</code>, so one <code>if</code>
+  skips missing <strong>and</strong> empty parameters.</li>
+</ul>
+<pre><code class="language-python">params = {&quot;colour&quot;: &quot;red&quot;, &quot;size&quot;: &quot;&quot;}
+print(params.get(&quot;colour&quot;))
+print(params.get(&quot;size&quot;))
+print(params.get(&quot;shape&quot;))
+if params.get(&quot;size&quot;):
+    print(&quot;size was given&quot;)
+else:
+    print(&quot;no size, skip it&quot;)
+# red
+#
+# None
+# no size, skip it
+</code></pre>
+<p>The second line of output is blank: that's the empty string <code>""</code> being printed.</p>
+<h3><code>date.fromisoformat(text)</code></h3>
+<ul>
+<li>Turns text like <code>"2024-12-25"</code> (year-month-day) into a <code>date</code>. If the text isn't
+  a valid date, it raises <code>ValueError</code>, which is exactly what test 7 wants.</li>
+<li>It's called on <code>date</code> itself: <code>date.fromisoformat(text)</code>, not
+  <code>text.fromisoformat()</code>.</li>
+</ul>
+<pre><code class="language-python">print(date.fromisoformat(&quot;2024-12-25&quot;))
+print(date.fromisoformat(&quot;tomorrow&quot;))
+# 2024-12-25
+# ValueError: Invalid isoformat string: 'tomorrow'
+</code></pre>
+<h3><code>in</code> with a set</h3>
+<ul>
+<li><code>value in some_set</code> is <code>True</code> if the value is one of the items. <code>ALLOWED_ORDERING</code>,
+  at the top of your file, is a set of the six allowed orderings.</li>
+</ul>
+<pre><code class="language-python">SIZES = {&quot;small&quot;, &quot;large&quot;}
+print(&quot;large&quot; in SIZES)
+print(&quot;huge&quot; in SIZES)
+print(None in SIZES)
+# True
+# False
+# False
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab. Delete it again afterwards.</p>
+<h2>Step by step</h2>
+<p>Each step adds one <code>if</code> that narrows <code>queryset</code>, and stores the result back in
+<code>queryset</code>. Here's the shape on different data (a plain list, not a queryset):</p>
+<pre><code class="language-python">fruits = [&quot;apple&quot;, &quot;banana&quot;, &quot;cherry&quot;, &quot;avocado&quot;]
+params = {&quot;starts_with&quot;: &quot;a&quot;, &quot;max_length&quot;: &quot;&quot;}
+if params.get(&quot;starts_with&quot;):
+    fruits = [f for f in fruits if f.startswith(params[&quot;starts_with&quot;])]
+if params.get(&quot;max_length&quot;):
+    fruits = [f for f in fruits if len(f) &lt;= int(params[&quot;max_length&quot;])]
+print(fruits)
+# ['apple', 'avocado']
+</code></pre>
+<p><code>max_length</code> was empty, so its <code>if</code> was skipped.</p>
+<ol>
+<li><strong>Filter by status.</strong> If <code>params.get("status")</code> has a value, replace
+   <code>queryset</code> with <code>queryset.filter(status=...)</code>, using that value. <strong>→ test 2</strong></li>
+<li><strong>Filter by priority</strong> the same way, with the <code>priority</code> field. Because each
+   filter narrows the result of the one before, both together give "AND".
+   <strong>→ tests 3 and 4</strong></li>
+<li><strong>Search the title.</strong> If <code>search</code> has a value, filter with
+   <code>title__icontains=</code> that value. <strong>→ test 5</strong></li>
+<li><strong>Filter by due date.</strong> If <code>due_before</code> has a value, turn it into a date with
+   <code>date.fromisoformat(...)</code>, then filter with <code>due_date__lte=</code> that date. Don't
+   catch the <code>ValueError</code>: letting it happen is what test 7 checks.
+   <strong>→ tests 6 and 7</strong></li>
+<li><strong>Sort, using the whitelist.</strong> Get <code>params.get("ordering")</code>. If it's in
+   <code>ALLOWED_ORDERING</code>, sort with <code>queryset.order_by(...)</code> using it. Otherwise
+   (missing, empty or not allowed), sort with <code>order_by("id")</code>.
+   <strong>→ tests 8 and 9, and keeps tests 1 and 10 passing</strong></li>
+<li><strong>Return the queryset</strong> at the end, after sorting. <strong>→ all of tests 1-10</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li><strong>Not storing the result</strong>: <code>queryset.filter(status="todo")</code> on its own line does
+  nothing useful. Write <code>queryset = queryset.filter(...)</code>.</li>
+<li><strong><code>params["status"]</code> before checking</strong>: it raises <code>KeyError</code> when the parameter
+  is missing. Check with <code>params.get("status")</code> first.</li>
+<li><strong>One underscore</strong>: <code>title_icontains</code> gives <code>FieldError: Cannot resolve keyword</code>.
+  Lookups need two: <code>title__icontains</code>.</li>
+<li><strong>Passing any ordering to <code>order_by</code></strong>: <code>?ordering=nonexistent_field</code> then
+  crashes with <code>FieldError</code>, and <code>?ordering=status</code> sorts when it shouldn't (test 9).
+  Check <code>in ALLOWED_ORDERING</code> first.</li>
+<li><strong>Sorting before the <code>return</code>, but returning the old queryset</strong>: <code>order_by</code> also
+  gives back a new queryset, so return (or store) its result.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every list endpoint in a real API needs filtering, search and sorting. In real
+projects, the <code>django-filter</code> package and DRF's <code>SearchFilter</code> and <code>OrderingFilter</code>
+do this for you, and <code>OrderingFilter</code> has an <code>ordering_fields</code> whitelist for the
+same reasons as yours. Now you know what they do underneath.</p><h2>Keep learning</h2><ul><li><a href="https://tutorial.djangogirls.org/en/django_orm/">Django ORM and QuerySets</a> (Django Girls Tutorial, beginner). Start here: try filter(), __contains lookups and order_by() in the shell, much like filtering a pandas DataFrame.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/queries/">Making queries</a> (Django docs, beginner). Explains that querysets are lazy and can be chained, which is why you can add one filter at a time.</li><li><a href="https://docs.djangoproject.com/en/5.2/ref/models/querysets/#field-lookups">QuerySet API reference: field lookups</a> (Django docs, intermediate). Reference for icontains, lte and every other lookup, plus order_by with a minus sign for descending order.</li><li><a href="https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat">datetime: date.fromisoformat</a> (Python docs, intermediate). How to turn a &#x27;2025-01-31&#x27; string from the URL into a real date, and the ValueError you get on bad input.</li><li><a href="https://www.django-rest-framework.org/api-guide/filtering/">Filtering</a> (Django REST framework, intermediate). How DRF offers the same search and ordering features built in, once you understand the manual version.</li></ul></body></html>

@@ -1,0 +1,203 @@
+{
+  "exercise": "07-viewsets-routers",
+  "subtitle": "A serializer, a viewset and a router give you list, create, read, update and delete.",
+  "notes": "This deck goes with exercise 7. By the end you should be able to explain what each of the three pieces does and which URL and method reach which action.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "An **API** is a set of web addresses that programs use to read and change your data. It sends back JSON, not HTML pages.\n\nFor each kind of thing (books, tasks, users) clients want the same jobs: list, add, look at one, change, delete. That's **CRUD**.\n\nDRF bundles them, like `df.describe()` does many standard sums in one call.",
+      "notes": "Three pieces: a ModelSerializer turns a model into JSON and back, a ModelViewSet does all five jobs, and a router makes the web addresses."
+    },
+    {
+      "type": "code",
+      "title": "What the tests set up",
+      "caption": "Before each test they log in and create two books. Then they send **real HTTP requests** to your URLs.",
+      "code": "Book.objects.create(title=\"Dune\", author=\"Frank Herbert\", published_year=1965)\nBook.objects.create(title=\"Emma\", author=\"Jane Austen\", published_year=1815)\n\n# The Book model is already written (sandbox/models.py):\n#   title, author, published_year (may be empty), plus an automatic id",
+      "notes": "You don't call your code yourself. The tests act like a browser or an app, sending GET, POST, PATCH and DELETE requests."
+    },
+    {
+      "type": "terms",
+      "title": "What the tests send and expect",
+      "terms": [
+        {
+          "term": "GET /books/",
+          "meaning": "`200`, both books: Dune first, then Emma (test 1)"
+        },
+        {
+          "term": "GET /books/1/",
+          "meaning": "One book with keys `id`, `title`, `author`, `published_year` (test 2)"
+        },
+        {
+          "term": "POST /books/",
+          "meaning": "Title \"Beloved\": `201`, saved, reply has its new `id` (test 3)"
+        },
+        {
+          "term": "POST /books/",
+          "meaning": "Only an author: `400`, error names `title` (test 4)"
+        },
+        {
+          "term": "PATCH /books/1/",
+          "meaning": "`{\"published_year\": 1966}`: `200`, title still Dune (test 5)"
+        },
+        {
+          "term": "DELETE /books/2/",
+          "meaning": "`204`, Emma is gone from the database (test 6)"
+        },
+        {
+          "term": "GET /books/999/",
+          "meaning": "`404`, no such book (test 7)"
+        }
+      ],
+      "notes": "The ids here are Dune = 1 and Emma = 2 for readability; the tests use the real ids the database picks."
+    },
+    {
+      "type": "code",
+      "title": "What the replies look like",
+      "caption": "Reply bodies for test 1 and test 4. You write none of this logic yourself.",
+      "code": "# GET /books/\n[\n    {\"id\": 1, \"title\": \"Dune\", \"author\": \"Frank Herbert\", \"published_year\": 1965},\n    {\"id\": 2, \"title\": \"Emma\", \"author\": \"Jane Austen\", \"published_year\": 1815},\n]\n\n# POST /books/ with {\"author\": \"Anonymous\"}\n{\"title\": [\"This field is required.\"]}",
+      "notes": "ModelViewSet already knows how to list, create, update, delete, and answer 400 and 404. Your job is to tell it which model, which fields and which URL."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {
+          "term": "resource",
+          "meaning": "One kind of thing your API manages, like books."
+        },
+        {
+          "term": "CRUD",
+          "meaning": "Create, Read, Update, Delete: the basic jobs on data."
+        },
+        {
+          "term": "collection URL",
+          "meaning": "The address for the whole list: `/books/`."
+        },
+        {
+          "term": "detail URL",
+          "meaning": "The address for one item, by id: `/books/1/`."
+        },
+        {
+          "term": "status code",
+          "meaning": "`200` OK, `201` created, `204` done, `400` bad input, `404` not found."
+        },
+        {
+          "term": "ViewSet",
+          "meaning": "One class that handles all the actions for one resource."
+        },
+        {
+          "term": "router",
+          "meaning": "Looks at a ViewSet and makes the URLs for it."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: Book.objects.order_by(\"id\")",
+      "caption": "A **method** on `Book.objects` that gives a sorted **queryset**; a `-` sorts backwards.",
+      "code": "matilda = Book.objects.create(\n    title=\"Matilda\", author=\"Roald Dahl\", published_year=1988\n)\nBook.objects.create(title=\"Coraline\", author=\"Neil Gaiman\")\nprint(matilda.id, matilda.title, matilda.published_year)\nprint(Book.objects.order_by(\"-id\"))",
+      "output": "1 Matilda 1988\n<QuerySet [<Book: Coraline>, <Book: Matilda>]>",
+      "notes": "Without an order, a database may return rows in any order. Test 1 needs Dune before Emma every time, so sort by id."
+    },
+    {
+      "type": "code",
+      "title": "Tool: ModelSerializer",
+      "caption": "It reads field types from the model; `class Meta` says which model and fields.",
+      "code": "class ShortBookSerializer(serializers.ModelSerializer):\n    class Meta:\n        model = Book\n        fields = [\"title\", \"author\"]\n\nmatilda = Book.objects.create(title=\"Matilda\", author=\"Roald Dahl\")\nprint(ShortBookSerializer(matilda).data)",
+      "output": "{'title': 'Matilda', 'author': 'Roald Dahl'}",
+      "notes": "class Meta is a small class inside another class: DRF's place for settings. You don't call it, you just write it. Checking input works too: ShortBookSerializer(data={\"author\": \"Anonymous\"}).is_valid() is False, and .errors says title is required. That's where test 4's 400 comes from. The id field is read-only automatically."
+    },
+    {
+      "type": "code",
+      "title": "Tool: ModelViewSet",
+      "caption": "No methods, just two class attributes: which rows, and which serializer.",
+      "code": "class NewestFirstViewSet(viewsets.ModelViewSet):\n    queryset = Book.objects.order_by(\"-id\")      # which rows\n    serializer_class = ShortBookSerializer       # the class itself, no ()",
+      "notes": "This one lists newest first with only two fields. Yours needs a different order and the full serializer. DRF reads these two variables to do list, create, retrieve, update and delete."
+    },
+    {
+      "type": "code",
+      "title": "Tool: DefaultRouter",
+      "code": "demo = DefaultRouter()\ndemo.register(\"newest\", NewestFirstViewSet, basename=\"newest\")\nfor url in demo.urls:\n    print(url.pattern, \"->\", url.name)",
+      "output": "^newest/$ -> newest-list\n^newest\\.(?P<format>[a-z0-9]+)/?$ -> newest-list\n^newest/(?P<pk>[^/.]+)/$ -> newest-detail\n^newest/(?P<pk>[^/.]+)\\.(?P<format>[a-z0-9]+)/?$ -> newest-detail\n -> api-root\n<drf_format_suffix:format> -> api-root",
+      "notes": "The prefix has no slashes: the router adds them. Read ^newest/$ as the collection URL /newest/, and (?P<pk>...) as 'an id goes here', so the third line is /newest/1/. The format lines are extras like /newest.json. router.urls is what Django reads from urlpatterns."
+    },
+    {
+      "type": "compare",
+      "title": "Collection URL vs detail URL",
+      "left": {
+        "heading": "/books/  (the whole list)",
+        "bullets": [
+          "`GET` → **list** all books",
+          "`POST` → **create** a new book",
+          "No id in the address"
+        ]
+      },
+      "right": {
+        "heading": "/books/{id}/  (one book)",
+        "bullets": [
+          "`GET` → **retrieve** that book",
+          "`PUT` → **update**: send every field",
+          "`PATCH` → **partial update**: only fields sent",
+          "`DELETE` → **destroy**, reply `204`"
+        ]
+      },
+      "notes": "Same address, different method, different action. PUT vs PATCH is the classic mix-up: with PUT, a missing required field is a validation error; PATCH only checks what you sent. Test 5 uses PATCH."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {
+          "text": "`BookSerializer`: a `class Meta` with `model = Book` and four `fields`",
+          "tests": "tests 2-4"
+        },
+        {
+          "text": "`BookViewSet`: set `queryset` (ordered by `id`) and `serializer_class`",
+          "tests": "tests 1, 5-7"
+        },
+        {
+          "text": "`router = DefaultRouter()`, then register at `\"books\"`, `basename=\"book\"`",
+          "tests": ""
+        },
+        {
+          "text": "Set `urlpatterns = router.urls`, after the register line",
+          "tests": "tests 1-7"
+        }
+      ],
+      "notes": "Every test calls your URLs, so nothing passes until all four steps are done. Write them all, then run the tests."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`Content-Type ... text/html` or `200 != 201`: `urlpatterns` is still empty",
+        "Every test gives `404`: the prefix isn't exactly `\"books\"`",
+        "Prefix `\"/books/\"`: write `\"books\"`, the router adds slashes",
+        "`serializer_class = BookSerializer()`: give the class, no brackets",
+        "Books in the wrong order: the queryset needs `order_by(\"id\")`"
+      ],
+      "notes": "Test 2 failing with a missing or extra key usually means a typo in fields, especially published_year."
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A reading-list phone app needs to show, add, edit and remove books. With these ~15 lines, your server answers all of it at `/books/` and `/books/{id}/`.",
+      "bullets": [
+        "Most DRF APIs are built this way: model, serializer, viewset, router",
+        "Next exercises add rules to this setup: who may do what, then filtering",
+        "`DefaultRouter` also gives you a browsable front page listing your resources"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Which URL and method does a router send to `partial_update`?",
+        "Why does the viewset's queryset need `order_by(\"id\")`?",
+        "What's the difference between `PUT` and `PATCH`?",
+        "Why does a successful `DELETE` reply `204` with no body?"
+      ]
+    }
+  ]
+}

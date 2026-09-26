@@ -1,0 +1,35 @@
+{
+  "title": "Write tests that catch bugs",
+  "week": 1,
+  "concept": "Testing",
+  "file": "test_slugs.py",
+  "lesson": "lessons/week-1/day-07-testing-fundamentals-lesson.md",
+  "summary": "This time you write the tests. The grader plants bugs and checks that your tests catch them.",
+  "hints": [
+    "Each bug only shows up with the right input. Write one test per behaviour: capital letters, a run of symbols, a very long title, and a title with nothing usable in it.",
+    "Every test method needs its own name starting with <code>test_</code>, such as <code>test_lowercases</code>. A method with a repeated name replaces the earlier one.",
+    "If test 2 fails, your expected value is wrong. Run <code>make_slug(...)</code> in the Console to see what the correct code really returns.",
+    "For a long title: <code>slug = make_slug('word ' * 30)</code>, then <code>self.assertLessEqual(len(slug), 50)</code> and <code>self.assertFalse(slug.endswith('-'))</code>.",
+    "For errors, put the call inside the block: <code>with self.assertRaises(ValueError):</code> and on the next, indented line <code>make_slug('!!!')</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Your tests pass against a buggy version of the code. What does that tell you?",
+      "options": ["The code is fine", "The tests don't check that behaviour. There's a gap", "The test runner is broken", "Nothing"],
+      "answer": 1,
+      "explanation": "This is the idea behind <em>mutation testing</em>: good tests fail when the code is wrong. A test that can't fail isn't protecting anything."
+    },
+    {
+      "question": "What's the usual shape of a unit test?",
+      "options": ["Arrange, Act, Assert", "Import, Print, Exit", "Setup, Teardown, Repeat", "Mock, Patch, Skip"],
+      "answer": 0,
+      "explanation": "Set up the inputs, call the code once, then assert on the result. Keep each test focused on one behaviour."
+    },
+    {
+      "question": "Django's <code>TestCase</code> gives each test a clean database. How?",
+      "options": ["It deletes the database file", "It wraps each test in a transaction and rolls it back", "It uses a new server each time", "It doesn't, tests share data"],
+      "answer": 1,
+      "explanation": "The rollback keeps tests fast and independent, so they can run in any order."
+    }
+  ]
+}

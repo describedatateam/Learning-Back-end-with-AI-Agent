@@ -1,0 +1,340 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Your first JSON views</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 02 · Django views</strong></p><h1>Your first JSON views</h1>
+<h2>The big idea</h2>
+<p>In exercise 1 you turned a raw HTTP request into a tidy dictionary. Django does
+that job for you. Every time a request arrives, Django reads the raw text, packs
+it into a <strong>request object</strong>, and then <strong>calls a function you wrote</strong>, passing that
+object in as the first argument. That function is called a <strong>view</strong>.</p>
+<p>A view has one job: look at the request and give back a <strong>response</strong>. For an API
+the response is usually <strong>JSON</strong>, text that looks almost exactly like a Python
+dictionary, so any program (a website, a phone app, a script) can read it.</p>
+<p>Think of a view like a clerk at a counter. A form (the request) is handed over,
+the clerk checks it, and hands back a reply slip (the response) with a stamp on
+top: "OK", "you filled this in wrong" or "wrong counter". That stamp is the
+<strong>status code</strong>.</p>
+<p>It's also a lot like validating data before analysis: you check that a column
+exists and holds numbers before you do maths on it. Here you check what the
+client sent before you use it.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>view</strong></td>
+<td>A Python function that receives a request and returns a response.</td>
+</tr>
+<tr>
+<td><strong>request object</strong></td>
+<td>What Django gives your view: the request, already split into parts, like <code>request.method</code> and <code>request.GET</code>.</td>
+</tr>
+<tr>
+<td><strong>response</strong></td>
+<td>What your view gives back: some content plus a status code.</td>
+</tr>
+<tr>
+<td><strong>JSON</strong></td>
+<td>A text format for data that looks like a Python dict: <code>{"message": "Hello"}</code>.</td>
+</tr>
+<tr>
+<td><strong>status code</strong></td>
+<td>A 3-digit number on every response that says how it went.</td>
+</tr>
+<tr>
+<td><strong>query parameter</strong></td>
+<td>A value in the address after <code>?</code>, like <code>name=Ada</code> in <code>/greet/?name=Ada</code>.</td>
+</tr>
+<tr>
+<td><strong>request body</strong></td>
+<td>Data sent <em>inside</em> the request (not in the address), usually with <code>POST</code>.</td>
+</tr>
+<tr>
+<td><strong>decorator</strong></td>
+<td>A line starting with <code>@</code> just above a <code>def</code>. It wraps the function with extra behaviour.</td>
+</tr>
+</tbody>
+</table>
+<p>The status codes you need:</p>
+<table>
+<thead>
+<tr>
+<th>code</th>
+<th>name</th>
+<th>when to use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>200</strong></td>
+<td>OK</td>
+<td>Everything worked. This is the default.</td>
+</tr>
+<tr>
+<td><strong>400</strong></td>
+<td>Bad Request</td>
+<td>The client sent something wrong, like a missing name or broken JSON.</td>
+</tr>
+<tr>
+<td><strong>405</strong></td>
+<td>Method Not Allowed</td>
+<td>This view doesn't accept that method, like a <code>POST</code> to a read-only view.</td>
+</tr>
+</tbody>
+</table>
+<p>Codes starting with <strong>4</strong> mean "the client made a mistake". Codes starting with
+<strong>5</strong> mean "the server broke". You never want a user's typo to cause a 500.</p>
+<h2>What your code receives and returns</h2>
+<p>You write two views in <code>views.py</code>: <code>greet(request)</code> and <code>add(request)</code>.</p>
+<p><strong>You don't create <code>request</code> yourself. The tests build a fake request and call
+your view with it.</strong> They use Django's <code>RequestFactory</code>, a tool that makes request
+objects without running a real server. These lines are copied from the tests:</p>
+<pre><code class="language-python">factory = RequestFactory()
+
+greet(factory.get(&quot;/greet/&quot;, {&quot;name&quot;: &quot;Ada&quot;}))      # like GET /greet/?name=Ada
+add(factory.post(&quot;/add/&quot;, data='{&quot;a&quot;: 2, &quot;b&quot;: 3.5}', content_type=&quot;application/json&quot;))
+</code></pre>
+<p>So inside <code>greet</code>, <code>request</code> holds a <code>GET</code> request whose query has <code>name</code> set to
+<code>"Ada"</code>. Inside <code>add</code>, <code>request</code> holds a <code>POST</code> request whose body is the text
+<code>{"a": 2, "b": 3.5}</code>.</p>
+<p>The tests then check the status code and the JSON in your response:</p>
+<table>
+<thead>
+<tr>
+<th>the test sends</th>
+<th>status</th>
+<th>JSON body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /greet/?name=Ada</code></td>
+<td>200</td>
+<td><code>{"message": "Hello, Ada!"}</code></td>
+</tr>
+<tr>
+<td><code>GET /greet/?name=  Grace</code></td>
+<td>200</td>
+<td><code>{"message": "Hello, Grace!"}</code></td>
+</tr>
+<tr>
+<td><code>GET /greet/</code> (no name)</td>
+<td>400</td>
+<td><code>{"error": "name is required"}</code></td>
+</tr>
+<tr>
+<td><code>GET /greet/?name=</code> (only spaces)</td>
+<td>400</td>
+<td><code>{"error": "name is required"}</code></td>
+</tr>
+<tr>
+<td><code>POST /greet/</code></td>
+<td>405</td>
+<td>(Django fills this in)</td>
+</tr>
+<tr>
+<td><code>POST /add/</code> body <code>{"a": 2, "b": 3.5}</code></td>
+<td>200</td>
+<td><code>{"result": 5.5}</code></td>
+</tr>
+<tr>
+<td><code>POST /add/</code> body <code>{not json</code></td>
+<td>400</td>
+<td><code>{"error": "invalid JSON"}</code></td>
+</tr>
+<tr>
+<td><code>POST /add/</code> body <code>{"a": 1}</code></td>
+<td>400</td>
+<td><code>{"error": "a and b must be numbers"}</code></td>
+</tr>
+<tr>
+<td><code>POST /add/</code> body <code>{"a": "1", "b": 2}</code></td>
+<td>400</td>
+<td><code>{"error": "a and b must be numbers"}</code></td>
+</tr>
+<tr>
+<td><code>POST /add/</code> body <code>{"a": null, "b": 2}</code></td>
+<td>400</td>
+<td><code>{"error": "a and b must be numbers"}</code></td>
+</tr>
+<tr>
+<td><code>GET /add/</code></td>
+<td>405</td>
+<td>(Django fills this in)</td>
+</tr>
+</tbody>
+</table>
+<p>The error messages must match <strong>exactly</strong>, including the lower-case letters.</p>
+<blockquote>
+<p><code>null</code> is how JSON writes Python's <code>None</code>. When Django reads that body,
+<code>"a"</code> becomes <code>None</code>.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<p>The top of <code>views.py</code> already imports everything below (<code>json</code>, <code>JsonResponse</code>,
+<code>require_GET</code>, <code>require_POST</code>), so you can use them straight away. The Try-it
+examples also import <code>RequestFactory</code> so they can make a fake request.</p>
+<h3><code>request.method</code> and <code>request.GET.get(name, default)</code></h3>
+<ul>
+<li><code>request.method</code> is the method as text: <code>"GET"</code> or <code>"POST"</code>.</li>
+<li><code>request.GET</code> holds the <strong>query parameters</strong>. It works like a dictionary.</li>
+<li><code>.get(name, default)</code> is a <strong>method</strong> (dot, round brackets). It gives back the
+  value, or <code>default</code> if the parameter isn't there. The value is always a string.</li>
+</ul>
+<pre><code class="language-python">from django.test import RequestFactory
+
+request = RequestFactory().get(&quot;/weather/&quot;, {&quot;city&quot;: &quot;  Paris  &quot;})
+print(request.method)                          # GET
+print(request.GET.get(&quot;city&quot;, &quot;&quot;))             #   Paris   (spaces kept)
+print(request.GET.get(&quot;country&quot;, &quot;unknown&quot;))   # unknown  (missing, so the default)
+print(request.GET.get(&quot;city&quot;, &quot;&quot;).strip())     # Paris
+</code></pre>
+<ul>
+<li>Common mistake: <code>request.GET["city"]</code> with square brackets crashes when the
+  parameter is missing. <code>.get(...)</code> with a default never crashes.</li>
+<li><code>request.GET</code> is about the <strong>query</strong>, not the method. A <code>POST</code> request can have
+  a query too.</li>
+</ul>
+<h3><code>JsonResponse(data, status=...)</code></h3>
+<ul>
+<li>Turns a Python dict into a JSON response. It's a <strong>class you call like a
+  function</strong>: <code>JsonResponse({...})</code>.</li>
+<li>The status code is 200 unless you pass <code>status=</code> as a <strong>keyword argument</strong>.</li>
+</ul>
+<pre><code class="language-python">response = JsonResponse({&quot;error&quot;: &quot;city is required&quot;}, status=400)
+print(response.status_code)   # 400
+print(response.content)       # b'{&quot;error&quot;: &quot;city is required&quot;}'
+print(JsonResponse({&quot;temp&quot;: 21}).status_code)   # 200
+</code></pre>
+<p>The <code>b'...'</code> means the content is <strong>bytes</strong>, raw text ready to send over the
+network. You don't need to do anything with it.</p>
+<h3>Decorators: <code>@require_GET</code> and <code>@require_POST</code></h3>
+<ul>
+<li>Put the decorator on the line <strong>directly above</strong> <code>def</code>. It checks the method
+  before your code runs. If the method is wrong, it returns a <strong>405</strong> response
+  for you and your function body never runs.</li>
+</ul>
+<pre><code class="language-python">from django.test import RequestFactory
+
+@require_POST
+def ping(request):
+    return JsonResponse({&quot;pong&quot;: True})
+
+print(ping(RequestFactory().post(&quot;/ping/&quot;)).status_code)   # 200
+print(ping(RequestFactory().get(&quot;/ping/&quot;)).status_code)    # 405
+</code></pre>
+<p>The Console also prints a log line, <code>Method Not Allowed (GET): /ping/</code>. That's
+Django noting the 405, not an error in your code.</p>
+<ul>
+<li>Common mistake: writing <code>require_GET(greet)</code> inside the function, or adding
+  brackets: <code>@require_GET()</code>. Just write <code>@require_GET</code> on its own line.</li>
+</ul>
+<h3><code>request.body</code> and <code>json.loads(text)</code></h3>
+<ul>
+<li><code>request.body</code> is the raw body of the request, as bytes.</li>
+<li><code>json.loads(...)</code> is a <strong>function</strong> from the <code>json</code> module. It turns JSON text
+  (or bytes) into Python: a JSON object becomes a dict.</li>
+</ul>
+<pre><code class="language-python">from django.test import RequestFactory
+
+request = RequestFactory().post(&quot;/order/&quot;, data='{&quot;item&quot;: &quot;tea&quot;, &quot;qty&quot;: 2}', content_type=&quot;application/json&quot;)
+print(request.body)        # b'{&quot;item&quot;: &quot;tea&quot;, &quot;qty&quot;: 2}'
+data = json.loads(request.body)
+print(data)                # {'item': 'tea', 'qty': 2}
+print(data[&quot;qty&quot;] * 10)    # 20  (a real number now, not text)
+print(data.get(&quot;price&quot;))   # None  (.get on a missing key gives None)
+</code></pre>
+<h3><code>try</code> / <code>except json.JSONDecodeError</code></h3>
+<ul>
+<li>If the text isn't valid JSON, <code>json.loads</code> <strong>raises an error</strong> and your view
+  would crash with a 500. <code>try</code> / <code>except</code> catches that error so you can reply
+  with a polite 400 instead.</li>
+</ul>
+<pre><code class="language-python">try:
+    data = json.loads(&quot;{oops&quot;)
+    print(&quot;parsed:&quot;, data)
+except json.JSONDecodeError:
+    print(&quot;That was not valid JSON&quot;)
+# prints: That was not valid JSON
+</code></pre>
+<p>The code under <code>try:</code> runs first. If it raises a <code>JSONDecodeError</code>, Python jumps
+straight to the <code>except</code> block. Returning from inside <code>except</code> ends the view there.</p>
+<h3><code>isinstance(value, (int, float))</code></h3>
+<ul>
+<li>Asks "is this value one of these types?" and gives back <code>True</code> or <code>False</code>.
+  Passing a <strong>tuple</strong> of types, <code>(int, float)</code>, means "any of these".</li>
+</ul>
+<pre><code class="language-python">print(isinstance(3, (int, float)))      # True
+print(isinstance(2.5, (int, float)))    # True
+print(isinstance(&quot;3&quot;, (int, float)))    # False  (text, even though it looks like a number)
+print(isinstance(None, (int, float)))   # False
+</code></pre>
+<h3>f-strings: <code>f"...{name}..."</code></h3>
+<ul>
+<li>Put <code>f</code> before the quotes and any <code>{variable}</code> inside is replaced by its value:
+  <code>f"Hi, {city}!"</code> with <code>city = "Paris"</code> gives <code>"Hi, Paris!"</code>.</li>
+</ul>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<h3><code>greet(request)</code></h3>
+<ol>
+<li><strong>Allow only GET.</strong> Put <code>@require_GET</code> on the line directly above
+   <code>def greet(request):</code>. <strong>→ test 4</strong></li>
+<li><strong>Read the name.</strong> Use <code>request.GET.get("name", "")</code> so a missing name becomes
+   an empty string, then call <code>.strip()</code> on it. Store the result in a variable,
+   for example <code>name</code>. <strong>→ helps tests 2 and 3</strong></li>
+<li><strong>Reject an empty name.</strong> If <code>name</code> is empty (<code>if not name:</code>), return
+   <code>JsonResponse({"error": "name is required"}, status=400)</code>. An empty string
+   counts as "false" in Python, so <code>not ""</code> is <code>True</code>. <strong>→ test 3</strong></li>
+<li><strong>Greet.</strong> Otherwise return a <code>JsonResponse</code> whose dict has the key <code>"message"</code>
+   and the text <code>Hello, &lt;name&gt;!</code>, built with an f-string. Replace the starter's
+   <code>"Hello, world!"</code> line. <strong>→ tests 1 and 2</strong></li>
+</ol>
+<h3><code>add(request)</code></h3>
+<ol start="5">
+<li><strong>Allow only POST.</strong> Put <code>@require_POST</code> directly above <code>def add(request):</code>.
+   <strong>→ test 8</strong></li>
+<li><strong>Read the JSON body safely.</strong> Inside a <code>try:</code>, set
+   <code>data = json.loads(request.body)</code>. In <code>except json.JSONDecodeError:</code>, return
+   <code>{"error": "invalid JSON"}</code> with status 400. <strong>→ test 6</strong></li>
+<li><strong>Check <code>a</code> and <code>b</code>.</strong> Get them with <code>data.get("a")</code> and <code>data.get("b")</code> (a
+   missing key gives <code>None</code>, no crash). If <strong>either</strong> one is not an <code>int</code> or
+   <code>float</code>, return <code>{"error": "a and b must be numbers"}</code> with status 400.
+   <strong>→ test 7</strong></li>
+<li><strong>Add them.</strong> Return <code>{"result": ...}</code> with the sum. Replace the starter's
+   <code>{"result": 0}</code> line. <strong>→ test 5</strong></li>
+</ol>
+<p>Here's the same "check, then use" shape on different data, to copy the pattern
+from (it's not a view, just the logic):</p>
+<pre><code class="language-python">data = {&quot;width&quot;: 4, &quot;height&quot;: &quot;tall&quot;}
+w, h = data.get(&quot;width&quot;), data.get(&quot;height&quot;)
+if not isinstance(w, (int, float)) or not isinstance(h, (int, float)):
+    print(&quot;width and height must be numbers&quot;)
+else:
+    print(w * h)
+# prints: width and height must be numbers
+</code></pre>
+<h2>Common mistakes</h2>
+<ul>
+<li>Returning the error dict but forgetting <code>status=400</code>. The JSON looks right but
+  the test sees 200.</li>
+<li>Using <code>request.POST</code> for the JSON body. <code>request.POST</code> only works for HTML form
+  data. For JSON, use <code>json.loads(request.body)</code>.</li>
+<li>Checking <code>if a and b:</code> to mean "they're numbers". <code>"1"</code> is true too, and <code>0</code> is
+  false. Use <code>isinstance</code>.</li>
+<li>Writing <code>or</code> vs <code>and</code> the wrong way round in the number check. The error is
+  needed if <code>a</code> is bad <strong>or</strong> <code>b</code> is bad.</li>
+<li>A small typo in an error message, like <code>"Name is required"</code>. The tests compare
+  the text exactly.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every Django API endpoint is a view like these: read the request, validate it,
+return JSON with the right status code. Later, Django REST Framework does the
+JSON parsing and checking for you, but it follows exactly this pattern.</p><h2>Keep learning</h2><ul><li><a href="https://tutorial.djangogirls.org/en/django_views/">Django views – time to create!</a> (Django Girls Tutorial, beginner). Start here: a gentle first look at what a view is (a function that takes a request and returns a response).</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status">HTTP response status codes</a> (MDN Web Docs, beginner). Look up what 200, 400 and 405 mean so you pick the right status for each response.</li><li><a href="https://docs.python.org/3/library/json.html">json: JSON encoder and decoder</a> (Python docs, beginner). The reference for json.loads, which turns the request body into a Python dict, and the error it raises on bad input.</li><li><a href="https://docs.djangoproject.com/en/5.2/ref/request-response/#jsonresponse-objects">Request and response objects (JsonResponse)</a> (Django docs, intermediate). The official reference for request.GET, request.body and JsonResponse, the exact tools your views use.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/http/decorators/#allowed-http-methods">View decorators: allowed HTTP methods</a> (Django docs, intermediate). Explains require_GET and require_POST, which reject the wrong method with a 405 for you.</li></ul></body></html>

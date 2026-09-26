@@ -1,0 +1,200 @@
+{% comment %}
+Code editing and highlighting shared by every page (included in <head>).
+Provides:
+  window.highlightCode(root)            colour ```python blocks inside root
+  window.createPythonEditor(textarea, {onRun, onRunSelection, onChange})
+Uses CodeMirror 5 from cdnjs; without a network the plain textarea still works.
+{% endcomment %}
+{% with cm="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16" %}
+<link rel="stylesheet" href="{{ cm }}/codemirror.min.css">
+<link rel="stylesheet" href="{{ cm }}/addon/hint/show-hint.min.css">
+<script src="{{ cm }}/codemirror.min.js"></script>
+<script src="{{ cm }}/mode/python/python.min.js"></script>
+<script src="{{ cm }}/addon/mode/overlay.min.js"></script>
+<script src="{{ cm }}/addon/runmode/runmode.min.js"></script>
+<script src="{{ cm }}/addon/edit/closebrackets.min.js"></script>
+<script src="{{ cm }}/addon/edit/matchbrackets.min.js"></script>
+<script src="{{ cm }}/addon/selection/active-line.min.js"></script>
+<script src="{{ cm }}/addon/comment/comment.min.js"></script>
+<script src="{{ cm }}/addon/hint/show-hint.min.js"></script>
+{% endwith %}
+<style>
+  /* VS Code "Dark+" colours, used by the editor and by highlighted code blocks. */
+  .cm-s-vscode, pre.cm-s-vscode { background: #1e1e1e; color: #d4d4d4; }
+  .cm-s-vscode .CodeMirror-gutters { background: #1e1e1e; border-right: 0; }
+  .cm-s-vscode .CodeMirror-linenumber { color: #858585; padding: 0 10px 0 8px; }
+  .cm-s-vscode .CodeMirror-activeline-background { background: #2a2d2e; }
+  .cm-s-vscode .CodeMirror-activeline-gutter .CodeMirror-linenumber { color: #c6c6c6; }
+  .cm-s-vscode .CodeMirror-cursor { border-left: 2px solid #aeafad; }
+  .cm-s-vscode .CodeMirror-selected, .cm-s-vscode.CodeMirror-focused .CodeMirror-selected { background: #264f78; }
+  .cm-s-vscode .CodeMirror-line::selection, .cm-s-vscode .CodeMirror-line > span::selection, .cm-s-vscode .CodeMirror-line > span > span::selection { background: #264f78; }
+  .cm-s-vscode .CodeMirror-matchingbracket { outline: 1px solid #888; color: inherit !important; background: #0064001a; }
+  .cm-s-vscode .cm-keyword { color: #c586c0; }
+  .cm-s-vscode .cm-def { color: #dcdcaa; }
+  .cm-s-vscode .cm-builtin { color: #4ec9b0; }
+  .cm-s-vscode .cm-variable, .cm-s-vscode .cm-variable-2, .cm-s-vscode .cm-property { color: #9cdcfe; }
+  .cm-s-vscode .cm-string, .cm-s-vscode .cm-string-2 { color: #ce9178; }
+  .cm-s-vscode .cm-number { color: #b5cea8; }
+  .cm-s-vscode .cm-comment { color: #6a9955; font-style: italic; }
+  .cm-s-vscode .cm-meta { color: #dcdcaa; }
+  .cm-s-vscode .cm-operator { color: #d4d4d4; }
+  .cm-s-vscode .cm-error { color: inherit; text-decoration: wavy underline #f44747; }
+  /* Rainbow brackets, like VS Code's bracket pair colorization. */
+  .cm-s-vscode .cm-rainbow-0 { color: #ffd700; }
+  .cm-s-vscode .cm-rainbow-1 { color: #da70d6; }
+  .cm-s-vscode .cm-rainbow-2 { color: #179fff; }
+  /* Autocomplete popup. */
+  .CodeMirror-hints { background: #252526; border: 1px solid #454545; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    font: 13px/1.5 var(--mono); padding: 3px; max-height: 18em; z-index: 60; }
+  .CodeMirror-hint { color: #cccccc; padding: 2px 10px; border-radius: 4px; }
+  li.CodeMirror-hint-active { background: #04395e; color: #ffffff; }
+  .CodeMirror-hint .hint-kind { color: #858585; font-size: 11px; margin-left: 12px; float: right; }
+</style>
+<script>
+(() => {
+  if (!window.CodeMirror) return;  // offline: pages fall back to plain text
+
+  // Colours bracket pairs by nesting depth, skipping strings and comments.
+  const rainbow = {
+    startState: () => ({depth: 0, quote: null}),
+    copyState: (s) => ({depth: s.depth, quote: s.quote}),
+    token(stream, state) {
+      if (state.quote) {                           // inside a multi-line """string"""
+        if (!stream.match(state.quote)) stream.next(); else state.quote = null;
+        return null;
+      }
+      if (stream.match(/^('''|""")/)) { state.quote = stream.current(); return null; }
+      const ch = stream.next();
+      if (ch === '#') { stream.skipToEnd(); return null; }
+      if (ch === '"' || ch === "'") {
+        let escaped = false, c;
+        while ((c = stream.next()) != null) {
+          if (c === ch && !escaped) break;
+          escaped = !escaped && c === '\\';
+        }
+        return null;
+      }
+      if ('([{'.includes(ch)) return 'rainbow-' + (state.depth++ % 3);
+      if (')]}'.includes(ch)) { state.depth = Math.max(0, state.depth - 1); return 'rainbow-' + (state.depth % 3); }
+      return null;
+    },
+  };
+  CodeMirror.defineMode('python-plus', (config) =>
+    CodeMirror.overlayMode(CodeMirror.getMode(config, {name: 'python', version: 3}), rainbow, true));
+
+  window.highlightCode = (root) => {
+    (root || document).querySelectorAll('pre > code.language-python, pre > code.language-py').forEach((el) => {
+      if (el.dataset.highlighted) return;
+      CodeMirror.runMode(el.textContent, 'python-plus', el);
+      el.parentElement.classList.add('cm-s-vscode');
+      el.dataset.highlighted = '1';
+    });
+  };
+  document.addEventListener('DOMContentLoaded', () => window.highlightCode(document));
+
+  // ---- Autocomplete ----
+  const WORDS = {
+    keyword: `False None True and as assert async await break class continue def del elif else except finally for
+      from global if import in is lambda nonlocal not or pass raise return try while with yield self`,
+    builtin: `print len range enumerate zip dict list set tuple str int float bool isinstance sorted reversed min max
+      sum any all super property staticmethod classmethod getattr setattr hasattr type repr round abs map filter
+      Exception ValueError TypeError KeyError IndexError AttributeError NotImplementedError RuntimeError`,
+    django: `models.Model models.CharField models.TextField models.IntegerField models.PositiveIntegerField
+      models.BooleanField models.DateField models.DateTimeField models.DecimalField models.EmailField
+      models.ForeignKey models.ManyToManyField models.OneToOneField models.CASCADE models.PROTECT models.SET_NULL
+      models.Q models.F models.Count models.Sum models.UniqueConstraint auto_now_add max_length null blank default
+      related_name on_delete objects.all objects.filter objects.exclude objects.get objects.create
+      objects.get_or_create objects.count order_by select_related prefetch_related annotate aggregate values
+      values_list exists first update delete save refresh_from_db transaction.atomic select_for_update
+      JsonResponse HttpResponse Http404 get_object_or_404 require_GET require_POST request.GET request.POST
+      request.body request.method request.user request.data request.query_params request.headers
+      serializers.Serializer serializers.ModelSerializer serializers.CharField serializers.IntegerField
+      serializers.DateField serializers.ChoiceField serializers.ReadOnlyField serializers.ValidationError
+      validated_data is_valid viewsets.ModelViewSet DefaultRouter router.register router.urls permission_classes
+      IsAuthenticated BasePermission SAFE_METHODS has_permission has_object_permission get_queryset
+      perform_create serializer_class queryset status.HTTP_200_OK status.HTTP_201_CREATED
+      status.HTTP_204_NO_CONTENT status.HTTP_400_BAD_REQUEST status.HTTP_404_NOT_FOUND Response
+      ImproperlyConfigured assertEqual assertTrue assertFalse assertIn assertRaises assertIsNone
+      assertNumQueries setUp TestCase unittest mock.patch`,
+  };
+  const VOCAB = Object.entries(WORDS).flatMap(([kind, list]) => list.trim().split(/\s+/).map((text) => ({text, kind})));
+
+  function pythonHint(cm) {
+    const cur = cm.getCursor();
+    const before = cm.getLine(cur.line).slice(0, cur.ch);
+    const typed = (before.match(/[\w.]+$/) || [''])[0];
+    if (!typed) return null;
+    const fileWords = new Set(cm.getValue().match(/[A-Za-z_]\w{2,}/g) || []);
+    const pool = VOCAB.concat([...fileWords].map((text) => ({text, kind: 'in file'})));
+    // Try "Book.objects.fi", then "objects.fi", then "fi" until something matches.
+    const parts = typed.split('.');
+    for (let i = 0; i < parts.length; i++) {
+      const prefix = parts.slice(i).join('.');
+      if (!prefix || prefix.startsWith('.')) continue;
+      const seen = new Set();
+      const list = pool
+        .filter((w) => w.text.startsWith(prefix) && w.text !== prefix && !seen.has(w.text) && seen.add(w.text))
+        .slice(0, 40)
+        .map((w) => ({
+          text: w.text,
+          render: (el) => { el.textContent = w.text; const k = document.createElement('span'); k.className = 'hint-kind'; k.textContent = w.kind; el.appendChild(k); },
+        }));
+      if (list.length) {
+        return {list, from: CodeMirror.Pos(cur.line, cur.ch - prefix.length), to: cur};
+      }
+    }
+    return null;
+  }
+  CodeMirror.commands.autocomplete = (cm) => cm.showHint({hint: pythonHint, completeSingle: false});
+
+  window.createPythonEditor = (textarea, handlers = {}) => {
+    const cm = CodeMirror.fromTextArea(textarea, {
+      mode: 'python-plus',
+      theme: 'vscode',
+      lineNumbers: true,
+      indentUnit: 4,
+      tabSize: 4,
+      indentWithTabs: false,
+      matchBrackets: true,
+      styleActiveLine: true,
+      autoCloseBrackets: {pairs: '()[]{}\'\'""', triples: '\'"', explode: '[]{}()'},
+      extraKeys: {
+        Tab: (ed) => (ed.somethingSelected() ? ed.indentSelection('add') : ed.replaceSelection('    ')),
+        'Shift-Tab': (ed) => ed.indentSelection('subtract'),
+        'Ctrl-Enter': () => handlers.onRun?.(),
+        'Cmd-Enter': () => handlers.onRun?.(),
+        'Shift-Enter': () => handlers.onRunSelection?.(),
+        'Ctrl-/': 'toggleComment',
+        'Cmd-/': 'toggleComment',
+        'Ctrl-Space': 'autocomplete',
+      },
+    });
+    // Suggest completions while typing identifiers (not inside strings or comments).
+    cm.on('inputRead', (ed, change) => {
+      if (change.origin !== '+input' || ed.state.completionActive) return;
+      const token = ed.getTokenAt(ed.getCursor());
+      if (/string|comment/.test(token.type || '')) return;
+      const before = ed.getLine(ed.getCursor().line).slice(0, ed.getCursor().ch);
+      if (/(^|[^\w.])[A-Za-z_]\w$|\w\.$|\w\.\w+$/.test(before)) CodeMirror.commands.autocomplete(ed);
+    });
+    cm.on('change', () => handlers.onChange?.());
+    return {
+      cm,
+      getValue: () => cm.getValue(),
+      setValue: (value) => cm.setValue(value),
+      focus: () => cm.focus(),
+      refresh: () => cm.refresh(),
+      // The highlighted text and its line range, or the current line if nothing is selected.
+      getSelectionInfo: () => {
+        if (cm.somethingSelected()) {
+          const from = cm.getCursor('from'), to = cm.getCursor('to');
+          const end = to.ch === 0 && to.line > from.line ? to.line - 1 : to.line;
+          return {text: cm.getSelection(), start: from.line + 1, end: end + 1, whole: false};
+        }
+        const line = cm.getCursor().line;
+        return {text: cm.getLine(line), start: line + 1, end: line + 1, whole: true};
+      },
+    };
+  };
+})();
+</script>

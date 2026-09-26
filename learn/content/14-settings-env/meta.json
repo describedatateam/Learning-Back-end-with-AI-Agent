@@ -1,0 +1,35 @@
+{
+  "title": "Configuration from the environment",
+  "week": 3,
+  "concept": "Settings",
+  "file": "env.py",
+  "lesson": "lessons/week-3/day-19-settings-and-environment-variables-lesson.md",
+  "summary": "Read typed settings (booleans, ints, lists) from environment variables safely.",
+  "hints": [
+    "<code>os.environ.get(name)</code> gives <code>None</code> when the variable isn't set. Check <code>value is None or not value.strip()</code>: both mean 'missing, use the default'. Check for <code>None</code> first, because <code>None.strip()</code> crashes.",
+    "Never use <code>bool(value)</code>: <code>bool('False')</code> is <code>True</code>. Lower-case the stripped text and check <code>in {'1', 'true', 'yes', 'on'}</code> or <code>in {'0', 'false', 'no', 'off'}</code>.",
+    "To stop with an error, write <code>raise ImproperlyConfigured(f'Set the {name} environment variable.')</code>. Use <code>raise</code>, not <code>return</code>, and put the variable's name in the message.",
+    "For <code>env_int</code>, put <code>return int(value)</code> inside <code>try:</code> and raise <code>ImproperlyConfigured</code> in <code>except ValueError:</code>.",
+    "For lists: loop over <code>value.split(',')</code>, strip each piece, and only keep pieces that aren't empty. When the variable is missing and <code>default</code> is <code>None</code>, return <code>[]</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Why keep <code>SECRET_KEY</code> and database passwords out of <code>settings.py</code>?",
+      "options": ["It's faster", "Anything committed to git can leak, and every environment needs different values", "Django can't read them", "Style only"],
+      "answer": 1,
+      "explanation": "Code is shared and config is per-deployment. This is the '12-factor' principle: config lives in the environment."
+    },
+    {
+      "question": "<code>DEBUG = os.environ.get('DJANGO_DEBUG')</code> with <code>DJANGO_DEBUG=False</code>. What is DEBUG?",
+      "options": ["False", "The string 'False', which is truthy!", "None", "An error"],
+      "answer": 1,
+      "explanation": "Environment variables are always strings, and every non-empty string is truthy. That's why you need a proper boolean parser."
+    },
+    {
+      "question": "A required setting is missing in production. Best behaviour?",
+      "options": ["Use a default silently", "Fail loudly at startup with a clear error", "Log a warning and continue", "Crash on the first request"],
+      "answer": 1,
+      "explanation": "Failing fast at boot is much better than discovering a misconfiguration from a customer's bug report."
+    }
+  ]
+}

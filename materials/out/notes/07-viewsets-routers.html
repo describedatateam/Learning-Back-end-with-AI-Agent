@@ -1,0 +1,306 @@
+<!doctype html><html><head><meta charset="utf-8"><title>A full CRUD API in 15 lines</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 2 · Exercise 07 · ViewSets &amp; routers</strong></p><h1>A full CRUD API in 15 lines</h1>
+<h2>The big idea</h2>
+<p>An <strong>API</strong> is a set of web addresses that other programs (a phone app, a website's
+JavaScript, another server) use to read and change your data. Instead of HTML
+pages, it sends back JSON.</p>
+<p>Most APIs are built around <strong>resources</strong>: kinds of things, like books, tasks or
+users. For each resource, clients want to do the same five jobs: see the list, add
+one, look at one, change one, delete one. Together these are called <strong>CRUD</strong>:
+<strong>C</strong>reate, <strong>R</strong>ead, <strong>U</strong>pdate, <strong>D</strong>elete.</p>
+<p>Writing a separate view for each of the five jobs means writing the same code
+again and again. Django REST framework (DRF) bundles them:</p>
+<ul>
+<li>a <strong><code>ModelSerializer</code></strong> turns a model into JSON and back, with fields built from the model;</li>
+<li>a <strong><code>ModelViewSet</code></strong> is one class that does all five jobs;</li>
+<li>a <strong>router</strong> creates the web addresses for the viewset.</li>
+</ul>
+<p>It's like <code>df.describe()</code> in pandas: one call does many standard calculations you
+could write by hand, because everybody needs the same ones.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>API</strong></td>
+<td>Web addresses meant for programs, not people. They send and receive JSON.</td>
+</tr>
+<tr>
+<td><strong>resource</strong></td>
+<td>One kind of thing your API manages, like books. It usually matches a model.</td>
+</tr>
+<tr>
+<td><strong>CRUD</strong></td>
+<td>Create, Read, Update, Delete: the four basic things you do with data.</td>
+</tr>
+<tr>
+<td><strong>REST</strong></td>
+<td>A common style for APIs: one address per resource, and the HTTP method (<code>GET</code>, <code>POST</code>, ...) says what to do with it.</td>
+</tr>
+<tr>
+<td><strong>collection URL</strong></td>
+<td>The address for the whole list, like <code>/books/</code>.</td>
+</tr>
+<tr>
+<td><strong>detail URL</strong></td>
+<td>The address for one item, using its id, like <code>/books/1/</code>.</td>
+</tr>
+<tr>
+<td><strong>status code</strong></td>
+<td>The number at the top of every response that says how it went: <code>200</code> OK, <code>201</code> created, <code>204</code> done with nothing to send back, <code>400</code> bad input, <code>404</code> not found.</td>
+</tr>
+<tr>
+<td><strong>queryset</strong></td>
+<td>A "which rows?" question to the database, like <code>Book.objects.order_by("id")</code>.</td>
+</tr>
+<tr>
+<td><strong>ViewSet</strong></td>
+<td>One class that handles all the actions for one resource.</td>
+</tr>
+<tr>
+<td><strong>router</strong></td>
+<td>An object that looks at a ViewSet and makes the URLs for it.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't call your code yourself. <strong>The tests log in as a user and send real HTTP
+requests to your URLs</strong>, as a browser or app would. Before each test, they create
+these two books (copied from the tests):</p>
+<pre><code class="language-python">Book.objects.create(title=&quot;Dune&quot;, author=&quot;Frank Herbert&quot;, published_year=1965)
+Book.objects.create(title=&quot;Emma&quot;, author=&quot;Jane Austen&quot;, published_year=1815)
+</code></pre>
+<p>The <code>Book</code> model is already written for you in <code>sandbox/models.py</code>. It has the
+fields <code>title</code> (text), <code>author</code> (text) and <code>published_year</code> (a whole number that
+may be left empty). Django also gives every model an <code>id</code> automatically.</p>
+<p>Here's what the tests send and what they expect back:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th>request</th>
+<th>expected response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>GET /books/</code></td>
+<td><code>200</code>, a list of both books, Dune first, then Emma</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>GET /books/&lt;Dune's id&gt;/</code></td>
+<td>one book with exactly the keys <code>id</code>, <code>title</code>, <code>author</code>, <code>published_year</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>POST /books/</code> with <code>{"title": "Beloved", "author": "Toni Morrison"}</code></td>
+<td><code>201</code>, the book is saved, and the reply includes its new <code>id</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>POST /books/</code> with <code>{"author": "Anonymous"}</code></td>
+<td><code>400</code>, and the error names the <code>title</code> field</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>PATCH /books/&lt;Dune's id&gt;/</code> with <code>{"published_year": 1966}</code></td>
+<td><code>200</code>, year is now 1966, title still <code>"Dune"</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>DELETE /books/&lt;Emma's id&gt;/</code></td>
+<td><code>204</code>, and Emma is gone from the database</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>GET /books/999/</code></td>
+<td><code>404</code>, no such book</td>
+</tr>
+</tbody>
+</table>
+<p>For test 1 the reply body looks like this (the ids are picked by the database):</p>
+<pre><code class="language-python">[
+    {&quot;id&quot;: 1, &quot;title&quot;: &quot;Dune&quot;, &quot;author&quot;: &quot;Frank Herbert&quot;, &quot;published_year&quot;: 1965},
+    {&quot;id&quot;: 2, &quot;title&quot;: &quot;Emma&quot;, &quot;author&quot;: &quot;Jane Austen&quot;, &quot;published_year&quot;: 1815},
+]
+</code></pre>
+<p>And for test 4:</p>
+<pre><code class="language-python">{&quot;title&quot;: [&quot;This field is required.&quot;]}
+</code></pre>
+<p>You don't write any of that logic yourself. <code>ModelViewSet</code> already knows how to
+list, create, update and delete, and how to answer <code>400</code> and <code>404</code>. Your job is to
+tell it <strong>which model</strong>, <strong>which fields</strong> and <strong>which URL</strong>.</p>
+<h2>Tools you'll use</h2>
+<p>You can run all these examples in the Console: the <code>Book</code> model and a practice
+database are there for you, and the imports at the top of your file are loaded.
+The database starts empty on every run.</p>
+<h3>Class attributes and <code>class Meta</code></h3>
+<ul>
+<li>In this exercise you write classes with <strong>no methods</strong>. You only set a few
+  variables inside the class body, like <code>name = value</code>, indented under <code>class ...:</code>.
+  DRF reads those variables to know what to do.</li>
+<li><code>class Meta:</code> is a small class <strong>inside</strong> another class. It's DRF's (and
+  Django's) place for settings about the outer class. You don't call it; you just
+  write it.</li>
+</ul>
+<h3><code>Book.objects.order_by("id")</code></h3>
+<ul>
+<li><code>Book.objects</code> is how you ask the database about books. <code>.order_by("id")</code> gives
+  back a <strong>queryset</strong>: all books, sorted by id. A <code>-</code> in front sorts backwards.</li>
+<li>It's a <strong>method</strong> on <code>Book.objects</code>, with the field name as a string in <code>()</code>.</li>
+</ul>
+<pre><code class="language-python">matilda = Book.objects.create(title=&quot;Matilda&quot;, author=&quot;Roald Dahl&quot;, published_year=1988)
+Book.objects.create(title=&quot;Coraline&quot;, author=&quot;Neil Gaiman&quot;)
+print(matilda.id, matilda.title, matilda.published_year)
+print(Book.objects.order_by(&quot;-id&quot;))
+# 1 Matilda 1988
+# &lt;QuerySet [&lt;Book: Coraline&gt;, &lt;Book: Matilda&gt;]&gt;
+</code></pre>
+<p>Without an order, a database may return rows in any order it likes. Test 1 needs
+Dune before Emma every time, so sort by <code>id</code>.</p>
+<h3><code>serializers.ModelSerializer</code></h3>
+<ul>
+<li>Like the <code>Serializer</code> from exercise 5, but it <strong>reads the fields from a
+  model</strong>, so you don't list each field's type. You only say which model, and
+  which fields to include, in <code>class Meta</code>.</li>
+<li><code>Serializer(book).data</code> turns a book into a dictionary (then JSON).
+  <code>Serializer(data=...)</code> checks incoming data, and <code>.errors</code> says what's wrong.</li>
+</ul>
+<p>Here's one with a <strong>different</strong> field list from the one you need:</p>
+<pre><code class="language-python">class ShortBookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = [&quot;title&quot;, &quot;author&quot;]
+
+matilda = Book.objects.create(title=&quot;Matilda&quot;, author=&quot;Roald Dahl&quot;, published_year=1988)
+print(ShortBookSerializer(matilda).data)
+
+incoming = ShortBookSerializer(data={&quot;author&quot;: &quot;Anonymous&quot;})
+print(incoming.is_valid())
+print(incoming.errors)
+# {'title': 'Matilda', 'author': 'Roald Dahl'}
+# False
+# {'title': [ErrorDetail(string='This field is required.', code='required')]}
+</code></pre>
+<p><code>ErrorDetail(...)</code> is how the error looks inside Python. In the JSON reply it
+becomes plain text: <code>{"title": ["This field is required."]}</code>. The <code>id</code> field is
+<strong>read-only</strong> automatically: clients can see it, but they can't set it.</p>
+<h3><code>viewsets.ModelViewSet</code></h3>
+<ul>
+<li>A class that does list, create, retrieve (one item), update and delete for you.</li>
+<li>It needs two class attributes: <code>queryset</code> (which rows it works with) and
+  <code>serializer_class</code> (which serializer turns them into JSON). Note that you give it
+  the serializer <strong>class itself</strong>, <code>BookSerializer</code>, without <code>()</code>.</li>
+</ul>
+<h3><code>DefaultRouter()</code> and <code>router.register(...)</code></h3>
+<ul>
+<li><code>router = DefaultRouter()</code> makes an empty router. Then
+  <code>router.register(prefix, ViewSetClass, basename=...)</code> adds a viewset to it:<ul>
+<li><code>prefix</code> is the start of the URL, as a string, <strong>without slashes</strong>: <code>"things"</code>
+  becomes <code>/things/</code>;</li>
+<li><code>basename</code> is a short name used to name the URLs (<code>thing-list</code>, <code>thing-detail</code>).</li>
+</ul>
+</li>
+<li><code>router.urls</code> is the finished list of URLs, which Django reads from a variable
+  called <code>urlpatterns</code>.</li>
+</ul>
+<p>Here's a router for a made-up, empty viewset, just to see which URLs it makes:</p>
+<pre><code class="language-python">class ThingViewSet(viewsets.ModelViewSet):
+    pass
+
+demo = DefaultRouter()
+demo.register(&quot;things&quot;, ThingViewSet, basename=&quot;thing&quot;)
+for url in demo.urls:
+    print(url.pattern, &quot;-&gt;&quot;, url.name)
+# ^things/$ -&gt; thing-list
+# ^things\.(?P&lt;format&gt;[a-z0-9]+)/?$ -&gt; thing-list
+# ^things/(?P&lt;pk&gt;[^/.]+)/$ -&gt; thing-detail
+# ^things/(?P&lt;pk&gt;[^/.]+)\.(?P&lt;format&gt;[a-z0-9]+)/?$ -&gt; thing-detail
+#  -&gt; api-root
+# &lt;drf_format_suffix:format&gt; -&gt; api-root
+</code></pre>
+<p>The patterns look scary, but read them like this: <code>^things/$</code> is the collection URL
+<code>/things/</code>, and <code>(?P&lt;pk&gt;[^/.]+)</code> means "an id goes here", so <code>^things/(?P&lt;pk&gt;...)/$</code>
+is the detail URL <code>/things/1/</code>. The <code>format</code> lines are extra versions like
+<code>/things.json</code>, and <code>api-root</code> is a front page listing your resources.</p>
+<p>The router connects each URL and HTTP method to one action of the viewset:</p>
+<table>
+<thead>
+<tr>
+<th>URL</th>
+<th><code>GET</code></th>
+<th><code>POST</code></th>
+<th><code>PUT</code> / <code>PATCH</code></th>
+<th><code>DELETE</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/books/</code></td>
+<td>list</td>
+<td>create</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>/books/{id}/</code></td>
+<td>retrieve</td>
+<td></td>
+<td>update</td>
+<td>destroy</td>
+</tr>
+</tbody>
+</table>
+<p><code>PUT</code> replaces the whole book, so every required field must be sent. <code>PATCH</code>
+changes only the fields you send.</p>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab. Delete it again afterwards.</p>
+<h2>Step by step</h2>
+<p>All the tests call your URLs, so <strong>nothing can pass until all four steps are
+done</strong>. Write them all, then run the tests. After that, each step is what the
+listed tests depend on.</p>
+<ol>
+<li><strong>Finish <code>BookSerializer</code>.</strong> Inside it, replace <code>pass</code> with a <code>class Meta:</code> that
+   sets <code>model = Book</code> and <code>fields</code> to a list of the four names <code>"id"</code>, <code>"title"</code>,
+   <code>"author"</code> and <code>"published_year"</code>. <strong>→ tests 2, 3 and 4</strong></li>
+<li><strong>Finish <code>BookViewSet</code>.</strong> Replace <code>pass</code> with two class attributes:
+   <code>queryset</code>, set to all books <strong>ordered by <code>id</code></strong>, and <code>serializer_class</code>, set to
+   <code>BookSerializer</code>. <strong>→ tests 1, 5, 6 and 7</strong></li>
+<li><strong>Make a router and register the viewset.</strong> Below the classes, create a
+   <code>DefaultRouter()</code> and store it in a variable called <code>router</code>. Register
+   <code>BookViewSet</code> on it with the prefix <code>"books"</code> and <code>basename="book"</code>.</li>
+<li><strong>Hand the URLs to Django.</strong> Change <code>urlpatterns = []</code> so it holds the router's
+   URLs, <code>router.urls</code>. It must come <strong>after</strong> the register line. <strong>→ all of tests 1-7</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li><strong>Errors like <code>Content-Type header is "text/html..."</code> or <code>200 != 201</code></strong>:
+  <code>urlpatterns</code> is still empty, so Django answers every address with its HTML
+  welcome page instead of your API. Do steps 3 and 4.</li>
+<li><strong>Every test fails with <code>404</code></strong>: the URLs exist, but not at <code>/books/</code>. Check the
+  prefix is exactly <code>"books"</code> and that <code>urlpatterns = router.urls</code> comes after
+  <code>router.register(...)</code>.</li>
+<li><strong>Writing <code>"/books/"</code> as the prefix</strong>: use just <code>"books"</code>, the router adds the
+  slashes.</li>
+<li><strong><code>serializer_class = BookSerializer()</code></strong> with brackets: give the class, not an
+  object made from it.</li>
+<li><strong>Test 1 has the books in the wrong order</strong>: the queryset isn't sorted. Use
+  <code>order_by("id")</code>.</li>
+<li><strong>Test 2 fails with a missing or extra key</strong>: check the spelling of the four
+  names in <code>fields</code>, especially <code>published_year</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>This is how most Django REST APIs are built: a model, a <code>ModelSerializer</code>, a
+<code>ModelViewSet</code> and a router. In the next exercises you'll add rules to this same
+setup: who may do what, filtering and pages of results.</p><h2>Keep learning</h2><ul><li><a href="https://www.django-rest-framework.org/tutorial/quickstart/">Quickstart</a> (Django REST framework, beginner). Start here: a working API with a serializer, a viewset and a router in a few minutes, the same three pieces as this exercise.</li><li><a href="https://www.django-rest-framework.org/tutorial/6-viewsets-and-routers/">Tutorial 6: ViewSets &amp; Routers</a> (Django REST framework, beginner). Explains how a viewset replaces separate list and detail views and how the router writes the URLs for you.</li><li><a href="https://www.django-rest-framework.org/api-guide/serializers/#modelserializer">Serializers: ModelSerializer</a> (Django REST framework, intermediate). Reference for ModelSerializer and its Meta fields option, which builds serializer fields from your model.</li><li><a href="https://www.django-rest-framework.org/api-guide/viewsets/#modelviewset">ViewSets: ModelViewSet</a> (Django REST framework, intermediate). Lists the actions ModelViewSet gives you (list, create, retrieve, update, partial_update, destroy).</li><li><a href="https://www.django-rest-framework.org/api-guide/routers/#defaultrouter">Routers: DefaultRouter</a> (Django REST framework, intermediate). Shows the exact URL patterns DefaultRouter generates, useful when a test hits a URL you did not expect.</li></ul></body></html>

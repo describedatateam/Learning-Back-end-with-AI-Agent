@@ -1,0 +1,136 @@
+{
+  "exercise": "17-health-check",
+  "subtitle": "Answer \"are you OK?\" honestly, and write down what went wrong when you're not.",
+  "notes": "This deck goes with exercise 17. By the end you should be able to explain what a health check is for, why it answers 503 when the database is down, and how logger.exception records the details.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "In production nobody watches the app. Other programs visit `/health/` every few seconds and ask \"are you OK?\". A **load balancer** stops sending visitors to a copy that says no.\n\nLike a nurse checking a pulse, asking isn't enough: you have to **measure**. And when it fails, write the details into the **log**, not the answer.",
+      "notes": "This project's /health/ view always answers ok, even when the database is down, which makes it useless. Yours will really run a tiny query. Uptime monitors and deployment tools call health checks too."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives and returns",
+      "caption": "The tests build a fake `GET /health/` request and call your view directly.",
+      "code": "response = views.health(factory.get(\"/health/\"))\n\n# database works (test 1):   200\n{\"status\": \"ok\", \"checks\": {\"database\": \"ok\"}}\n\n# database down (tests 2-5): 503, and an ERROR log line with the traceback\n{\"status\": \"error\", \"checks\": {\"database\": \"error\"}}\n\n# POST /health/ (test 6):    405",
+      "notes": "To fake an outage, the tests swap the connection in your file for a broken one. Its error message is 'could not connect to server: password=hunter2'. Test 5 checks hunter2 is not in your response."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "health check", "meaning": "An address other programs call to ask \"is this server working?\"."},
+        {"term": "load balancer", "meaning": "Shares incoming visitors between several copies of your server."},
+        {"term": "dependency", "meaning": "Something your app needs to work, like the database."},
+        {"term": "logger", "meaning": "The object you write log lines with: `logger.error(\"...\")`."},
+        {"term": "log level", "meaning": "How serious a line is: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`."},
+        {"term": "traceback", "meaning": "The \"Traceback (most recent call last)\" report of where an error happened."}
+      ],
+      "notes": "An exception is Python's word for an error that happens while code runs, like ValueError. The log is the app's diary."
+    },
+    {
+      "type": "bullets",
+      "title": "Why 503, and not 200 or 500?",
+      "bullets": [
+        "`2xx` success, `4xx` the client's fault, `5xx` the server's problem",
+        "**200** would be a lie: visitors keep going to a broken server",
+        "**500** usually means \"my code crashed\": a bug",
+        "**503** means \"I'm alive, but a dependency is down. Try elsewhere.\"",
+        "Load balancers read the **number**, not the text"
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tools: a cursor, and the DatabaseError family",
+      "caption": "`SELECT` a tiny sum to prove the database answers; `DatabaseError` catches all database errors.",
+      "code": "from django.db import DatabaseError, OperationalError, connection\n\nwith connection.cursor() as cursor:\n    cursor.execute(\"SELECT 2 + 3\")\n    print(cursor.fetchone())\n\nprint(issubclass(OperationalError, DatabaseError))   # part of the family",
+      "output": "(5,)\nTrue",
+      "notes": "with ... as cursor closes the cursor when the block ends. The tests raise OperationalError, a member of the DatabaseError family, so except DatabaseError catches it."
+    },
+    {
+      "type": "code",
+      "title": "Tool: loggers and levels",
+      "caption": "Without extra setup, only `WARNING` and more serious lines are shown.",
+      "code": "import logging\n\nlog = logging.getLogger(\"shop\")\nlog.info(\"A customer opened the shop\")   # not shown: below WARNING\nlog.warning(\"Only 2 cups of tea left\")\nlog.error(\"The till is broken\")",
+      "output": "Only 2 cups of tea left\nThe till is broken",
+      "notes": "Your file already has logger = logging.getLogger(__name__). In views.py that name is \"views\", and the tests listen to exactly that logger."
+    },
+    {
+      "type": "code",
+      "title": "Tool: logger.exception = message + traceback",
+      "code": "try:\n    price = int(\"ten\")\nexcept ValueError:\n    log.exception(\"Could not read the price\")\nprint(\"the program keeps going\")",
+      "output": "Could not read the price\nTraceback (most recent call last):\n  File \"<selection>\", line 5, in <module>\nValueError: invalid literal for int() with base 10: 'ten'\nthe program keeps going",
+      "notes": "Use it inside except: it logs an ERROR line and the traceback, then the program carries on. log is the shop logger from the last slide. Because the program carries on, you can still return a response after logging."
+    },
+    {
+      "type": "compare",
+      "title": "logger.error vs logger.exception",
+      "left": {
+        "heading": "logger.error(\"...\")",
+        "bullets": ["Writes an `ERROR` line", "Only your message, **no traceback**", "Works anywhere", "Test 4 fails: nothing shows where it broke"]
+      },
+      "right": {
+        "heading": "logger.exception(\"...\")",
+        "bullets": ["Writes an `ERROR` line", "Adds the **traceback** automatically", "Use it only inside `except`", "What tests 3 and 4 look for"]
+      },
+      "notes": "At 3 a.m. the traceback is often the only clue you have. And never copy str(error) into the response instead: it can contain a password."
+    },
+    {
+      "type": "code",
+      "title": "Tools: JsonResponse and @require_POST",
+      "code": "from django.http import JsonResponse\nfrom django.test import RequestFactory\nfrom django.views.decorators.http import require_POST\n\nprint(JsonResponse({\"tea\": \"hot\"}, status=202).status_code)   # status= sets the number\n\n@require_POST            # a decorator: other methods get 405\ndef ping(request):\n    return JsonResponse({\"reply\": \"pong\"})\n\nprint(ping(RequestFactory().get(\"/ping/\")).status_code)",
+      "output": "202\n405",
+      "notes": "You'll use its sister @require_GET, already imported. Without status= a JsonResponse is 200. The Console also shows 'Method Not Allowed (GET): /ping/': that's Django logging the refused request."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: try, log, answer safely (steps 2-4)",
+      "code": "def stock_check(count_text):\n    try:\n        count = int(count_text)\n    except ValueError:\n        log.exception(\"Stock check failed\")\n        return {\"status\": \"error\"}\n    return {\"status\": \"ok\", \"count\": count}\n\nprint(stock_check(\"lots\"))   # stock_check(\"12\") gives {'status': 'ok', 'count': 12}",
+      "output": "Stock check failed\nTraceback (most recent call last): ...\nValueError: invalid literal for int() with base 10: 'lots'\n{'status': 'error'}",
+      "notes": "Same shape as your health view, on different data. The traceback is shortened here. Risky work in try, log and give a short, safe answer in except, carry on normally otherwise. The public answer never contains the error message."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Put `@require_GET` on the line directly above `def health(request):`", "tests": "test 6"},
+        {"text": "In `try:` open `with connection.cursor() as cursor:` and run `SELECT 1`", "tests": ""},
+        {"text": "`except DatabaseError:` call `logger.exception(...)` with your own message", "tests": "test 4"},
+        {"text": "Then return the error dict, written by hand, with `status=503`", "tests": "tests 2, 3, 5"},
+        {"text": "After the `try`/`except`, return the ok dict (status 200)", "tests": "test 1"}
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Answering ok without a query: test 2 notices",
+        "`connection.cursor()` outside the `try`: the error escapes",
+        "Importing `connection` again inside the function: the fake is skipped",
+        "`logger.error` instead of `logger.exception`: no traceback",
+        "`str(error)` in the response: it leaks `password=hunter2`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "You run three copies of your app behind a load balancer. One loses its database connection at 3 a.m. Its `/health/` answers 503, visitors move to the other two, and in the morning the log's traceback tells you why.",
+      "bullets": [
+        "Kubernetes, Render, Railway and AWS all let you set a health check URL",
+        "They act on the **status code**, so it has to be right",
+        "Logs are how you fix problems you can't reproduce on your laptop"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why is a health check that always says ok useless?",
+        "Why answer 503 rather than 200 or 500 when the database is down?",
+        "What does `logger.exception` add that `logger.error` doesn't?",
+        "Why must the error message stay out of the response?"
+      ]
+    }
+  ]
+}

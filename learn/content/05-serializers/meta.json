@@ -1,0 +1,35 @@
+{
+  "title": "Validate input with serializers",
+  "week": 1,
+  "concept": "DRF serializers",
+  "file": "serializers.py",
+  "lesson": "lessons/week-1/day-06-rest-and-serializers-lesson.md",
+  "summary": "Turn untrusted JSON into clean, validated data with field and object validation.",
+  "hints": [
+    "<code>serializers.ChoiceField(choices=['low', 'medium', 'high'], default='medium')</code> does both the choice check and the default, so tests 2 and 6 need no extra code.",
+    "Test 2 leaves <code>due_date</code> out and test 7 sends <code>None</code>, so the field needs both options: <code>serializers.DateField(required=False, allow_null=True)</code>.",
+    "A method called <code>validate_title(self, value)</code> checks just the title. The spaces are already stripped. Raise <code>serializers.ValidationError('...')</code> if it's too short, otherwise <code>return value</code>.",
+    "In <code>validate_due_date</code>, <code>value</code> can be <code>None</code>. Check <code>value is not None and value &lt; date.today()</code> so you never compare <code>None</code> with a date.",
+    "The high-priority rule looks at two fields, so it goes in <code>validate(self, attrs)</code>. Use <code>attrs.get('due_date')</code>, raise <code>serializers.ValidationError({'due_date': '...'})</code> so the error lands on that field, and <code>return attrs</code> at the end."
+  ],
+  "quiz": [
+    {
+      "question": "When does <code>serializer.validated_data</code> exist?",
+      "options": ["Always", "After calling <code>is_valid()</code> and it returned True", "After <code>save()</code>", "Only for ModelSerializers"],
+      "answer": 1,
+      "explanation": "Call <code>is_valid()</code> first. If it fails, look at <code>serializer.errors</code>, a dict of field to messages that DRF returns as a 400."
+    },
+    {
+      "question": "Where does a rule like 'high priority needs a due date' belong?",
+      "options": ["<code>validate_priority</code>", "<code>validate_due_date</code>", "<code>validate(self, attrs)</code>", "In the view"],
+      "answer": 2,
+      "explanation": "It involves two fields, so it goes in object-level <code>validate()</code>, which sees all the field values at once."
+    },
+    {
+      "question": "Why validate on the server if the frontend already validates?",
+      "options": ["You don't need to", "Anyone can call your API directly and skip the frontend", "It's faster", "DRF requires it"],
+      "answer": 1,
+      "explanation": "Frontend validation is a courtesy to the user. Server validation is what actually protects your data."
+    }
+  ]
+}

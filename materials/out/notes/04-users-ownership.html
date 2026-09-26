@@ -1,0 +1,244 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Users &amp; ownership</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 04 · Auth</strong></p><h1>Users &amp; ownership</h1>
+<h2>The big idea</h2>
+<p>Most apps have <strong>users</strong>, and most data <strong>belongs</strong> to one of them: your notes,
+your orders, your messages. That raises two jobs every backend must get right.</p>
+<p><strong>1. Keep passwords safe.</strong> You must never store a password as the user typed it.
+If the database is ever leaked or copied, every account would be exposed, and
+since people reuse passwords, their email and bank accounts too. Instead you store
+a <strong>hash</strong>: the password run through a one-way scrambler. It's like a fingerprint:
+the same password always gives the same fingerprint, but you can't rebuild the
+password from it. To check a login, Django hashes what the user typed and compares
+the two fingerprints.</p>
+<p><strong>2. Only show people their own data.</strong> Each note records its <strong>owner</strong>. When Ada
+asks for her notes, the database query itself must say "only notes whose owner is
+Ada". It's like filtering a DataFrame, <code>df[df["owner"] == "ada"]</code>, before you hand
+the result to anyone.</p>
+<p>Django ships with a ready-made <code>User</code> model and does the hashing for you, as long
+as you use the right function.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>user</strong></td>
+<td>One account. Django's built-in <code>User</code> model has <code>username</code>, <code>email</code>, <code>password</code> and more.</td>
+</tr>
+<tr>
+<td><strong>hash</strong></td>
+<td>A scrambled, one-way version of a password. Django's look like <code>pbkdf2_sha256$...</code>.</td>
+</tr>
+<tr>
+<td><strong>plain text</strong></td>
+<td>The password exactly as typed, like <code>"s3cret-pass!"</code>. Never store this.</td>
+</tr>
+<tr>
+<td><strong>owner</strong></td>
+<td>The user a row belongs to.</td>
+</tr>
+<tr>
+<td><strong>foreign key</strong></td>
+<td>A column that points at a row in another table, like a note's <code>owner</code> pointing at a user.</td>
+</tr>
+<tr>
+<td><strong>queryset</strong></td>
+<td>What a query like <code>Note.objects.filter(...)</code> gives back: a list-like collection of rows.</td>
+</tr>
+<tr>
+<td><strong>raise</strong></td>
+<td>Stop a function and report an error, like <code>raise ValueError("...")</code>.</td>
+</tr>
+<tr>
+<td><strong>service function</strong></td>
+<td>A plain function that does one piece of app logic (create a user, fetch notes), so views stay short.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You write three functions in <code>services.py</code>. <strong>The tests call them and pass the
+values in.</strong> You don't create users or notes for the tests yourself.</p>
+<p>The exercise gives you a <code>Note</code> model (in <code>sandbox/models.py</code>, already written):</p>
+<pre><code class="language-python">class Note(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name=&quot;notes&quot;)
+    text = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+</code></pre>
+<p><code>owner</code> is a foreign key to the <code>User</code> model (that's what <code>settings.AUTH_USER_MODEL</code>
+means). <code>on_delete=models.CASCADE</code> says "if the user is deleted, delete their notes
+too". <code>related_name="notes"</code> lets you go the other way: <code>user.notes.all()</code>.</p>
+<p>These calls are copied from the tests:</p>
+<table>
+<thead>
+<tr>
+<th>the test calls</th>
+<th>it expects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register_user("ada", "ada@example.com", "s3cret-pass!")</code></td>
+<td>a <code>User</code> with that username and email is returned and saved</td>
+</tr>
+<tr>
+<td>then looks at <code>user.password</code></td>
+<td>it is <strong>not</strong> <code>"s3cret-pass!"</code>, and <code>user.check_password("s3cret-pass!")</code> is <code>True</code></td>
+</tr>
+<tr>
+<td><code>register_user("ADA", "other@example.com", "another-pass!")</code> after <code>"ada"</code> exists</td>
+<td>raises <code>ValueError("username already taken")</code>, and there's still only 1 user</td>
+</tr>
+<tr>
+<td><code>create_note(ada, "Buy milk")</code></td>
+<td>returns a <code>Note</code> saved in the database, with <code>owner</code> = <code>ada</code></td>
+</tr>
+<tr>
+<td><code>notes_for(ada)</code> when Ada has "ada 1", "ada 2" and Bob has "bob 1"</td>
+<td>only Ada's two notes</td>
+</tr>
+<tr>
+<td><code>notes_for(bob)</code></td>
+<td>only <code>["bob 1"]</code></td>
+</tr>
+<tr>
+<td><code>notes_for(ada)</code> for notes made 3, 1 and 2 days ago</td>
+<td>newest first: <code>["new", "middle", "old"]</code></td>
+</tr>
+</tbody>
+</table>
+<p>In the ownership tests, <code>ada</code> and <code>bob</code> are <code>User</code> objects the tests made with
+<code>User.objects.create_user(...)</code> before calling your function. Inside your
+function they arrive as the parameter <code>user</code>.</p>
+<h2>Tools you'll use</h2>
+<p>The top of <code>services.py</code> already imports <code>User</code> and <code>Note</code>, so you can use them
+straight away. The Console starts with an empty database each run, so each
+example creates its own users.</p>
+<h3><code>User.objects.create_user(username=..., email=..., password=...)</code></h3>
+<ul>
+<li>Creates <strong>and saves</strong> a user, and <strong>hashes the password</strong> for you.</li>
+<li><code>user.check_password("...")</code> gives <code>True</code> if the text matches the stored hash.</li>
+<li>Common mistake: <code>User.objects.create(password=...)</code> also saves a user, but
+  stores the password as <strong>plain text</strong>, so logins never work and the password
+  is exposed. The starter uses <code>create</code>: that's the bug to fix.</li>
+</ul>
+<pre><code class="language-python">grace = User.objects.create_user(username=&quot;grace&quot;, email=&quot;grace@example.com&quot;, password=&quot;tea-time&quot;)
+print(grace.password)                  # md5$lbkk...$b9d0...  (a hash, different every time)
+print(grace.check_password(&quot;tea-time&quot;))   # True
+print(grace.check_password(&quot;coffee&quot;))     # False
+
+eve = User.objects.create(username=&quot;eve&quot;, password=&quot;tea-time&quot;)
+print(eve.password)                    # tea-time  (plain text: wrong!)
+</code></pre>
+<p>The Console and the tests use a fast <code>md5$</code> hasher so they run quickly. A real
+Django project uses a slow, strong one, and hashes start with <code>pbkdf2_sha256$</code>.</p>
+<h3><code>.filter(...)</code> and <code>.exists()</code></h3>
+<ul>
+<li><code>Model.objects.filter(field=value)</code> gives a <strong>queryset</strong> of the matching rows.</li>
+<li>Add <code>__iexact</code> to the field name (two underscores) to match <strong>ignoring
+  upper/lower case</strong>.</li>
+<li><code>.exists()</code> on a queryset gives <code>True</code> if there's at least one row.</li>
+</ul>
+<pre><code class="language-python">User.objects.create_user(username=&quot;grace&quot;, email=&quot;Grace@Example.com&quot;, password=&quot;x&quot;)
+print(User.objects.filter(email=&quot;grace@example.com&quot;).exists())          # False (case differs)
+print(User.objects.filter(email__iexact=&quot;grace@example.com&quot;).exists())  # True
+</code></pre>
+<h3><code>raise ValueError("message")</code></h3>
+<ul>
+<li>Stops the function <strong>right there</strong> and reports an error. Nothing after it runs.</li>
+<li>Whoever called the function can catch it with <code>try</code> / <code>except</code>. The tests do
+  exactly that, and check the message text.</li>
+</ul>
+<pre><code class="language-python">def set_age(age):
+    if age &lt; 0:
+        raise ValueError(&quot;age cannot be negative&quot;)
+    return age
+
+print(set_age(30))        # 30
+try:
+    set_age(-5)
+except ValueError as error:
+    print(&quot;Caught:&quot;, error)   # Caught: age cannot be negative
+</code></pre>
+<ul>
+<li>Common mistake: <code>return ValueError(...)</code> instead of <code>raise</code>. That quietly hands
+  back an error object and the function carries on as if all was fine.</li>
+</ul>
+<h3>Creating a row that has an owner</h3>
+<ul>
+<li>To set a foreign key, pass the <strong>whole user object</strong>: <code>owner=grace</code>, not
+  <code>owner="grace"</code>.</li>
+<li>You can read it back with a dot: <code>note.owner.username</code>.</li>
+<li>The next example creates three notes this way.</li>
+</ul>
+<h3><code>.filter(owner=user)</code>, <code>.order_by(...)</code> and <code>user.notes.all()</code></h3>
+<ul>
+<li><code>Note.objects.filter(owner=some_user)</code> gives only the notes that belong to
+  that user. <code>some_user.notes.all()</code> gives the same rows, starting from the user.</li>
+<li><code>.order_by("field")</code> sorts A to Z or oldest to newest. A <code>-</code> in front,
+  <code>.order_by("-field")</code>, reverses it. You can chain it after <code>.filter(...)</code>.</li>
+</ul>
+<pre><code class="language-python">grace = User.objects.create_user(username=&quot;grace&quot;, password=&quot;x&quot;)
+linus = User.objects.create_user(username=&quot;linus&quot;, password=&quot;x&quot;)
+Note.objects.create(owner=grace, text=&quot;Water plants&quot;)
+Note.objects.create(owner=linus, text=&quot;Fix kernel&quot;)
+Note.objects.create(owner=grace, text=&quot;Call mum&quot;)
+
+print(Note.objects.count())                                   # 3
+print([n.text for n in Note.objects.filter(owner=grace)])     # ['Water plants', 'Call mum']
+print([n.text for n in linus.notes.all()])                    # ['Fix kernel']
+print([n.text for n in Note.objects.order_by(&quot;-text&quot;)])       # ['Water plants', 'Fix kernel', 'Call mum']
+</code></pre>
+<p><code>[n.text for n in ...]</code> is a list comprehension: it just pulls the <code>text</code> out of
+each note so the result is easy to read.</p>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<h3><code>register_user(username, email, password)</code></h3>
+<ol>
+<li><strong>Refuse a taken username.</strong> Before creating anything, check whether a user
+   with this username already exists, <strong>ignoring case</strong>, using
+   <code>.filter(username__iexact=...)</code> and <code>.exists()</code>. If it does,
+   <code>raise ValueError("username already taken")</code>. <strong>→ test 3</strong></li>
+<li><strong>Create the user with a hashed password.</strong> Replace the starter's
+   <code>User.objects.create(...)</code> with <code>User.objects.create_user(...)</code>, passing
+   <code>username=</code>, <code>email=</code> and <code>password=</code>, and return the new user.
+   <strong>→ tests 1 and 2</strong></li>
+</ol>
+<h3><code>create_note(user, text)</code></h3>
+<ol start="3">
+<li><strong>Create and return a note</strong> with <code>Note.objects.create(...)</code>, passing
+   <code>owner=user</code> and <code>text=text</code>. Remove the <code>raise NotImplementedError</code> line.
+   <strong>→ test 4</strong></li>
+</ol>
+<h3><code>notes_for(user)</code></h3>
+<ol start="4">
+<li><strong>Keep only this user's notes.</strong> Replace <code>Note.objects.all()</code> with a
+   <code>.filter(...)</code> on the <code>owner</code>. <strong>→ test 5</strong></li>
+<li><strong>Put the newest first.</strong> Chain <code>.order_by(...)</code> on <code>created_at</code>, with a <code>-</code> so
+   the newest comes first. Return the queryset. <strong>→ test 6</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li>Keeping <code>User.objects.create(...)</code>. Test 2 fails with "The password was stored
+  as plain text!". Use <code>create_user</code>.</li>
+<li>Checking <code>filter(username=username)</code> without <code>__iexact</code>. Then <code>"ADA"</code> gets in
+  because it isn't exactly <code>"ada"</code>.</li>
+<li>Creating the user first and checking for duplicates afterwards. By then the
+  duplicate is already saved, and test 3 sees 2 users.</li>
+<li><code>order_by("created_at")</code> without the <code>-</code> gives the oldest first.</li>
+<li>Passing a username instead of the user: <code>owner=user.username</code>. The foreign key
+  needs the <code>User</code> object itself: <code>owner=user</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>In a real Django API, the logged-in user is <code>request.user</code>, and every view that
+lists or changes private data filters by it, like <code>Note.objects.filter(owner=request.user)</code>.
+Hiding other people's data in the frontend isn't enough: anyone can call the API
+directly. The rule has to live in the query on the server.</p><h2>Keep learning</h2><ul><li><a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Django/Authentication">Django Tutorial Part 8: User authentication and permissions</a> (MDN Web Docs, beginner). Start here: a guided tutorial on Django users, logging in and showing each user only their own records.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/auth/default/#creating-users">Using the Django authentication system: creating users</a> (Django docs, beginner). Shows User.objects.create_user, which stores a hashed password instead of the plain text one.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/queries/">Making queries</a> (Django docs, intermediate). Covers filter(), exists(), create() and lookups like __iexact, which you use to check usernames and fetch a user&#x27;s notes.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/auth/passwords/">Password management in Django</a> (Django docs, intermediate). Explains how Django hashes and checks passwords, so you understand why you never save them yourself.</li><li><a href="https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/">A01 Broken Access Control (OWASP Top 10:2025)</a> (OWASP, intermediate). Why returning another user&#x27;s data is the number one web security risk, and how filtering by owner prevents it.</li></ul></body></html>

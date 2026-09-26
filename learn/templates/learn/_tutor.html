@@ -1,0 +1,161 @@
+{% comment %}
+Study tutor chat. Include with: tutor_topic (exercise slug or "general"),
+tutor_history, can_run. A page can define window.tutorContext() returning
+{code, result} to share the learner's code and test results with the tutor.
+{% endcomment %}
+<style>
+  .tutor { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .tutor-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 12px; min-height: 0; }
+  .tmsg { max-width: 92%; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
+  .tmsg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; white-space: pre-wrap; }
+  .tmsg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .tmsg.assistant > :first-child { margin-top: 0; }
+  .tmsg.assistant > :last-child { margin-bottom: 0; }
+  .tmsg.assistant p { margin: 0 0 8px; }
+  .tmsg.assistant ul, .tmsg.assistant ol { margin: 4px 0 8px; padding-left: 22px; }
+  .tmsg.assistant pre { margin: 8px 0; font-size: 12.5px; white-space: pre-wrap; }
+  .tmsg.assistant h1, .tmsg.assistant h2, .tmsg.assistant h3 { font-size: 15px; margin: 10px 0 6px; }
+  .tmsg.error { align-self: stretch; max-width: none; background: var(--bad-soft); color: var(--bad); }
+  .tmsg .dots::after { content: '●●●'; letter-spacing: 2px; color: var(--muted); animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .tutor-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 8px; }
+  .tutor-empty .big { font-size: 30px; }
+  .tutor-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; }
+  .tutor-chips button { font: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 99px; padding: 4px 11px; cursor: pointer; }
+  .tutor-chips button:hover { border-color: var(--accent); color: var(--accent); }
+  .tutor-form { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--border); padding-top: 10px; }
+  .tutor-form textarea { flex: 1; resize: none; font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); max-height: 160px; outline: none; }
+  .tutor-form textarea:focus { border-color: var(--accent); }
+  .tutor-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); padding-top: 6px; }
+  .tutor-foot button { border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; text-decoration: underline; padding: 0; }
+</style>
+
+{% csrf_token %}
+<div class="tutor" id="tutor">
+  <div class="tutor-log" id="tutor-log" aria-live="polite"></div>
+  <div class="tutor-chips" id="tutor-chips">
+    {% if tutor_topic == "general" %}
+      <button type="button">What does a backend actually do?</button>
+      <button type="button">Explain REST like I'm new to it</button>
+      <button type="button">What's the difference between a model and a serializer?</button>
+      <button type="button">How do I read a Python traceback?</button>
+    {% else %}
+      <button type="button">Explain this lesson's main idea simply</button>
+      <button type="button">Give me a small hint</button>
+      <button type="button">Why are my tests failing?</button>
+      <button type="button">Review my code</button>
+    {% endif %}
+  </div>
+  <form class="tutor-form" id="tutor-form">
+    <textarea id="tutor-input" rows="2" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" {% if not can_run %}disabled{% endif %}></textarea>
+    <button class="btn primary" type="submit" id="tutor-send" {% if not can_run %}disabled title="Open this page from localhost to use the tutor"{% endif %}>Send</button>
+  </form>
+  <div class="tutor-foot">
+    <span>{% if tutor_topic == "general" %}Ask about any backend concept.{% else %}The tutor sees the lesson, your current code and your latest test results.{% endif %}{% if tutor_backend %} Uses {{ tutor_backend }}.{% endif %}</span>
+    <button type="button" id="tutor-clear">Clear chat</button>
+  </div>
+</div>
+{{ tutor_history|json_script:"tutor-history" }}
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+(() => {
+  const askUrl = "{% url 'learn:tutor_ask' tutor_topic %}";
+  const clearUrl = "{% url 'learn:tutor_clear' tutor_topic %}";
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const log = document.getElementById('tutor-log');
+  const input = document.getElementById('tutor-input');
+  const send = document.getElementById('tutor-send');
+  let busy = false;
+
+  const render = (md) => {
+    if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(md));
+    const div = document.createElement('div'); div.textContent = md;  // offline fallback
+    return `<p style="white-space:pre-wrap">${div.innerHTML}</p>`;
+  };
+  const scroll = () => { log.scrollTop = log.scrollHeight; };
+  const bubble = (role, text) => {
+    const el = document.createElement('div');
+    el.className = 'tmsg ' + role;
+    if (role === 'assistant') { el.innerHTML = render(text); window.highlightCode?.(el); } else el.textContent = text;
+    log.appendChild(el); scroll();
+    return el;
+  };
+  const showEmpty = () => {
+    log.innerHTML = `<div class="tutor-empty"><div class="big">🧑‍🏫</div>
+      <p><strong>Hi! I'm your study tutor.</strong><br>Ask me about any concept that isn't clear yet.
+      I'll help you understand it, and I'll give you hints rather than answers when you're stuck.</p></div>`;
+  };
+
+  const history = JSON.parse(document.getElementById('tutor-history').textContent);
+  if (history.length) history.forEach((m) => bubble(m.role, m.text)); else showEmpty();
+
+  async function ask(question) {
+    question = question.trim();
+    if (!question || busy || send.disabled) return;
+    busy = true; send.disabled = true;
+    log.querySelector('.tutor-empty')?.remove();
+    bubble('user', question);
+    const reply = bubble('assistant', '');
+    reply.innerHTML = '<span class="dots"></span>';
+
+    const context = window.tutorContext ? window.tutorContext() : {};
+    let text = '';
+    try {
+      const res = await fetch(askUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+        body: JSON.stringify({question, ...context}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      for (;;) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        let nl;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl); buffer = buffer.slice(nl + 1);
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.type === 'text') {
+            text += event.text; reply.innerHTML = render(text) + '<span class="dots"></span>'; scroll();
+          } else if (event.type === 'done') {
+            reply.innerHTML = render(event.text); window.highlightCode?.(reply); scroll();
+          } else if (event.type === 'error') {
+            if (event.discard || !text) reply.remove(); else reply.innerHTML = render(text);
+            bubble('error', event.error);
+          }
+        }
+      }
+    } catch (err) {
+      reply.remove();
+      bubble('error', err.message || String(err));
+    } finally {
+      reply.querySelector?.('.dots')?.remove();
+      busy = false; send.disabled = false; input.focus();
+    }
+  }
+  window.askTutor = ask;
+
+  document.getElementById('tutor-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = input.value; input.value = ''; ask(q);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('tutor-form').requestSubmit(); }
+  });
+  document.querySelectorAll('#tutor-chips button').forEach((b) => b.addEventListener('click', () => ask(b.textContent)));
+  document.getElementById('tutor-clear').addEventListener('click', async () => {
+    if (!confirm('Clear this conversation?')) return;
+    await fetch(clearUrl, {method: 'POST', headers: {'X-CSRFToken': csrf}});
+    showEmpty();
+  });
+})();
+</script>

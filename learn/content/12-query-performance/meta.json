@@ -1,0 +1,35 @@
+{
+  "title": "Kill the N+1 query",
+  "week": 3,
+  "concept": "Query performance",
+  "file": "reports.py",
+  "lesson": "lessons/week-3/day-16-querysets-and-performance-lesson.md",
+  "summary": "The starter gives correct answers but runs dozens of queries. Get each report down to exactly one.",
+  "hints": [
+    "Run the tests on the starter first. The answer tests (1 and 3) pass and the query-count tests fail. Your job is only to cut the number of queries, not to change the answers.",
+    "In <code>task_labels</code>, <code>task.project</code> costs one extra query per task. Add <code>.select_related(\"project\")</code> to <code>Task.objects.order_by(\"id\")</code> so the projects come in the same query.",
+    "In <code>project_summaries</code>, every <code>.count()</code> inside the loop is a query. Let the database count instead: <code>Project.objects.annotate(task_count=Count(\"tasks\"))</code>, like a pandas groupby.",
+    "To count only finished tasks, give <code>Count</code> a condition: <code>Count(\"tasks\", filter=Q(tasks__done=True))</code>. Note the double underscore.",
+    "Finish with <code>.order_by(\"name\")</code>, then <code>.values(\"name\", \"task_count\", \"done_count\")</code>, and return it wrapped in <code>list(...)</code>. Put <code>annotate</code> before <code>values</code>."
+  ],
+  "quiz": [
+    {
+      "question": "What is the N+1 query problem?",
+      "options": ["A query that returns N+1 rows", "One query for a list, then one more query per item to fetch related data", "An off-by-one bug", "Too many indexes"],
+      "answer": 1,
+      "explanation": "With 100 tasks, <code>task.project.name</code> in a loop means 101 queries. It looks fine locally and becomes slow in production."
+    },
+    {
+      "question": "<code>select_related</code> vs <code>prefetch_related</code>?",
+      "options": ["Same thing", "select_related JOINs a ForeignKey/OneToOne. prefetch_related runs a second query for reverse FK/many-to-many", "prefetch_related is always faster", "select_related is deprecated"],
+      "answer": 1,
+      "explanation": "Follow a FK 'forward' with select_related (one JOIN). Going 'backwards' to many objects (<code>project.tasks</code>) uses prefetch_related (2 queries total)."
+    },
+    {
+      "question": "Why count with <code>annotate(Count(...))</code> instead of <code>len(project.tasks.all())</code>?",
+      "options": ["It reads nicer", "The database counts without sending every row to Python", "len() is broken", "It avoids migrations"],
+      "answer": 1,
+      "explanation": "Push work to the database: it's built for aggregation, and you avoid loading thousands of objects into memory."
+    }
+  ]
+}

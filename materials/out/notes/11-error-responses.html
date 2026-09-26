@@ -1,0 +1,250 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Consistent error responses</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 2 · Exercise 11 · Errors</strong></p><h1>Consistent error responses</h1>
+<h2>The big idea</h2>
+<p>Things go wrong in every API: a client forgets a required field, asks for a task
+that doesn't exist, or isn't logged in. When that happens, the server still has to
+send back a proper answer: an <strong>HTTP status code</strong> (like <code>404</code>) and a JSON body
+that says what went wrong.</p>
+<p>In Python, "something went wrong" is an <strong>exception</strong>. You've seen them in data
+analysis: <code>df["prise"]</code> with a typo raises a <code>KeyError</code>, and <code>int("abc")</code> raises a
+<code>ValueError</code>. Django REST Framework (DRF) has its own exceptions for web errors,
+such as <code>NotFound</code> and <code>ValidationError</code>. When a view raises one, DRF catches it
+and calls an <strong>exception handler</strong>: a function whose only job is to turn the
+exception into a response.</p>
+<p>The trouble is that DRF's default responses come in <strong>different shapes</strong>. A
+frontend developer has to write different code for each one. In this exercise you
+write your own exception handler that wraps every error in the <strong>same shape</strong>.
+Think of a help desk that takes complaints in any form (a phone call, an email, a
+note) and files each one on the same standard form, so whoever reads them later
+always knows where to look.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>exception</strong></td>
+<td>An error object that stops the code, like <code>KeyError</code> or <code>ValueError</code>.</td>
+</tr>
+<tr>
+<td><strong>raise</strong></td>
+<td>Make an exception happen: <code>raise NotFound()</code>.</td>
+</tr>
+<tr>
+<td><strong>exception handler</strong></td>
+<td>A function that receives an exception and turns it into a response. DRF calls it for you.</td>
+</tr>
+<tr>
+<td><strong>status code</strong></td>
+<td>The number at the top of an HTTP response: <code>400</code> bad input, <code>401</code> not logged in, <code>403</code> not allowed, <code>404</code> not found, <code>500</code> server bug.</td>
+</tr>
+<tr>
+<td><strong><code>ValidationError</code></strong></td>
+<td>The DRF exception for "the data the client sent is wrong", usually one message list per field.</td>
+</tr>
+<tr>
+<td><strong>envelope</strong></td>
+<td>A fixed outer shape that every response is wrapped in, like <code>{"error": {...}}</code>.</td>
+</tr>
+<tr>
+<td><strong><code>Response</code></strong></td>
+<td>DRF's response object. It has <code>.status_code</code> (a number) and <code>.data</code> (a dict that becomes the JSON body).</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't create the exceptions yourself. <strong>The tests call your function and pass
+an exception in</strong> as the parameter <code>exc</code>, plus an empty dict <code>{}</code> as <code>context</code>
+(context normally holds details like which view failed; you only need to pass it
+along). For example, test 2 does this:</p>
+<pre><code class="language-python">from rest_framework import exceptions
+
+response = api_exception_handler(exceptions.NotFound(), {})
+</code></pre>
+<p>Here's what DRF's own handler gives back for the exceptions in the tests. This is
+the <strong>default</strong>, before your changes:</p>
+<table>
+<thead>
+<tr>
+<th>exception passed in as <code>exc</code></th>
+<th><code>response.status_code</code></th>
+<th><code>response.data</code> (the JSON body)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exceptions.ValidationError({"title": ["This field is required."]})</code></td>
+<td><code>400</code></td>
+<td><code>{"title": ["This field is required."]}</code></td>
+</tr>
+<tr>
+<td><code>exceptions.NotFound()</code></td>
+<td><code>404</code></td>
+<td><code>{"detail": "Not found."}</code></td>
+</tr>
+<tr>
+<td><code>exceptions.NotAuthenticated()</code></td>
+<td><code>401</code></td>
+<td><code>{"detail": "Authentication credentials were not provided."}</code></td>
+</tr>
+<tr>
+<td>Django's <code>PermissionDenied()</code></td>
+<td><code>403</code></td>
+<td><code>{"detail": "You do not have permission to perform this action."}</code></td>
+</tr>
+<tr>
+<td><code>KeyError("boom")</code> (not a web error)</td>
+<td>no response: the handler returns <code>None</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Notice the two shapes: validation errors are keyed by <strong>field name</strong>, everything
+else has a single <code>"detail"</code> key. Your handler must turn <strong>every</strong> one of them into
+this shape, keeping the same status code:</p>
+<pre><code class="language-python"># test 1: exceptions.ValidationError({&quot;title&quot;: [&quot;This field is required.&quot;]})
+{&quot;error&quot;: {
+    &quot;status&quot;: 400,
+    &quot;message&quot;: &quot;Invalid input.&quot;,
+    &quot;details&quot;: {&quot;title&quot;: [&quot;This field is required.&quot;]},
+}}
+
+# test 2: exceptions.NotFound()
+{&quot;error&quot;: {&quot;status&quot;: 404, &quot;message&quot;: &quot;Not found.&quot;, &quot;details&quot;: {}}}
+</code></pre>
+<p>The tests also check that:</p>
+<ul>
+<li><code>NotAuthenticated()</code> gives <code>status</code> 401 and <code>message</code>
+  <code>"Authentication credentials were not provided."</code> (test 3);</li>
+<li>Django's own <code>Http404()</code> and <code>PermissionDenied()</code> give <code>status</code> 404 and 403
+  (test 4);</li>
+<li>for <code>MethodNotAllowed("POST")</code>, <code>Throttled(wait=5)</code> and <code>ParseError()</code>, the
+  <code>status</code> inside the body equals <code>response.status_code</code> (test 5);</li>
+<li><code>KeyError("boom")</code> makes your function return <code>None</code> (test 6).</li>
+</ul>
+<blockquote>
+<p><code>exc</code> and <code>response</code> only exist <strong>inside</strong> your function while a test is calling
+it. To experiment in the Console, make your own exception first (see "Try it").</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3><code>exception_handler(exc, context)</code></h3>
+<ul>
+<li>DRF's built-in handler. It's already imported at the top of your file, and the
+  first line of your function already calls it.</li>
+<li>For a DRF or Django web error it gives back a <code>Response</code>. For anything else (a
+  bug like <code>KeyError</code>) it gives back <code>None</code>.</li>
+</ul>
+<pre><code class="language-python">from rest_framework import exceptions
+from rest_framework.views import exception_handler
+
+response = exception_handler(exceptions.PermissionDenied(), {})
+print(response.status_code)   # 403
+print(response.data)          # {'detail': ErrorDetail(string='You do not have permission to perform this action.', code='permission_denied')}
+
+print(exception_handler(KeyError(&quot;oops&quot;), {}))   # None
+</code></pre>
+<ul>
+<li><code>ErrorDetail(string=..., code=...)</code> is DRF's special kind of string that also
+  remembers an error code. It behaves like normal text.</li>
+</ul>
+<h3><code>.status_code</code> and <code>.data</code></h3>
+<ul>
+<li>These are <strong>attributes</strong> of the response, so you read them with a dot:
+  <code>response.status_code</code>, not <code>response["status_code"]</code>.</li>
+<li><code>response.data</code> is a normal dictionary, so inside it you use square brackets:
+  <code>response.data["detail"]</code>.</li>
+<li>You can also <strong>replace</strong> <code>.data</code> completely: <code>response.data = {"any": "dict"}</code>.
+  The status code and headers stay the same.</li>
+</ul>
+<h3><code>str(value)</code></h3>
+<ul>
+<li>Turns a value into plain text. Use it to turn an <code>ErrorDetail</code> into an ordinary
+  string.</li>
+</ul>
+<pre><code class="language-python">from rest_framework import exceptions
+from rest_framework.views import exception_handler
+
+response = exception_handler(exceptions.ParseError(), {})
+str(response.data[&quot;detail&quot;])   # 'Malformed request.'
+</code></pre>
+<h3><code>isinstance(value, SomeClass)</code></h3>
+<ul>
+<li>Asks "is this value that kind of thing?" and gives <code>True</code> or <code>False</code>.</li>
+</ul>
+<pre><code class="language-python">from rest_framework import exceptions
+
+print(isinstance(exceptions.ValidationError(&quot;bad&quot;), exceptions.ValidationError))   # True
+print(isinstance(exceptions.NotFound(), exceptions.ValidationError))               # False
+print(isinstance(3, int))                                                         # True
+</code></pre>
+<ul>
+<li>In your file, <code>ValidationError</code> is already imported by name, so you can write
+  <code>isinstance(exc, ValidationError)</code>.</li>
+</ul>
+<h3><code>if value is None:</code></h3>
+<ul>
+<li>The usual way to check for "nothing came back". Use <code>is</code>, not <code>==</code>.</li>
+</ul>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong> to see the result in the Console. (The Console shows what you
+<code>print</code>, plus the value of the last line.)</p>
+<h2>Step by step</h2>
+<ol>
+<li><strong>Let DRF do the first pass.</strong> Keep the first line,
+   <code>response = exception_handler(exc, context)</code>. Then, if <code>response is None</code>,
+   <code>return None</code>. That's a bug rather than a web error, and returning <code>None</code> lets
+   Django turn it into a <code>500 Server Error</code>. <strong>→ test 6</strong> (the starter already
+   passes it; make sure it still does)</li>
+<li><strong>Pick the message and details for a validation error.</strong> If
+   <code>isinstance(exc, ValidationError)</code>, the message is exactly <code>"Invalid input."</code>
+   and the details are the original <code>response.data</code> (the per-field messages).
+   <strong>→ test 1</strong></li>
+<li><strong>Pick the message and details for every other error.</strong> Otherwise, the message
+   is <code>str(response.data["detail"])</code> and the details are an empty dict <code>{}</code>.
+   <strong>→ tests 2, 3 and 4</strong></li>
+<li><strong>Replace the body with the envelope.</strong> Set <code>response.data</code> to a dict with one
+   key, <code>"error"</code>, whose value is another dict with the keys <code>"status"</code>,
+   <code>"message"</code> and <code>"details"</code>. For <code>"status"</code> use <code>response.status_code</code>, so it
+   always matches the real code. <strong>→ tests 1-5</strong></li>
+<li><strong>Return the same <code>response</code> object.</strong> <strong>→ all of tests 1-6</strong></li>
+</ol>
+<p>Here's the same "choose, then wrap" pattern on different data, to copy the shape
+from:</p>
+<pre><code class="language-python">order = {&quot;item&quot;: &quot;tea&quot;, &quot;problem&quot;: &quot;out of stock&quot;}
+
+if order[&quot;problem&quot;] == &quot;out of stock&quot;:
+    note, extra = &quot;Sorry, we ran out.&quot;, {&quot;item&quot;: order[&quot;item&quot;]}
+else:
+    note, extra = order[&quot;problem&quot;], {}
+
+reply = {&quot;reply&quot;: {&quot;code&quot;: 7, &quot;note&quot;: note, &quot;extra&quot;: extra}}
+print(reply)   # {'reply': {'code': 7, 'note': 'Sorry, we ran out.', 'extra': {'item': 'tea'}}}
+</code></pre>
+<h2>Common mistakes</h2>
+<ul>
+<li>Reading <code>response.data["detail"]</code> for a validation error: its body has field
+  names instead of <code>"detail"</code>, so you get a <code>KeyError</code>. Check for
+  <code>ValidationError</code> <strong>first</strong>.</li>
+<li>Returning your new dict instead of <code>response</code>. The tests read
+  <code>response.status_code</code>, and a dict doesn't have one. Put the dict in
+  <code>response.data</code> and return <code>response</code>.</li>
+<li>Typing the status by hand (like <code>"status": 400</code>). Test 5 checks 405, 429 and 400
+  errors, so always use <code>response.status_code</code>.</li>
+<li>Forgetting the outer <code>"error"</code> key, so the body is <code>{"status": ..., ...}</code>
+  instead of <code>{"error": {"status": ..., ...}}</code>.</li>
+<li>Turning <code>None</code> into a 400 or 500 response yourself. Unexpected bugs should
+  stay 500s (and get logged), not look like the client's fault.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every client of your API (a React app, a mobile app, another service) can now
+handle errors with one piece of code: read <code>body["error"]["message"]</code> and show
+it. You switch the handler on for the whole project with one setting, for example
+<code>REST_FRAMEWORK = {"EXCEPTION_HANDLER": "core.exceptions.api_exception_handler"}</code>.</p><h2>Keep learning</h2><ul><li><a href="https://docs.python.org/3/tutorial/errors.html">Errors and Exceptions</a> (Python docs, beginner). Start here: a refresher on raising and catching exceptions, since an exception handler is just code that receives one.</li><li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status">HTTP response status codes</a> (MDN Web Docs, beginner). The meaning of 400, 401, 403, 404 and 500, so every error your handler shapes keeps the right status.</li><li><a href="https://www.django-rest-framework.org/api-guide/exceptions/#custom-exception-handling">Exceptions: custom exception handling</a> (Django REST framework, intermediate). Official guide to writing a handler that calls DRF&#x27;s exception_handler and reshapes its response, as this exercise does.</li><li><a href="https://www.rfc-editor.org/rfc/rfc9457.html">RFC 9457: Problem Details for HTTP APIs</a> (IETF RFC Editor, intermediate). The web standard for a consistent JSON error shape; skim it later to see how real APIs agree on error formats.</li></ul></body></html>

@@ -1,0 +1,45 @@
+{
+  "exercise": "07-viewsets-routers",
+  "resources": [
+    {
+      "title": "Quickstart",
+      "url": "https://www.django-rest-framework.org/tutorial/quickstart/",
+      "source": "Django REST framework",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: a working API with a serializer, a viewset and a router in a few minutes, the same three pieces as this exercise."
+    },
+    {
+      "title": "Tutorial 6: ViewSets & Routers",
+      "url": "https://www.django-rest-framework.org/tutorial/6-viewsets-and-routers/",
+      "source": "Django REST framework",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Explains how a viewset replaces separate list and detail views and how the router writes the URLs for you."
+    },
+    {
+      "title": "Serializers: ModelSerializer",
+      "url": "https://www.django-rest-framework.org/api-guide/serializers/#modelserializer",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reference for ModelSerializer and its Meta fields option, which builds serializer fields from your model."
+    },
+    {
+      "title": "ViewSets: ModelViewSet",
+      "url": "https://www.django-rest-framework.org/api-guide/viewsets/#modelviewset",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Lists the actions ModelViewSet gives you (list, create, retrieve, update, partial_update, destroy)."
+    },
+    {
+      "title": "Routers: DefaultRouter",
+      "url": "https://www.django-rest-framework.org/api-guide/routers/#defaultrouter",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Shows the exact URL patterns DefaultRouter generates, useful when a test hits a URL you did not expect."
+    }
+  ]
+}

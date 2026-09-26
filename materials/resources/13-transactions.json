@@ -1,0 +1,45 @@
+{
+  "exercise": "13-transactions",
+  "resources": [
+    {
+      "title": "ACID Databases – Atomicity, Consistency, Isolation & Durability Explained",
+      "url": "https://www.freecodecamp.org/news/acid-databases-explained/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: restaurant analogies that make 'all or nothing' (atomicity) and isolation easy to picture."
+    },
+    {
+      "title": "PostgreSQL tutorial: Transactions",
+      "url": "https://www.postgresql.org/docs/current/tutorial-transactions.html",
+      "source": "PostgreSQL docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "A short bank-transfer example in plain SQL showing BEGIN, COMMIT and rollback, the same scenario as this exercise."
+    },
+    {
+      "title": "Errors and Exceptions: user-defined exceptions",
+      "url": "https://docs.python.org/3/tutorial/errors.html#user-defined-exceptions",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "How to make your own exception class like InsufficientFunds, which triggers the rollback when raised."
+    },
+    {
+      "title": "Database transactions: controlling transactions explicitly",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/transactions/#controlling-transactions-explicitly",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Official reference for transaction.atomic() and how an exception inside the with block undoes every change."
+    },
+    {
+      "title": "QuerySet API reference: select_for_update",
+      "url": "https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-for-update",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Explains row locking so two transfers cannot change the same account at the same time."
+    }
+  ]
+}

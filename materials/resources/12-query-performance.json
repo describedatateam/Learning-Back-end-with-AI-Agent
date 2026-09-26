@@ -1,0 +1,37 @@
+{
+  "exercise": "12-query-performance",
+  "resources": [
+    {
+      "title": "How to Optimize Django REST APIs for Performance",
+      "url": "https://www.freecodecamp.org/news/how-to-optimize-django-rest-apis-for-performance/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: explains the N+1 problem (100 posts, 101 queries) and how select_related and prefetch_related fix it."
+    },
+    {
+      "title": "Database access optimization",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/optimization/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Django's own checklist for fewer queries, including 'retrieve everything at once' and doing counting in the database."
+    },
+    {
+      "title": "QuerySet API reference: select_related",
+      "url": "https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-related",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reference for select_related, which joins Task and Project in one query for your task_labels report."
+    },
+    {
+      "title": "Aggregation: filtering on annotations",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/aggregation/#filtering-on-annotations",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Shows annotate() with Count and Count(filter=Q(...)), the tools behind your one-query project summary."
+    }
+  ]
+}

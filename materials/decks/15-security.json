@@ -1,0 +1,156 @@
+{
+  "exercise": "15-security",
+  "subtitle": "Fix four small mistakes that attackers love: redirects, secret checks, logs and SQL.",
+  "notes": "This deck goes with exercise 15. By the end you should be able to tell the story of each of the four attacks and name the one-line fix for each.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "A backend is open to the whole internet, so some requests come from **attackers**. Most attacks use small, ordinary mistakes, not clever magic.\n\nThink of the locks on a house: none is complicated, but every door needs one. The rule behind all four: **never trust what comes in from outside**.",
+      "notes": "Same as data cleaning: a value a user typed is data to check, never an instruction to follow. Each of your four functions is one lock."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "redirect", "meaning": "A response that says \"go to this other address instead\"."},
+        {"term": "`?next=`", "meaning": "Where to send the user after login: `/login?next=/tasks/`."},
+        {"term": "host", "meaning": "The website part of an address, like `backendlab.test`."},
+        {"term": "API key", "meaning": "A long secret password that a program sends to prove who it is."},
+        {"term": "personal data", "meaning": "Anything that identifies a real person, like an email."},
+        {"term": "parameterised query", "meaning": "SQL with a `%s` placeholder; the value is passed **separately**."}
+      ],
+      "notes": "A relative path like /dashboard/ has no host, so it always stays on your site. SQL is the language databases understand."
+    },
+    {
+      "type": "scenario",
+      "title": "Attack 1: the open redirect",
+      "text": "An attacker emails Ada a link: `backendlab.test/login?next=https://backendlab-login.evil.example`. It starts with your real site, so she logs in. Your site then sends her to the attacker's copy, which asks for her password again.",
+      "bullets": [
+        "The link looked safe because it started with your address",
+        "**Fix:** only redirect to your own site; anything else goes to `/`",
+        "Your function: `safe_next_url(url, allowed_hosts)`"
+      ],
+      "notes": "Phishers love these. The victim did everything right: she checked the link started with the real site."
+    },
+    {
+      "type": "scenario",
+      "title": "Attack 2: the timing attack",
+      "text": "A guard checks a password one letter at a time and says \"wrong!\" at the first mismatch. A wrong first letter gets a quick answer; a right one, a slightly slower one. By timing answers, an attacker guesses the secret **one letter at a time**.",
+      "bullets": [
+        "Python's `==` on strings can behave like that guard",
+        "**Fix:** `hmac.compare_digest` always takes the same time",
+        "Your function: `api_key_matches(provided, expected)`"
+      ],
+      "notes": "The differences are tiny, but attackers can send millions of requests and average the timings."
+    },
+    {
+      "type": "scenario",
+      "title": "Attack 3: personal data in logs",
+      "text": "Your app logs \"Password reset for ada.lovelace@example.com\". Logs get copied into tools, emailed around and kept for months. One day a log file leaks, and thousands of emails are public.",
+      "bullets": [
+        "In many countries that is also against the law",
+        "**Fix:** mask it first: `a***@example.com` is still useful for debugging",
+        "Your function: `mask_email(email)`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Attack 4: SQL injection",
+      "text": "A search box glues the typed title into SQL. Someone types `x' OR '1'='1`. The quote ends the title early, and the rest becomes **part of the command**: \"title is x, OR 1 equals 1\". Every task of every user comes back.",
+      "bullets": [
+        "With other text, an attacker could even delete tables",
+        "**Fix:** pass the value separately, so it's treated as plain data",
+        "Your function: `find_tasks_by_title(title)`"
+      ],
+      "notes": "Even without an attacker, gluing breaks: a title like Ada's task contains a quote and crashes the query. That's test 10."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives and returns",
+      "caption": "The tests call your four functions with these values. `HOSTS` is `[\"backendlab.test\"]`.",
+      "code": "safe_next_url(\"/dashboard/\", HOSTS)                  # \"/dashboard/\"\nsafe_next_url(\"https://evil.example/login\", HOSTS)   # \"/\"\nsafe_next_url(\"//evil.example\", HOSTS)               # \"/\"\n\napi_key_matches(\"sk_live_abc123\", \"sk_live_abc123\")  # True\napi_key_matches(\"\", \"\")                              # False: empty never matches\n\nmask_email(\"ada.lovelace@example.com\")               # \"a***@example.com\"\nmask_email(\"not-an-email\")                           # \"***\"\n\nfind_tasks_by_title(\"Deploy\")                        # [1], the Deploy task's id\nfind_tasks_by_title(\"x' OR '1'='1\")                  # [] (nothing has that title)",
+      "notes": "Also blocked: javascript:alert(1), empty and None addresses, and backendlab.test.evil.example, which only starts like ours. Test 5 checks that you really call hmac.compare_digest."
+    },
+    {
+      "type": "code",
+      "title": "Tool: url_has_allowed_host_and_scheme",
+      "caption": "Django's own \"safe to redirect to?\" **function**: address first, then the allowed hosts.",
+      "code": "from django.utils.http import url_has_allowed_host_and_scheme\nurls = [\"/cart/\", \"https://shop.test/cart/\",\n        \"https://evil.example/\", \"//evil.example\"]\nfor url in urls:\n    print(url, url_has_allowed_host_and_scheme(url, allowed_hosts=[\"shop.test\"]))",
+      "output": "/cart/ True\nhttps://shop.test/cart/ True\nhttps://evil.example/ False\n//evil.example False",
+      "notes": "It gives True or False, not an address. Your function must return url or \"/\". Don't write your own check: url.startswith(\"/\") lets //evil.example through."
+    },
+    {
+      "type": "code",
+      "title": "Tools: not value and hmac.compare_digest",
+      "caption": "`not` catches empty and `None` at once; `compare_digest` compares **bytes** in constant time.",
+      "code": "import hmac\n\nprint(not \"\", not None, not \"abc\")\nprint(hmac.compare_digest(\"tea\".encode(), \"tea\".encode()))\nprint(hmac.compare_digest(\"tea\".encode(), \"tee\".encode()))",
+      "output": "True True False\nTrue\nFalse",
+      "notes": "Check for empty or None first: None.encode() crashes. .encode() turns text into bytes, which also handles accented letters."
+    },
+    {
+      "type": "code",
+      "title": "Tools: partition(\"@\") and text[0]",
+      "caption": "`partition` always gives 3 pieces; a missing `@` leaves the last two empty.",
+      "code": "print(\"tea@shop.test\".partition(\"@\"))\nprint(\"no-at-sign\".partition(\"@\"))\nprint(\"@shop.test\".partition(\"@\"))\nprint(\"tea\"[0], repr(None or \"\"))    # handy trick: None or \"\" gives \"\"",
+      "output": "('tea', '@', 'shop.test')\n('no-at-sign', '', '')\n('', '@', 'shop.test')\nt ''",
+      "notes": "You met partition in exercise 1. It crashes on None, which is why (value or \"\") is useful. text[0] is the first character."
+    },
+    {
+      "type": "compare",
+      "title": "Gluing SQL vs a parameterised query",
+      "left": {
+        "heading": "f\"... title = '{title}'\"",
+        "bullets": ["The value is glued **into the SQL text**", "A quote in it ends the string early", "`x' OR '1'='1` becomes part of the command", "`Ada's task` crashes the query"]
+      },
+      "right": {
+        "heading": "cursor.execute(sql, [values])",
+        "bullets": ["Write a bare `%s` in the SQL, **no quotes**", "Pass the values in a **separate list**", "`\"... WHERE id = %s\", [pen.id]`", "Quotes in the value are just letters"]
+      },
+      "notes": "'%s' with quotes, or \"...\" % title, both glue the value in again. The ORM (Task.objects.filter(title=...)) always does it the safe way."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "`safe_next_url`: not empty and safe? Return `url`; otherwise `\"/\"`", "tests": "tests 1-2"},
+        {"text": "`api_key_matches`: `if not provided or not expected:` return `False`", "tests": "test 4"},
+        {"text": "Then `hmac.compare_digest(...)` on both keys, `.encode()`d", "tests": "tests 3, 5"},
+        {"text": "`mask_email`: `local, at, domain = (email or \"\").partition(\"@\")`; any empty? `\"***\"`", "tests": "test 7"},
+        {"text": "Otherwise first letter of `local` + `***@` + domain, with an f-string", "tests": "test 6"},
+        {"text": "`find_tasks_by_title`: change only `cursor.execute`: bare `%s`, `[title]`", "tests": "tests 8-10"}
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`url.startswith(\"/\")` as the check: `//evil.example` sneaks through",
+        "Returning `True`/`False` from `safe_next_url`: it must return an **address**",
+        "`provided == expected`: not constant time, and `\"\" == \"\"` is `True`",
+        "`email.split(\"@\")` crashes on `None`; `partition` always gives 3 pieces",
+        "`'%s'` with quotes, or an f-string: the value must go in `[title]`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "Django already protects you in many places: its login view checks `?next=` with the same function you used, and the ORM always uses parameterised queries. The danger is where you step **outside** that protection.",
+      "bullets": [
+        "Raw SQL for a report: always pass values in the list",
+        "Checking a webhook's or partner's API key: `compare_digest`",
+        "Writing log lines about users: mask emails, never log passwords"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why is a link that starts with your real site still dangerous?",
+        "What does `==` leak about a secret that `compare_digest` doesn't?",
+        "Why should `mask_email(\"not-an-email\")` return `\"***\"`?",
+        "In `x' OR '1'='1`, which character lets the text escape into the SQL?"
+      ]
+    }
+  ]
+}

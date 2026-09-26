@@ -1,0 +1,268 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Paginate a list</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 2 · Exercise 10 · Pagination</strong></p><h1>Paginate a list</h1>
+<h2>The big idea</h2>
+<p>Imagine an API with 50,000 tasks. If one request sent back <strong>all</strong> of them, the
+response would be huge, slow to build and slow to download, and the phone or
+browser on the other end would struggle to show it. So APIs send the data in
+<strong>pages</strong>: a small slice at a time, plus a few numbers that say where you are.</p>
+<p>A client asks for a page with <strong>query parameters</strong> (the extras after <code>?</code> that you
+met in exercise 1):</p>
+<pre><code>GET /api/tasks/?page=2&amp;page_size=10
+</code></pre>
+<p>and gets back one page of results with some <strong>metadata</strong> (facts about the data):</p>
+<pre><code class="language-python">{
+    &quot;count&quot;: 42,          # how many items exist in total
+    &quot;page&quot;: 2,            # which page this is
+    &quot;total_pages&quot;: 5,     # how many pages there are
+    &quot;next_page&quot;: 3,       # the page to ask for next (None on the last page)
+    &quot;previous_page&quot;: 1,   # the page before (None on page 1)
+    &quot;results&quot;: [...],     # the 10 items on this page
+}
+</code></pre>
+<p>You already do this in data analysis: <code>df.head(10)</code> shows the first 10 rows, and
+<code>df.iloc[10:20]</code> shows the next 10. Pagination is the same idea, done by the
+server, with the client choosing which chunk it wants.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>pagination</strong></td>
+<td>Splitting a long list into numbered pages and returning one page at a time.</td>
+</tr>
+<tr>
+<td><strong>page</strong></td>
+<td>Which chunk the client wants. Page 1 is the first chunk.</td>
+</tr>
+<tr>
+<td><strong>page size</strong></td>
+<td>How many items are on one page.</td>
+</tr>
+<tr>
+<td><strong>metadata</strong></td>
+<td>Extra facts about the data, like <code>count</code> and <code>total_pages</code>, sent next to the results.</td>
+</tr>
+<tr>
+<td><strong>clamp</strong></td>
+<td>Push a number back inside a limit: if it's too big, use the limit instead.</td>
+</tr>
+<tr>
+<td><strong>exception</strong></td>
+<td>An error that stops the code, like <code>ValueError</code>.</td>
+</tr>
+<tr>
+<td><strong>raise</strong></td>
+<td>Make an exception happen on purpose, to say "this input is wrong".</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You don't create the list or the numbers yourself. <strong>The tests call your function
+and pass them in</strong> as the parameters <code>items</code>, <code>page</code>, <code>page_size</code> and (sometimes)
+<code>max_page_size</code>. In the tests, <code>items</code> is a list of the numbers 1 to 42:</p>
+<pre><code class="language-python">ITEMS = list(range(1, 43))   # [1, 2, 3, ..., 42]  -&gt; 42 items
+</code></pre>
+<p>A test calls <code>paginate(ITEMS, page=1, page_size=10)</code> and checks it returns:</p>
+<pre><code class="language-python">{
+    &quot;count&quot;: 42,
+    &quot;page&quot;: 1,
+    &quot;total_pages&quot;: 5,
+    &quot;next_page&quot;: 2,
+    &quot;previous_page&quot;: None,
+    &quot;results&quot;: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+}
+</code></pre>
+<p>Other calls from the tests, and what they expect:</p>
+<table>
+<thead>
+<tr>
+<th>call</th>
+<th>expected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>paginate(ITEMS, page=3, page_size=10)</code></td>
+<td><code>results</code> is <code>[21, ..., 30]</code>, <code>page</code> 3, <code>previous_page</code> 2, <code>next_page</code> 4</td>
+</tr>
+<tr>
+<td><code>paginate(ITEMS, page=5, page_size=10)</code></td>
+<td><code>results</code> is <code>[41, 42]</code> (the last page is shorter), <code>next_page</code> is <code>None</code></td>
+</tr>
+<tr>
+<td><code>paginate(ITEMS, page="2", page_size="20")</code></td>
+<td><code>page</code> is the <strong>number</strong> <code>2</code>, <code>results</code> is <code>[21, ..., 40]</code></td>
+</tr>
+<tr>
+<td><code>paginate(ITEMS, page="abc", page_size=10)</code></td>
+<td>raises <code>ValueError</code></td>
+</tr>
+<tr>
+<td><code>paginate(ITEMS, page=6, page_size=10)</code></td>
+<td>raises <code>ValueError("Invalid page.")</code></td>
+</tr>
+<tr>
+<td><code>paginate(list(range(200)), page=1, page_size=1000, max_page_size=50)</code></td>
+<td>50 results, <code>total_pages</code> 4</td>
+</tr>
+<tr>
+<td><code>paginate([], page=1)</code></td>
+<td><code>count</code> 0, <code>total_pages</code> 1, <code>results</code> <code>[]</code>, both neighbours <code>None</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Why can <code>page</code> be a string like <code>"2"</code>? Because everything in a web address is
+text. When a client writes <code>?page=2</code>, the server receives the <strong>string</strong> <code>"2"</code>,
+not the number <code>2</code>. Your function must turn it into a number before using it.</p>
+<p><code>items</code>, <code>page</code> and <code>page_size</code> only exist <strong>inside</strong> your function while a
+test is calling it. To experiment in the Console, make your own sample list
+first (see "Try it" below).</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3><code>int(value)</code></h3>
+<ul>
+<li>Turns a string (or a number) into a whole number. It's a <strong>function</strong>, so you
+  pass the value in brackets.</li>
+</ul>
+<pre><code class="language-python">int(&quot;7&quot;)       # 7
+int(&quot; 12 &quot;)    # 12  (spaces around it are fine)
+int(&quot;seven&quot;)   # ValueError: invalid literal for int() with base 10: 'seven'
+int(None)      # TypeError: int() argument must be a string, ... not 'NoneType'
+</code></pre>
+<ul>
+<li>Common mistake: bad text gives a <code>ValueError</code>, but <code>None</code> gives a <strong>different</strong>
+  error, a <code>TypeError</code>. The tests pass <code>None</code> too, so you need to handle both.</li>
+</ul>
+<h3><code>try</code> / <code>except</code></h3>
+<ul>
+<li>Runs some code, and if a certain error happens, runs a backup block instead of
+  crashing. Put several error types in brackets to catch any of them.</li>
+</ul>
+<h3><code>raise ValueError("message")</code></h3>
+<ul>
+<li>Stops the function straight away with an error you choose. This is how a
+  function says "you gave me bad input". The code that called it (here, the
+  tests) sees the error.</li>
+</ul>
+<p>Here are both together, checking an age typed into a form (different data from
+the exercise):</p>
+<pre><code class="language-python">def check_age(value):
+    try:
+        age = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(&quot;age must be a whole number&quot;)
+    if age &lt; 0:
+        raise ValueError(&quot;age cannot be negative&quot;)
+    return age
+
+check_age(&quot;30&quot;)    # 30
+check_age(&quot;old&quot;)   # ValueError: age must be a whole number
+check_age(&quot;-4&quot;)    # ValueError: age cannot be negative
+</code></pre>
+<h3><code>min(a, b)</code> and <code>max(a, b)</code></h3>
+<ul>
+<li>Give back the smaller / bigger of the values.</li>
+</ul>
+<pre><code class="language-python">min(80, 25)   # 25   -&gt; &quot;no more than 25&quot;
+max(1, 0)     # 1    -&gt; &quot;at least 1&quot;
+</code></pre>
+<ul>
+<li><code>min(asked_for, limit)</code> is the usual way to <strong>clamp</strong> a number: you get what
+  was asked for, but never more than the limit.</li>
+</ul>
+<h3><code>math.ceil(number)</code></h3>
+<ul>
+<li>Rounds <strong>up</strong> to the next whole number. <code>math</code> is already imported at the top
+  of your file, so call it as <code>math.ceil(...)</code>.</li>
+</ul>
+<pre><code class="language-python">import math
+
+23 / 5              # 4.6
+math.ceil(23 / 5)   # 5   -&gt; 23 songs, 5 per page, need 5 pages
+math.ceil(20 / 5)   # 4   -&gt; exactly 4 full pages
+</code></pre>
+<h3>Slicing: <code>my_list[start:stop]</code></h3>
+<ul>
+<li>Gives back the items from position <code>start</code> up to, <strong>but not including</strong>,
+  position <code>stop</code>. Positions count from 0. Square brackets, with a colon.</li>
+</ul>
+<pre><code class="language-python">songs = [&quot;s1&quot;, &quot;s2&quot;, &quot;s3&quot;, &quot;s4&quot;, &quot;s5&quot;, &quot;s6&quot;, &quot;s7&quot;]
+songs[0:3]     # [&quot;s1&quot;, &quot;s2&quot;, &quot;s3&quot;]   &lt;- page 1, 3 per page
+songs[3:6]     # [&quot;s4&quot;, &quot;s5&quot;, &quot;s6&quot;]   &lt;- page 2
+songs[6:9]     # [&quot;s7&quot;]               &lt;- page 3: past the end is fine, it's just shorter
+</code></pre>
+<ul>
+<li>The start of any page is <code>(page - 1) * page_size</code>. For page 2 with 3 per page
+  that's <code>(2 - 1) * 3 = 3</code>, and <code>songs[3:3 + 3]</code> is page 2.</li>
+</ul>
+<h3><code>value_if_true if condition else value_if_false</code></h3>
+<ul>
+<li>A one-line <code>if</code> that picks between two values.</li>
+</ul>
+<pre><code class="language-python">n = 12
+&quot;big&quot; if n &gt; 10 else &quot;small&quot;   # &quot;big&quot;
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The Console tab shows the value of the <strong>last</strong> line you
+highlighted, so to see one particular line, highlight the lines it needs (like
+<code>import math</code> or <code>songs = [...]</code>) plus that line. When an example raises an error,
+the Console shows the error: that's what you want to see.</p>
+<h2>Step by step</h2>
+<ol>
+<li><strong>Turn <code>page</code> into a number and check it.</strong> Use <code>int(page)</code> inside a
+   <code>try</code> / <code>except (TypeError, ValueError)</code>, and in the <code>except</code> block
+   <code>raise ValueError(...)</code> with a message of your choice. Then, if the number is
+   less than 1, <code>raise ValueError(...)</code> too. Store the number back in <code>page</code>.
+   <strong>→ test 5 (the page cases)</strong></li>
+<li><strong>Do the same for <code>page_size</code>.</strong> Same checks, same kind of error.
+   <strong>→ tests 4 and 5</strong>
+   (Tip: steps 1 and 2 are the same code twice. You can write it once as a small
+   helper function above <code>paginate</code>, like <code>check_age</code> in the example, and call it
+   for each value.)</li>
+<li><strong>Clamp the page size</strong>: <code>page_size = min(page_size, max_page_size)</code>.
+   <strong>→ test 6</strong></li>
+<li><strong>Work out the totals.</strong> <code>count</code> is <code>len(items)</code>. <code>total_pages</code> is
+   <code>count / page_size</code> rounded <strong>up</strong>, but never less than 1, so wrap it:
+   <code>max(1, math.ceil(...))</code>. An empty list then still has one (empty) page.
+   <strong>→ test 1, and test 8</strong> (the starter already passes test 8; keep it passing)</li>
+<li><strong>Reject a page past the end.</strong> If <code>page &gt; total_pages</code>,
+   <code>raise ValueError("Invalid page.")</code>. Use exactly that message, with the full
+   stop. <strong>→ test 7</strong></li>
+<li><strong>Cut out this page's items.</strong> Work out <code>start = (page - 1) * page_size</code>,
+   then slice <code>items[start:start + page_size]</code>. <strong>→ tests 1, 2 and 3</strong></li>
+<li><strong>Work out the neighbours.</strong> <code>next_page</code> is <code>page + 1</code> if <code>page</code> is less than
+   <code>total_pages</code>, otherwise <code>None</code>. <code>previous_page</code> is <code>page - 1</code> if <code>page</code> is
+   more than 1, otherwise <code>None</code>. <strong>→ tests 1, 2, 3 and 8</strong></li>
+<li><strong>Return one dictionary</strong> with the keys <code>count</code>, <code>page</code>, <code>total_pages</code>,
+   <code>next_page</code>, <code>previous_page</code> and <code>results</code>. Make sure <code>page</code> is the number
+   from step 1, not the original string. <strong>→ all of tests 1-8</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li>Catching only <code>ValueError</code>: <code>int(None)</code> raises a <code>TypeError</code>, so the <code>(None, 10)</code>
+  case in test 5 crashes instead of raising <code>ValueError</code>.</li>
+<li>Returning the original <code>page</code> in the dictionary. For <code>page="2"</code> the test wants
+  the number <code>2</code>, not the string <code>"2"</code>.</li>
+<li>Off-by-one slicing: page 1 starts at position <strong>0</strong>, so use <code>(page - 1) * page_size</code>,
+  not <code>page * page_size</code>.</li>
+<li>Using <code>count // page_size</code> (rounds <strong>down</strong>): 42 items at 10 per page would give 4
+  pages and lose items 41 and 42. Use <code>math.ceil</code>.</li>
+<li>Working out <code>total_pages</code> <strong>before</strong> clamping <code>page_size</code>. For test 6 that uses
+  1000 per page and gives 1 page instead of 4. Clamp first (step 3), then count.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>DRF does this for you with <code>PageNumberPagination</code>: set a page size in settings and
+every list endpoint returns <code>count</code>, <code>next</code>, <code>previous</code> and <code>results</code>, and a page
+past the end becomes a <code>404</code> with <code>"Invalid page."</code>. This project uses it in
+<code>core/pagination.py</code>, with <code>page_size = 10</code> and <code>max_page_size = 50</code>, the same
+numbers as your function's defaults. Now you know what it's doing underneath.</p><h2>Keep learning</h2><ul><li><a href="https://docs.djangoproject.com/en/5.2/topics/pagination/">Pagination</a> (Django docs, beginner). Start here: short examples of Django&#x27;s Paginator showing pages, counts and has_next, the same ideas you implement.</li><li><a href="https://docs.python.org/3/library/math.html#math.ceil">math.ceil</a> (Python docs, beginner). The function that rounds up, so 21 items at 10 per page gives 3 pages, not 2.</li><li><a href="https://www.django-rest-framework.org/api-guide/pagination/#pagenumberpagination">Pagination: PageNumberPagination</a> (Django REST framework, intermediate). Shows DRF&#x27;s response shape (count, next, previous, results) and page_size limits that your function copies.</li></ul></body></html>

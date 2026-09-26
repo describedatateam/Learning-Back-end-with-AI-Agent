@@ -1,0 +1,45 @@
+{
+  "exercise": "14-settings-env",
+  "resources": [
+    {
+      "title": "Python Env Vars – How to Get an Environment Variable in Python",
+      "url": "https://www.freecodecamp.org/news/python-env-vars-how-to-get-an-environment-variable-in-python/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: os.environ works like a dict, and os.environ.get lets you supply a default when a variable is missing."
+    },
+    {
+      "title": "The Twelve-Factor App: III. Config",
+      "url": "https://12factor.net/config",
+      "source": "The Twelve-Factor App",
+      "kind": "article",
+      "level": "beginner",
+      "why": "A one-page explanation of why settings and secrets belong in the environment, not in your code."
+    },
+    {
+      "title": "os.environ",
+      "url": "https://docs.python.org/3/library/os.html#os.environ",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Official reference; note that every value is a string, which is why you write env_bool, env_int and env_list."
+    },
+    {
+      "title": "Django settings",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/settings/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "How Django loads settings.py, where your env helpers end up being used."
+    },
+    {
+      "title": "Deployment checklist",
+      "url": "https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Lists the settings (DEBUG, SECRET_KEY, ALLOWED_HOSTS) that must come from the environment in production."
+    }
+  ]
+}

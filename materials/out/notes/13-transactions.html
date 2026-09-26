@@ -1,0 +1,283 @@
+<!doctype html><html><head><meta charset="utf-8"><title>All or nothing: transactions</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 3 · Exercise 13 · Transactions</strong></p><h1>All or nothing: transactions</h1>
+<h2>The big idea</h2>
+<p>Ada wants to send Bob 25.00. For the bank's database, that's <strong>three separate
+writes</strong>:</p>
+<ol>
+<li>take 25.00 off Ada's balance and save it;</li>
+<li>add 25.00 to Bob's balance and save it;</li>
+<li>save a log entry saying "Ada paid Bob 25.00".</li>
+</ol>
+<p>Now imagine the server crashes, or Bob's account turns out not to exist, <strong>right
+after step 1</strong>. Ada's money is gone, Bob never got it, and there's no record of
+why. By default Django saves each write the moment you call <code>.save()</code>, so this can
+really happen.</p>
+<p>A <strong>transaction</strong> fixes it. You tell the database: "these writes belong together:
+keep <strong>all</strong> of them, or <strong>none</strong> of them". If anything goes wrong in the middle,
+the database <strong>rolls back</strong>: it undoes every write in the group, as if the transfer
+had never started. It's like a bank clerk who fills in the whole transfer form in
+pencil and only goes over it in pen once every line is correct. If a line is
+wrong, the whole form goes in the bin.</p>
+<p>In Django you make a transaction with a <code>with transaction.atomic():</code> block. In
+this exercise you use one to make a money transfer safe.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>transaction</strong></td>
+<td>A group of database writes that are kept all together or not at all.</td>
+</tr>
+<tr>
+<td><strong>atomic</strong></td>
+<td>"Can't be split": the whole group happens, or none of it does.</td>
+</tr>
+<tr>
+<td><strong>commit</strong></td>
+<td>Make the writes permanent. Happens when the <code>atomic</code> block finishes normally.</td>
+</tr>
+<tr>
+<td><strong>roll back</strong></td>
+<td>Undo every write in the group. Happens when an exception leaves the <code>atomic</code> block.</td>
+</tr>
+<tr>
+<td><strong>exception</strong></td>
+<td>An error that stops the code, like <code>ValueError</code>. You can also make your own kinds.</td>
+</tr>
+<tr>
+<td><strong>lock</strong></td>
+<td>Mark a row as "in use" so another request has to wait before changing it.</td>
+</tr>
+<tr>
+<td><strong>cents</strong></td>
+<td>Balances are stored as whole numbers of cents, so <code>10_000</code> means 100.00.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>10_000</code> is just the number 10000. Python lets you put <code>_</code> in long numbers to
+make them easier to read.</p>
+</blockquote>
+<h2>What your code receives and returns</h2>
+<p>Two models (tables) are provided in <code>sandbox/models.py</code>:</p>
+<pre><code class="language-python">class Account(models.Model):
+    owner = models.CharField(max_length=100)
+    balance = models.IntegerField(default=0)  # in cents: never use floats for money
+
+
+class TransferLog(models.Model):
+    source = models.ForeignKey(Account, on_delete=models.CASCADE, related_name=&quot;+&quot;)
+    destination = models.ForeignKey(Account, on_delete=models.CASCADE, related_name=&quot;+&quot;)
+    amount = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+</code></pre>
+<p>You don't create the accounts yourself. Before each test, <strong>the tests create two
+accounts</strong>, then call your function and pass in the account <strong>ids</strong> and the amount
+as <code>source_id</code>, <code>destination_id</code> and <code>amount</code>:</p>
+<pre><code class="language-python">ada = Account.objects.create(owner=&quot;Ada&quot;, balance=10_000)   # 100.00
+bob = Account.objects.create(owner=&quot;Bob&quot;, balance=500)      #   5.00
+
+log = transfer(ada.id, bob.id, 2_500)
+</code></pre>
+<p>After that call, Ada must have <code>7_500</code> and Bob <code>3_000</code> (test 1), and <code>log</code> must be
+the one new <code>TransferLog</code> row, with <code>source_id</code>, <code>destination_id</code> and <code>amount</code>
+matching the call (test 2).</p>
+<p>Every other test makes the transfer fail on purpose, then checks that <strong>nothing
+changed</strong>: Ada still has <code>10_000</code> and Bob still has <code>500</code>.</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th>call</th>
+<th>must raise</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td><code>transfer(ada.id, bob.id, amount)</code> for <code>amount</code> = <code>0</code>, <code>-50</code>, <code>12.5</code>, <code>"100"</code></td>
+<td><code>ValueError</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>transfer(ada.id, ada.id, 100)</code></td>
+<td><code>ValueError</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>transfer(bob.id, ada.id, 501)</code> (Bob only has 500)</td>
+<td><code>InsufficientFunds</code>, and no <code>TransferLog</code> is created</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>transfer(ada.id, 999_999, 100)</code> (no such account)</td>
+<td><code>Account.DoesNotExist</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>transfer(ada.id, bob.id, 1_000)</code>, but the tests make <code>TransferLog.objects.create</code> fail with <code>RuntimeError("disk full")</code></td>
+<td><code>RuntimeError</code></td>
+</tr>
+</tbody>
+</table>
+<p>Test 7 is the important one. The money has already moved when the last step
+fails, so only a transaction can undo it.</p>
+<blockquote>
+<p>The starter already moves money correctly, so tests 1 and 2 pass straight away.
+It just isn't <strong>safe</strong> yet.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<p>Each Console run starts with an empty database, so the examples below create
+their own account.</p>
+<h3>Your own exception: <code>class InsufficientFunds(Exception)</code></h3>
+<ul>
+<li>Already written at the top of your file. It creates a new <strong>kind</strong> of error with
+  its own name, so code that calls <code>transfer</code> can tell "not enough money" apart
+  from other problems. You use it like any other exception: <code>raise InsufficientFunds("...")</code>.</li>
+</ul>
+<pre><code class="language-python">class TooCold(Exception):
+    pass
+
+def check_temperature(degrees):
+    if degrees &lt; 5:
+        raise TooCold(f&quot;{degrees} degrees is too cold to plant seeds&quot;)
+    return &quot;ok&quot;
+
+check_temperature(12)   # 'ok'
+check_temperature(2)    # the Console shows an error ending in:
+                        # TooCold: 2 degrees is too cold to plant seeds
+</code></pre>
+<h3><code>isinstance(value, int)</code></h3>
+<ul>
+<li><code>True</code> if the value is a whole number. Use it to reject <code>12.5</code> and <code>"100"</code>.</li>
+</ul>
+<pre><code class="language-python">print(isinstance(250, int), isinstance(12.5, int), isinstance(&quot;100&quot;, int))
+# True False False
+</code></pre>
+<ul>
+<li>Common mistake: checking <code>amount &lt;= 0</code> <strong>first</strong>. <code>"100" &lt;= 0</code> crashes with a
+  <code>TypeError</code>. Check the type first: <code>not isinstance(amount, int) or amount &lt;= 0</code>
+  stops at the first part when <code>amount</code> isn't a number.</li>
+</ul>
+<h3><code>Model.objects.get(pk=...)</code></h3>
+<ul>
+<li>Fetches <strong>one</strong> row by its id (<code>pk</code> means "primary key", the id column).</li>
+<li>If there's no such row, it raises <code>Account.DoesNotExist</code> by itself. You don't
+  need to check for that: just let the error happen, and the transaction will undo
+  anything already written.</li>
+</ul>
+<pre><code class="language-python">from sandbox.models import Account
+
+Account.objects.get(pk=999)
+# the Console shows: ...Account.DoesNotExist: Account matching query does not exist.
+</code></pre>
+<h3><code>with transaction.atomic():</code></h3>
+<ul>
+<li>Everything <strong>indented</strong> under it is one transaction. If the block finishes
+  normally, all its writes are kept (a <code>return</code> from inside the block counts as
+  finishing normally). If an exception is raised inside it, <strong>every</strong>
+  write in the block is rolled back, and then the exception carries on out of the
+  block, so whoever called your function still sees the error.</li>
+<li><code>transaction</code> is already imported at the top of your file.</li>
+</ul>
+<p>Here's the "power cut" story twice, once without and once with a transaction:</p>
+<pre><code class="language-python">from django.db import transaction
+from sandbox.models import Account
+
+zoe = Account.objects.create(owner=&quot;Zoe&quot;, balance=300)
+
+try:
+    zoe.balance -= 100
+    zoe.save()
+    raise RuntimeError(&quot;power cut&quot;)
+except RuntimeError as error:
+    print(&quot;Caught:&quot;, error)
+
+zoe.refresh_from_db()   # re-read the balance from the database
+print(zoe.balance)      # 200  &lt;- the 100 is gone!
+</code></pre>
+<pre><code class="language-python">from django.db import transaction
+from sandbox.models import Account
+
+zoe = Account.objects.create(owner=&quot;Zoe&quot;, balance=300)
+
+try:
+    with transaction.atomic():
+        zoe.balance -= 100
+        zoe.save()
+        raise RuntimeError(&quot;power cut&quot;)
+except RuntimeError as error:
+    print(&quot;Caught:&quot;, error)
+
+zoe.refresh_from_db()
+print(zoe.balance)      # 300  &lt;- the save was rolled back
+</code></pre>
+<p>Both print <code>Caught: power cut</code> first. The <code>try</code> / <code>except</code> is only there so the
+Console can show you the balance afterwards. In your <code>transfer</code> function you
+<strong>don't</strong> catch the error: the tests want to see it.</p>
+<h3><code>.select_for_update()</code></h3>
+<ul>
+<li>Put it before <code>.get(...)</code>: <code>Account.objects.select_for_update().get(pk=...)</code>.
+  It <strong>locks</strong> the row until the transaction ends. If two transfers from Ada's
+  account arrive at the same moment, the second one waits until the first has
+  finished, instead of both reading "Ada has 100.00" and both spending it.</li>
+<li>It only works <strong>inside</strong> <code>transaction.atomic()</code>. On a real database like
+  PostgreSQL, using it outside raises an error. SQLite, used here, simply skips
+  the lock, so no test checks it, but it's the right habit.</li>
+</ul>
+<p><strong>Try it:</strong> paste an example into the editor, highlight it and press
+<strong>Shift+Enter</strong> to see the result in the Console. The Console shows what you
+<code>print</code>, plus the value of the <strong>last</strong> highlighted line, so for <code>check_temperature</code>
+highlight the <code>class</code> and <code>def</code> with one call at a time.</p>
+<h2>Step by step</h2>
+<ol>
+<li><strong>Check the amount before touching the database.</strong> If <code>amount</code> is not an
+   <code>int</code>, or it's <code>0</code> or less, <code>raise ValueError(...)</code> with a message of your
+   choice. <strong>→ test 3</strong></li>
+<li><strong>Check the accounts are different.</strong> If <code>source_id == destination_id</code>,
+   <code>raise ValueError(...)</code>. <strong>→ test 4</strong></li>
+<li><strong>Open a transaction.</strong> Write <code>with transaction.atomic():</code> and move <strong>all</strong> the
+   database code (every <code>get</code>, <code>save</code> and <code>create</code>) inside it, indented one
+   level. <strong>→ test 7</strong></li>
+<li><strong>Fetch both accounts before changing anything</strong>, using
+   <code>Account.objects.select_for_update().get(pk=...)</code> for the source and then the
+   destination. A missing account raises <code>Account.DoesNotExist</code> here, before any
+   money has moved. <strong>→ test 6</strong></li>
+<li><strong>Check the balance.</strong> If <code>source.balance &lt; amount</code>,
+   <code>raise InsufficientFunds(...)</code>. <strong>→ test 5</strong></li>
+<li><strong>Move the money.</strong> Subtract <code>amount</code> from the source balance, add it to the
+   destination balance, and <code>.save()</code> both. <strong>→ test 1</strong> (keeps passing)</li>
+<li><strong>Record and return the log</strong>, still inside the <code>with</code> block: keep
+   <code>return TransferLog.objects.create(source=source, destination=destination, amount=amount)</code>.
+   Use exactly <code>TransferLog.objects.create(...)</code>: that's the call test 7 makes
+   fail on purpose. <strong>→ tests 2 and 7</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li>Putting <code>with transaction.atomic():</code> in but leaving some <code>save()</code> lines
+  <strong>outside</strong> it (not indented). Only the indented lines are protected.</li>
+<li>Wrapping the transfer in <code>try</code> / <code>except</code> and hiding the error. The tests
+  expect <code>InsufficientFunds</code>, <code>DoesNotExist</code> and <code>RuntimeError</code> to come out of
+  your function. <code>atomic()</code> undoes the writes; it doesn't need to swallow the
+  error.</li>
+<li>Converting the amount with <code>int(amount)</code>. That turns <code>12.5</code> into <code>12</code> and <code>"100"</code>
+  into <code>100</code>, and test 3 wants those <strong>rejected</strong> with <code>ValueError</code>.</li>
+<li>Checking the balance <strong>after</strong> subtracting: by then you've already changed the
+  source. Check <code>source.balance &lt; amount</code> first.</li>
+<li>Creating the log with <code>TransferLog(...)</code> and <code>.save()</code> instead of
+  <code>TransferLog.objects.create(...)</code>. It works, but then test 7 can't make it fail.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Any action that writes to more than one row (placing an order and reducing stock,
+signing up a user and creating their profile) needs to be all-or-nothing. In a
+Django view you'd wrap that work in <code>transaction.atomic()</code> exactly like this, and
+you can even make every request atomic with the <code>ATOMIC_REQUESTS</code> database setting.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/acid-databases-explained/">ACID Databases – Atomicity, Consistency, Isolation &amp; Durability Explained</a> (freeCodeCamp, beginner). Start here: restaurant analogies that make &#x27;all or nothing&#x27; (atomicity) and isolation easy to picture.</li><li><a href="https://www.postgresql.org/docs/current/tutorial-transactions.html">PostgreSQL tutorial: Transactions</a> (PostgreSQL docs, beginner). A short bank-transfer example in plain SQL showing BEGIN, COMMIT and rollback, the same scenario as this exercise.</li><li><a href="https://docs.python.org/3/tutorial/errors.html#user-defined-exceptions">Errors and Exceptions: user-defined exceptions</a> (Python docs, beginner). How to make your own exception class like InsufficientFunds, which triggers the rollback when raised.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/transactions/#controlling-transactions-explicitly">Database transactions: controlling transactions explicitly</a> (Django docs, intermediate). Official reference for transaction.atomic() and how an exception inside the with block undoes every change.</li><li><a href="https://docs.djangoproject.com/en/5.2/ref/models/querysets/#select-for-update">QuerySet API reference: select_for_update</a> (Django docs, intermediate). Explains row locking so two transfers cannot change the same account at the same time.</li></ul></body></html>

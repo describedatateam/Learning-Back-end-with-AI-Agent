@@ -1,0 +1,37 @@
+{
+  "exercise": "08-permissions",
+  "resources": [
+    {
+      "title": "HTTP 401 Error vs HTTP 403 Error – Status Code Responses Explained",
+      "url": "https://www.freecodecamp.org/news/http-401-error-vs-http-403-error-status-code-responses-explained/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: the difference between 'who are you?' (401) and 'you may not do that' (403), which permissions decide."
+    },
+    {
+      "title": "Tutorial 4: Authentication & Permissions",
+      "url": "https://www.django-rest-framework.org/tutorial/4-authentication-and-permissions/",
+      "source": "Django REST framework",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Builds an IsOwnerOrReadOnly permission step by step, almost the same class you write here."
+    },
+    {
+      "title": "Permissions: custom permissions",
+      "url": "https://www.django-rest-framework.org/api-guide/permissions/#custom-permissions",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Official reference for BasePermission, has_permission, has_object_permission and SAFE_METHODS."
+    },
+    {
+      "title": "Authorization Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+      "source": "OWASP",
+      "kind": "article",
+      "level": "intermediate",
+      "why": "Security rules of thumb such as 'deny by default' and 'check on every request', to read after the exercise."
+    }
+  ]
+}

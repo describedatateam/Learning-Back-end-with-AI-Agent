@@ -1,0 +1,29 @@
+{
+  "exercise": "10-pagination",
+  "resources": [
+    {
+      "title": "Pagination",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/pagination/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "Start here: short examples of Django's Paginator showing pages, counts and has_next, the same ideas you implement."
+    },
+    {
+      "title": "math.ceil",
+      "url": "https://docs.python.org/3/library/math.html#math.ceil",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "The function that rounds up, so 21 items at 10 per page gives 3 pages, not 2."
+    },
+    {
+      "title": "Pagination: PageNumberPagination",
+      "url": "https://www.django-rest-framework.org/api-guide/pagination/#pagenumberpagination",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Shows DRF's response shape (count, next, previous, results) and page_size limits that your function copies."
+    }
+  ]
+}

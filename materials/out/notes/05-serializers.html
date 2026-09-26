@@ -1,0 +1,288 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Validate input with serializers</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 05 · DRF serializers</strong></p><h1>Validate input with serializers</h1>
+<h2>The big idea</h2>
+<p>Anything a client sends your API is <strong>untrusted</strong>. It might come from your own
+website, but it might just as well come from a script, a typo, an old app version
+or someone trying to break things. A title might be missing, a date might be
+<code>"next friday"</code>, a priority might be <code>"URGENT!!!"</code>. If you save that straight
+into the database, you get broken data, crashes, or worse.</p>
+<p>It's the same as receiving a messy spreadsheet from someone else: before you
+analyse it, you check every column has the right type, fill in defaults for
+blanks, and reject rows that make no sense. You never assume the data is clean.</p>
+<p>In Django REST Framework (DRF), the tool for this is a <strong>serializer</strong>. You write
+a class that lists the fields you expect and the rules for each one. You hand it
+the incoming data, ask "is this valid?", and it gives you either <strong>clean data</strong>
+(with the right Python types) or a <strong>dictionary of error messages</strong>, one list per
+field, ready to send back with a 400 status.</p>
+<p>A serializer is like a bouncer with a checklist: each field is checked on its
+own first, then the whole thing is checked together.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>untrusted input</strong></td>
+<td>Data from outside your server. Assume it can be missing, the wrong type or wrong on purpose.</td>
+</tr>
+<tr>
+<td><strong>serializer</strong></td>
+<td>A DRF class that describes the expected fields and checks incoming data against them.</td>
+</tr>
+<tr>
+<td><strong>validation</strong></td>
+<td>Checking data against rules. It either passes or produces error messages.</td>
+</tr>
+<tr>
+<td><strong><code>is_valid()</code></strong></td>
+<td>Runs all the checks. Gives <code>True</code> or <code>False</code>.</td>
+</tr>
+<tr>
+<td><strong><code>validated_data</code></strong></td>
+<td>The clean data (a dict) after <code>is_valid()</code> returned <code>True</code>.</td>
+</tr>
+<tr>
+<td><strong><code>errors</code></strong></td>
+<td>A dict of field name to a list of messages. Empty, <code>{}</code>, when all is fine.</td>
+</tr>
+<tr>
+<td><strong><code>ValidationError</code></strong></td>
+<td>The error you <code>raise</code> inside a serializer to say "this is not allowed".</td>
+</tr>
+<tr>
+<td><strong><code>attrs</code></strong></td>
+<td>Short for attributes: the dict of all field values, passed to <code>validate()</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>You write a class, <code>TaskSerializer</code>, in <code>serializers.py</code>. <strong>The tests create it
+with some data and check the result.</strong> Every test does this (copied from the tests):</p>
+<pre><code class="language-python">serializer = TaskSerializer(data={&quot;title&quot;: &quot;Write docs&quot;, &quot;priority&quot;: &quot;low&quot;, &quot;due_date&quot;: TOMORROW})
+serializer.is_valid()
+serializer.errors            # the test checks this dict
+serializer.validated_data    # and sometimes this one
+</code></pre>
+<p><code>TOMORROW</code> and <code>YESTERDAY</code> are worked out from today's date when the tests run, as
+text like <code>"2026-09-27"</code> (the format is <code>YYYY-MM-DD</code>).</p>
+<table>
+<thead>
+<tr>
+<th>data the test sends</th>
+<th>expected result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{"title": "Write docs", "priority": "low", "due_date": TOMORROW}</code></td>
+<td>valid; <code>validated_data["due_date"]</code> is a real <code>date</code> for tomorrow</td>
+</tr>
+<tr>
+<td><code>{"title": "Write docs"}</code></td>
+<td>valid; <code>validated_data["priority"]</code> is <code>"medium"</code></td>
+</tr>
+<tr>
+<td><code>{"priority": "low"}</code></td>
+<td>error on <code>title</code> (it's required)</td>
+</tr>
+<tr>
+<td><code>{"title": "  ab  "}</code></td>
+<td>error on <code>title</code>: <code>"Title must be at least 3 characters."</code></td>
+</tr>
+<tr>
+<td><code>{"title": "  Deploy  "}</code></td>
+<td>valid; <code>validated_data["title"]</code> is <code>"Deploy"</code></td>
+</tr>
+<tr>
+<td><code>{"title": "Write docs", "priority": "urgent"}</code></td>
+<td>error on <code>priority</code></td>
+</tr>
+<tr>
+<td><code>{"title": "Write docs", "due_date": None}</code></td>
+<td>valid (and the serializer must have a <code>due_date</code> field)</td>
+</tr>
+<tr>
+<td><code>{"title": "Write docs", "due_date": YESTERDAY}</code></td>
+<td>error on <code>due_date</code>: <code>"Due date cannot be in the past."</code></td>
+</tr>
+<tr>
+<td><code>{"title": "Fix outage", "priority": "high"}</code></td>
+<td>error on <code>due_date</code>: <code>"High priority tasks need a due date."</code></td>
+</tr>
+<tr>
+<td><code>{"title": "Fix outage", "priority": "high", "due_date": TOMORROW}</code></td>
+<td>valid</td>
+</tr>
+</tbody>
+</table>
+<p>The error messages must match <strong>exactly</strong>, full stop included.</p>
+<h2>Tools you'll use</h2>
+<p><code>serializers.py</code> already imports <code>serializers</code> (from DRF) and <code>date</code>, so you can
+use them straight away. The examples below make their own small serializers with
+different fields, so you can see each tool on its own.</p>
+<h3>A <code>Serializer</code> class, <code>is_valid()</code>, <code>validated_data</code> and <code>errors</code></h3>
+<ul>
+<li>You write a class that <strong>inherits</strong> from <code>serializers.Serializer</code> (the name in
+  brackets after the class name). Each field is one line, just like a model.</li>
+<li>You <strong>use</strong> it by calling the class with <code>data=...</code>, then <code>.is_valid()</code>.</li>
+</ul>
+<pre><code class="language-python">class PetSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=20)
+    age = serializers.IntegerField(min_value=0)
+
+good = PetSerializer(data={&quot;name&quot;: &quot;  Rex  &quot;, &quot;age&quot;: &quot;3&quot;})
+print(good.is_valid())        # True
+print(good.validated_data)    # {'name': 'Rex', 'age': 3}
+
+bad = PetSerializer(data={&quot;age&quot;: -1})
+print(bad.is_valid())         # False
+print(bad.errors)
+# {'name': [ErrorDetail(string='This field is required.', code='required')],
+#  'age': [ErrorDetail(string='Ensure this value is greater than or equal to 0.', code='min_value')]}
+</code></pre>
+<p>Notice three free checks: <code>CharField</code> <strong>strips spaces</strong> (<code>"  Rex  "</code> became
+<code>"Rex"</code>), <code>"3"</code> was turned into the number <code>3</code>, and every field is <strong>required</strong>
+unless you say otherwise. An <code>ErrorDetail</code> is just a message; <code>str(...)</code> of it
+gives the plain text.</p>
+<h3><code>serializers.ChoiceField(choices=[...], default=...)</code></h3>
+<ul>
+<li>Only accepts one of the listed values. <code>default=</code> is used when the field is
+  missing (and makes it not required).</li>
+</ul>
+<h3><code>serializers.DateField(required=False, allow_null=True)</code></h3>
+<ul>
+<li>Accepts a date written as <code>"YYYY-MM-DD"</code> and turns it into a Python <code>date</code>.</li>
+<li><code>required=False</code>: the field may be left out. <code>allow_null=True</code>: it may be sent
+  as <code>None</code> (<code>null</code> in JSON). They're two different options, like <code>null</code> and
+  <code>blank</code> on a model.</li>
+</ul>
+<pre><code class="language-python">class ShirtSerializer(serializers.Serializer):
+    size = serializers.ChoiceField(choices=[&quot;S&quot;, &quot;M&quot;, &quot;L&quot;], default=&quot;M&quot;)
+    gift_date = serializers.DateField(required=False, allow_null=True)
+
+s = ShirtSerializer(data={})
+s.is_valid()
+print(s.validated_data)   # {'size': 'M'}  (default used; gift_date left out)
+
+s = ShirtSerializer(data={&quot;size&quot;: &quot;XL&quot;, &quot;gift_date&quot;: &quot;2026-12-24&quot;})
+s.is_valid()
+print(s.errors)           # {'size': [ErrorDetail(string='&quot;XL&quot; is not a valid choice.', code='invalid_choice')]}
+
+s = ShirtSerializer(data={&quot;size&quot;: &quot;L&quot;, &quot;gift_date&quot;: &quot;2026-12-24&quot;})
+s.is_valid()
+print(s.validated_data)   # {'size': 'L', 'gift_date': datetime.date(2026, 12, 24)}
+
+s = ShirtSerializer(data={&quot;gift_date&quot;: None})
+s.is_valid()
+print(s.validated_data)   # {'size': 'M', 'gift_date': None}
+</code></pre>
+<h3><code>date.today()</code> and comparing dates</h3>
+<ul>
+<li><code>date.today()</code> gives today's date. Dates compare like numbers: earlier is
+  "smaller", so <code>some_date &lt; date.today()</code> means "in the past".</li>
+</ul>
+<pre><code class="language-python">print(date.today())                          # e.g. 2026-09-26
+print(date(2020, 1, 31) &lt; date.today())      # True (2020 is in the past)
+</code></pre>
+<h3><code>def validate_&lt;field&gt;(self, value):</code> (one field)</h3>
+<ul>
+<li>A method named <code>validate_</code> plus a field name. DRF calls it <strong>after</strong> that
+  field's own checks passed, with the cleaned value (already stripped, already
+  a <code>date</code>, and so on).</li>
+<li>If the value is bad, <code>raise serializers.ValidationError("message")</code>. If it's
+  fine, you <strong>must <code>return</code> the value</strong> (you may return a tidied version).</li>
+</ul>
+<pre><code class="language-python">class UsernameSerializer(serializers.Serializer):
+    username = serializers.CharField()
+
+    def validate_username(self, value):
+        if value.lower() == &quot;admin&quot;:
+            raise serializers.ValidationError(&quot;That name is reserved.&quot;)
+        return value.lower()
+
+s = UsernameSerializer(data={&quot;username&quot;: &quot; ADMIN &quot;})
+print(s.is_valid(), s.errors)
+# False {'username': [ErrorDetail(string='That name is reserved.', code='invalid')]}
+s = UsernameSerializer(data={&quot;username&quot;: &quot; Grace &quot;})
+print(s.is_valid(), s.validated_data)
+# True {'username': 'grace'}
+</code></pre>
+<ul>
+<li>For a field with <code>allow_null=True</code>, <code>value</code> can be <code>None</code>. Check for that
+  before comparing, since <code>None &lt; date.today()</code> crashes.</li>
+</ul>
+<h3><code>def validate(self, attrs):</code> (several fields together)</h3>
+<ul>
+<li>Runs <strong>last</strong>, once every field passed. <code>attrs</code> is a dict of all the clean
+  values, so you can compare fields with each other.</li>
+<li>To attach the error to one field, raise with a <strong>dict</strong>:
+  <code>serializers.ValidationError({"field_name": "message"})</code>.</li>
+<li>If all is fine, <strong><code>return attrs</code></strong>.</li>
+<li>Use <code>attrs.get("name")</code>, not <code>attrs["name"]</code>, for optional fields: a field
+  that was left out is simply not in the dict.</li>
+</ul>
+<pre><code class="language-python">class TripSerializer(serializers.Serializer):
+    start = serializers.IntegerField()
+    end = serializers.IntegerField()
+
+    def validate(self, attrs):
+        if attrs[&quot;end&quot;] &lt; attrs[&quot;start&quot;]:
+            raise serializers.ValidationError({&quot;end&quot;: &quot;The trip can't end before it starts.&quot;})
+        return attrs
+
+s = TripSerializer(data={&quot;start&quot;: 10, &quot;end&quot;: 4})
+print(s.is_valid())   # False
+print(s.errors)       # {'end': [ErrorDetail(string=&quot;The trip can't end before it starts.&quot;, code='invalid')]}
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<p>All of this goes inside <code>class TaskSerializer(serializers.Serializer):</code>. The
+<code>title</code> field is already there, and it already makes <strong>tests 3 and 5</strong> pass
+(<code>CharField</code> is required and strips spaces by default).</p>
+<ol>
+<li><strong>Add <code>priority</code>.</strong> A <code>ChoiceField</code> with the choices <code>"low"</code>, <code>"medium"</code> and
+   <code>"high"</code>, and <code>default="medium"</code>. <strong>→ tests 2 and 6</strong></li>
+<li><strong>Add <code>due_date</code>.</strong> A <code>DateField</code> that can be left out <strong>and</strong> can be <code>None</code>.
+   <strong>→ tests 1 and 7</strong></li>
+<li><strong>Write <code>validate_title(self, value)</code>.</strong> If <code>value</code> has fewer than 3 characters
+   (<code>len(value) &lt; 3</code>), raise <code>serializers.ValidationError("Title must be at least 3 characters.")</code>.
+   Otherwise return <code>value</code>. The spaces are already stripped when it arrives.
+   <strong>→ test 4</strong></li>
+<li><strong>Write <code>validate_due_date(self, value)</code>.</strong> If <code>value</code> is not <code>None</code> and is
+   earlier than <code>date.today()</code>, raise <code>"Due date cannot be in the past."</code>.
+   Otherwise return <code>value</code>. <strong>→ test 8</strong></li>
+<li><strong>Write <code>validate(self, attrs)</code>.</strong> If <code>attrs.get("priority")</code> is <code>"high"</code> and
+   there's no due date (<code>attrs.get("due_date")</code> is missing or <code>None</code>), raise a
+   <code>ValidationError</code> with a <strong>dict</strong> that puts
+   <code>"High priority tasks need a due date."</code> on the <code>"due_date"</code> key.
+   Otherwise return <code>attrs</code>. <strong>→ test 9</strong></li>
+</ol>
+<h2>Common mistakes</h2>
+<ul>
+<li>Forgetting <code>return value</code> at the end of <code>validate_title</code>: the title silently
+  becomes <code>None</code>. Forgetting <code>return attrs</code> in <code>validate()</code>: DRF stops with an
+  <code>AssertionError</code> saying <code>.validate() should return the validated data</code>.</li>
+<li><code>required=False</code> without <code>allow_null=True</code> (or the other way round). Test 2
+  leaves <code>due_date</code> out and test 7 sends <code>None</code>, so the field needs both.</li>
+<li>Comparing <code>value &lt; date.today()</code> without checking for <code>None</code> first. It crashes
+  with a <code>TypeError</code> when <code>due_date</code> is <code>None</code>.</li>
+<li>Raising the high-priority error as a plain string in <code>validate()</code>. It then lands
+  under <code>non_field_errors</code> instead of <code>due_date</code>. Use the dict form.</li>
+<li>Naming the method <code>validate_titles</code> or <code>title_validate</code>. DRF only finds it if
+  it's exactly <code>validate_</code> + the field name.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>In a real DRF view you write <code>serializer = TaskSerializer(data=request.data)</code>,
+then <code>if not serializer.is_valid(): return Response(serializer.errors, status=400)</code>.
+That's all the checking you did by hand in exercise 2, now in one reusable class.
+Frontend checks are a courtesy to the user; the serializer on the server is what
+actually protects your data.</p><h2>Keep learning</h2><ul><li><a href="https://www.django-rest-framework.org/tutorial/1-serialization/">Tutorial 1: Serialization</a> (Django REST framework, beginner). Start here: builds a serializer from scratch and shows is_valid(), validated_data and errors in the Python shell.</li><li><a href="https://www.freecodecamp.org/news/use-django-rest-framework-to-create-web-apis/">Use Django REST Framework to Create Web APIs (video course)</a> (freeCodeCamp, beginner). A free two-hour video that builds a DRF API with serializers, viewsets and tests; handy if you prefer watching.</li><li><a href="https://www.django-rest-framework.org/api-guide/serializers/#validation">Serializers: validation</a> (Django REST framework, intermediate). The official reference for validate_&lt;field&gt; and validate(attrs), the two hooks your TaskSerializer uses.</li><li><a href="https://www.django-rest-framework.org/api-guide/fields/">Serializer fields</a> (Django REST framework, intermediate). Lists every field type and option (required, max_length, allow_null) so you can describe the input shape precisely.</li><li><a href="https://www.django-rest-framework.org/api-guide/validators/">Validators</a> (Django REST framework, intermediate). Reusable validation rules you can attach to fields once your own validate methods start repeating themselves.</li></ul></body></html>

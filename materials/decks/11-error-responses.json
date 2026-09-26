@@ -1,0 +1,119 @@
+{
+  "exercise": "11-error-responses",
+  "subtitle": "Wrap every API error in the same shape, so clients always know where to look.",
+  "notes": "This deck goes with exercise 11. By the end you should be able to explain what an exception handler does and turn any DRF error into one standard JSON shape.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Things go wrong in every API: a missing field, a task that doesn't exist, a user who isn't logged in. The server still answers, with a **status code** like `404` and a JSON body.\n\nDRF's default error bodies come in **different shapes**. Your **exception handler** is a help desk that files every complaint on the **same form**.",
+      "notes": "You've met exceptions in data analysis: a typo in df[\"prise\"] raises KeyError. DRF has its own exceptions for web errors, like NotFound, and calls a handler function to turn them into responses."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives",
+      "caption": "The tests pass an exception in as `exc`, and an empty dict `{}` as `context`.",
+      "code": "from rest_framework import exceptions\n\n# test 2 does this:\nresponse = api_exception_handler(exceptions.NotFound(), {})\n\n# other exceptions the tests pass in as exc:\nexceptions.ValidationError({\"title\": [\"This field is required.\"]})\nexceptions.NotAuthenticated()       # 401\nexceptions.MethodNotAllowed(\"POST\") # 405\nKeyError(\"boom\")                    # a bug, not a web error",
+      "notes": "You never create these yourself inside the function. exc and response only exist while a test is calling your function. context normally says which view failed; you just pass it along."
+    },
+    {
+      "type": "code",
+      "title": "Two shapes in, one shape out",
+      "caption": "Same status code, but every body gets the `\"error\"` envelope.",
+      "code": "# DRF's default bodies (before your change)\n{\"title\": [\"This field is required.\"]}    # ValidationError, 400\n{\"detail\": \"Not found.\"}                  # NotFound, 404\n\n# What your handler must return instead\n{\"error\": {\n    \"status\": 400,\n    \"message\": \"Invalid input.\",\n    \"details\": {\"title\": [\"This field is required.\"]},\n}}\n{\"error\": {\"status\": 404, \"message\": \"Not found.\", \"details\": {}}}",
+      "notes": "Validation errors are keyed by field name. Every other error has one \"detail\" key. That difference is why you need an if."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "exception handler", "meaning": "A function that turns an exception into a response. DRF calls it."},
+        {"term": "status code", "meaning": "`400` bad input, `401` not logged in, `403` not allowed, `404` not found."},
+        {"term": "500", "meaning": "A server bug. Unexpected errors should stay 500s."},
+        {"term": "ValidationError", "meaning": "\"The data you sent is wrong\", with messages per field."},
+        {"term": "envelope", "meaning": "A fixed outer shape around every body, like `{\"error\": {...}}`."},
+        {"term": "Response", "meaning": "DRF's reply object, with `.status_code` and `.data`."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: DRF's exception_handler",
+      "caption": "Already called on the first line of your function. A bug gives back `None`.",
+      "code": "from rest_framework import exceptions\nfrom rest_framework.views import exception_handler\nresponse = exception_handler(exceptions.NotFound(), {})\nprint(response.status_code)\nprint(response.data)\nprint(exception_handler(KeyError(\"oops\"), {}))    # a bug, not a web error",
+      "output": "404\n{'detail': ErrorDetail(string='Not found.', code='not_found')}\nNone",
+      "notes": "ErrorDetail is DRF's special string that also remembers an error code. It behaves like normal text, and str() turns it into a plain string."
+    },
+    {
+      "type": "code",
+      "title": "Tools: str and isinstance",
+      "code": "from rest_framework import exceptions\nfrom rest_framework.views import exception_handler\n\nresponse = exception_handler(exceptions.ParseError(), {})\nprint(str(response.data[\"detail\"]))      # plain text\n\n# isinstance asks: \"is this value that kind of thing?\"\nbad = exceptions.ValidationError(\"bad\")\nprint(isinstance(bad, exceptions.ValidationError))\nprint(isinstance(exceptions.NotFound(), exceptions.ValidationError))",
+      "output": "Malformed request.\nTrue\nFalse",
+      "notes": "str(...) turns an ErrorDetail into plain text. isinstance gives True or False. In your file ValidationError is already imported by name, so you can write isinstance(exc, ValidationError). Check for None with `is None`, not == None."
+    },
+    {
+      "type": "compare",
+      "title": "Dots vs square brackets",
+      "left": {
+        "heading": "response.status_code",
+        "bullets": ["An **attribute** of the response object", "Read it with a **dot**", "A number, like `404`", "Use it for `\"status\"`, never type `400`"]
+      },
+      "right": {
+        "heading": "response.data[\"detail\"]",
+        "bullets": ["A **key** inside a dictionary", "Read it with **square brackets**", "An `ErrorDetail`: wrap it in `str(...)`", "Missing for validation errors!"]
+      },
+      "notes": "response[\"status_code\"] doesn't work, and neither does response.data.detail. The object uses dots; the dict inside it uses brackets. You can also replace the whole dict: response.data = {...}."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: choose, then wrap",
+      "caption": "The same shape your handler needs, on different data:",
+      "code": "order = {\"item\": \"tea\", \"problem\": \"out of stock\"}\n\nif order[\"problem\"] == \"out of stock\":\n    note, extra = \"Sorry, we ran out.\", {\"item\": order[\"item\"]}\nelse:\n    note, extra = order[\"problem\"], {}\n\nreply = {\"reply\": {\"code\": 7, \"note\": note, \"extra\": extra}}\nprint(reply)",
+      "output": "{'reply': {'code': 7, 'note': 'Sorry, we ran out.', 'extra': {'item': 'tea'}}}",
+      "notes": "First pick the two changing values with if / else, then build the nested dict once. A dict inside a dict is just a value that happens to be a dict."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Keep the first line; if `response` is `None`, return `None`", "tests": "test 6"},
+        {"text": "`ValidationError`: message `\"Invalid input.\"`, details `response.data`", "tests": "test 1"},
+        {"text": "Otherwise: message `str(response.data[\"detail\"])`, details `{}`", "tests": "tests 2-4"},
+        {"text": "Build `{\"status\": ..., \"message\": ..., \"details\": ...}`", "tests": ""},
+        {"text": "Set `response.data = {\"error\": ...}`; status is `response.status_code`", "tests": "tests 1-5"},
+        {"text": "Return the same `response` object", "tests": "tests 1-6"}
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Reading `[\"detail\"]` on a validation error: `KeyError`. Check it first",
+        "Returning your dict instead of `response`: the tests need `.status_code`",
+        "Typing `\"status\": 400` by hand: test 5 checks 405, 429 and 400",
+        "Forgetting the outer `\"error\"` key",
+        "Turning `None` into a response: real bugs should stay 500s"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A React app shows a red banner whenever an API call fails. With one error shape, it only needs `body[\"error\"][\"message\"]`, whatever went wrong.",
+      "bullets": [
+        "Switch it on once, with the `EXCEPTION_HANDLER` setting",
+        "Mobile apps and other services get the same predictable errors",
+        "Unexpected bugs still become 500s, which you log and fix"
+      ],
+      "notes": "The setting is REST_FRAMEWORK = {\"EXCEPTION_HANDLER\": \"core.exceptions.api_exception_handler\"}. Every view in the project then uses your handler."
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What does `exception_handler` give back for a `KeyError`, and why?",
+        "Why must you check for `ValidationError` before reading `\"detail\"`?",
+        "Why use `response.status_code` instead of typing the number?",
+        "Why return `response`, not the dictionary you built?"
+      ]
+    }
+  ]
+}

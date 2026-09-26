@@ -1,0 +1,35 @@
+{
+  "title": "Filter, search & order",
+  "week": 2,
+  "concept": "Querysets",
+  "file": "filters.py",
+  "lesson": "lessons/week-2/day-11-filtering-and-search-lesson.md",
+  "summary": "Turn query parameters like ?status=done&search=deploy&ordering=-due_date into a safe queryset.",
+  "hints": [
+    "<code>filter</code> gives back a new queryset, so always store it: <code>queryset = queryset.filter(...)</code>. You can do this as many times as you like.",
+    "<code>params.get('status')</code> gives <code>None</code> when the parameter is missing and <code>''</code> when it's empty. Both are false, so <code>if params.get('status'):</code> skips them.",
+    "Case-insensitive search: <code>queryset.filter(title__icontains=...)</code>, with two underscores.",
+    "<code>date.fromisoformat('2025-03-01')</code> raises <code>ValueError</code> on bad input, which is exactly what test 7 wants, so don't catch it. Then filter with <code>due_date__lte=</code> that date.",
+    "Ordering: <code>if ordering in ALLOWED_ORDERING:</code> sort by it, <code>else:</code> sort by <code>'id'</code>. Return the result of <code>order_by</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Why whitelist the values allowed in <code>?ordering=</code>?",
+      "options": ["For speed", "So clients can't sort by (and so probe) private or unindexed fields", "Django requires it", "It isn't needed"],
+      "answer": 1,
+      "explanation": "Sorting by an arbitrary field can leak information (e.g. <code>?ordering=owner__password</code>) or trigger slow queries. Only allow what you support."
+    },
+    {
+      "question": "When does <code>Task.objects.filter(status='done')</code> hit the database?",
+      "options": ["Immediately", "When the results are used (iterated, <code>list()</code>, <code>len()</code>, ...)", "Never", "When the server restarts"],
+      "answer": 1,
+      "explanation": "Querysets are lazy, which is what makes chaining filters cheap."
+    },
+    {
+      "question": "Which lookup finds titles containing 'deploy' regardless of case?",
+      "options": ["<code>title='deploy'</code>", "<code>title__contains='deploy'</code>", "<code>title__icontains='deploy'</code>", "<code>title__search='deploy'</code>"],
+      "answer": 2,
+      "explanation": "The <code>i</code> prefix means case-insensitive: <code>iexact</code>, <code>icontains</code>, <code>istartswith</code>..."
+    }
+  ]
+}

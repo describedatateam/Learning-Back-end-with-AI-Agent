@@ -1,0 +1,120 @@
+{
+  "exercise": "13-transactions",
+  "subtitle": "Make a money transfer happen completely, or not at all.",
+  "notes": "This deck goes with exercise 13. By the end you should be able to explain what a transaction is and use transaction.atomic() so a failed transfer changes nothing.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Ada sends Bob 25.00. That's **three writes**: take it off Ada, add it to Bob, save a log. If the server crashes after the first, Ada's money is simply gone.\n\nA **transaction** is a clerk who fills in the whole form in **pencil**, and only inks it once every line is right. One wrong line, and the whole form goes in the bin.",
+      "notes": "By default Django saves each write the moment you call .save(), so this really can happen. A transaction tells the database: keep all of these writes, or none of them."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives",
+      "caption": "The tests create two accounts, then pass their **ids** and an amount in cents.",
+      "code": "ada = Account.objects.create(owner=\"Ada\", balance=10_000)   # 100.00\nbob = Account.objects.create(owner=\"Bob\", balance=500)      #   5.00\n\ntransfer(ada.id, bob.id, 2_500)   # tests 1-2: Ada 7_500, Bob 3_000, returns the log\n\n# tests 3-7 must fail AND change nothing:\ntransfer(ada.id, bob.id, 12.5)    # ValueError (also 0, -50, \"100\")\ntransfer(ada.id, ada.id, 100)     # ValueError: same account\ntransfer(bob.id, ada.id, 501)     # InsufficientFunds: Bob only has 500\ntransfer(ada.id, 999_999, 100)    # Account.DoesNotExist\n# test 7: saving the log fails with RuntimeError(\"disk full\")",
+      "notes": "10_000 is just 10000: Python allows underscores in long numbers. Test 7 is the important one: the money has already moved when the last step fails, so only a transaction can undo it."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "transaction", "meaning": "A group of database writes kept all together, or not at all."},
+        {"term": "atomic", "meaning": "\"Can't be split\": the whole group happens, or none of it."},
+        {"term": "commit", "meaning": "Make the writes permanent, when the block finishes normally."},
+        {"term": "roll back", "meaning": "Undo every write in the group, when an exception leaves it."},
+        {"term": "lock", "meaning": "Mark a row \"in use\" so another request waits its turn."},
+        {"term": "cents", "meaning": "Money as whole numbers: `10_000` means 100.00."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: your own exception",
+      "code": "class TooCold(Exception):     # like InsufficientFunds in your file\n    pass\n\ndef check_temperature(degrees):\n    if degrees < 5:\n        raise TooCold(f\"{degrees} degrees is too cold to plant seeds\")\n    return \"ok\"\n\nprint(check_temperature(12))\ncheck_temperature(2)",
+      "output": "ok\nTooCold: 2 degrees is too cold to plant seeds",
+      "notes": "A new kind of error with its own name lets the caller tell \"not enough money\" apart from other problems."
+    },
+    {
+      "type": "code",
+      "title": "Tool: isinstance for the amount",
+      "caption": "Check the **type** first: `\"100\" <= 0` would crash with a `TypeError`.",
+      "code": "for amount in [250, 0, 12.5, \"100\"]:\n    bad = not isinstance(amount, int) or amount <= 0\n    print(repr(amount), \"rejected\" if bad else \"ok\")",
+      "output": "250 ok\n0 rejected\n12.5 rejected\n'100' rejected",
+      "notes": "or stops at the first True part, so amount <= 0 never runs on a string. Don't use int(amount): that would turn 12.5 into 12 and \"100\" into 100 instead of rejecting them."
+    },
+    {
+      "type": "code",
+      "title": "Tool: transaction.atomic()",
+      "code": "zoe = Account.objects.create(owner=\"Zoe\", balance=300)\ntry:\n    with transaction.atomic():      # without it, Zoe ends with 200\n        zoe.balance -= 100\n        zoe.save()\n        raise RuntimeError(\"power cut\")\nexcept RuntimeError as error:\n    print(\"Caught:\", error)\n\nzoe.refresh_from_db()   # re-read the balance from the database\nprint(zoe.balance)",
+      "output": "Caught: power cut\n300",
+      "notes": "transaction is already imported in your file. Everything indented under the with line is one transaction. The try / except is only here so the Console can show the balance. In transfer you don't catch the error: the tests want to see it."
+    },
+    {
+      "type": "compare",
+      "title": "atomic() vs try / except",
+      "left": {
+        "heading": "with transaction.atomic():",
+        "bullets": ["**Undoes** every write in the block", "Lets the error carry on out", "The caller still sees what went wrong", "Use it around all of `transfer`"]
+      },
+      "right": {
+        "heading": "try: ... except: ...",
+        "bullets": ["**Catches** the error and stops it", "Does **not** undo any saves", "Hides the error from the caller", "Don't use it in `transfer`"]
+      },
+      "notes": "They sound similar because both deal with errors, but they do different jobs. atomic cleans up the database; except swallows the error. The tests expect InsufficientFunds, DoesNotExist and RuntimeError to come out of your function."
+    },
+    {
+      "type": "code",
+      "title": "Tool: select_for_update",
+      "caption": "Locks the row until the transaction ends, so two transfers can't both spend the same money.",
+      "code": "with transaction.atomic():\n    zoe = Account.objects.select_for_update().get(pk=zoe_id)\n    zoe.balance -= 100\n    zoe.save()\n# the lock on Zoe's row is released here",
+      "notes": "Put it before .get(...), and only inside atomic(). On PostgreSQL using it outside raises an error. SQLite, used here, skips the lock, so no test checks it, but it's the right habit. pk means primary key, the id column."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "If `amount` isn't an `int`, or is 0 or less, raise `ValueError`", "tests": "test 3"},
+        {"text": "If `source_id == destination_id`, raise `ValueError`", "tests": "test 4"},
+        {"text": "Move all the database code inside `with transaction.atomic():`", "tests": "test 7"},
+        {"text": "Fetch both accounts first with `select_for_update().get(pk=...)`", "tests": "test 6"},
+        {"text": "If `source.balance < amount`, raise `InsufficientFunds`", "tests": "test 5"},
+        {"text": "Subtract, add, and `.save()` both accounts", "tests": "test 1"},
+        {"text": "Keep `return TransferLog.objects.create(...)` inside the block", "tests": "tests 2, 7"}
+      ],
+      "notes": "Steps 1 and 2 happen before any database work, so there's nothing to undo yet. Everything from step 3 on is indented under the with line."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Leaving some `save()` lines outside the `with` block (not indented)",
+        "Wrapping it in `try` / `except` and hiding the error",
+        "Using `int(amount)`: `12.5` and `\"100\"` must be rejected",
+        "Checking the balance **after** subtracting",
+        "Using `TransferLog(...).save()`: test 7 needs `objects.create`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A shop places an order and reduces the stock. If the stock update fails, the order must not exist either, or you sell things you don't have.",
+      "bullets": [
+        "Any action writing to several rows needs to be all-or-nothing",
+        "In a Django view, wrap that work in `transaction.atomic()`",
+        "`ATOMIC_REQUESTS` makes every request one transaction"
+      ],
+      "notes": "Other examples: signing up a user and creating their profile, or booking a seat and taking payment."
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What happens to earlier saves when an exception leaves an `atomic` block?",
+        "Why check `isinstance(amount, int)` before `amount <= 0`?",
+        "Why not catch the error inside `transfer`?",
+        "What problem does `select_for_update()` prevent?"
+      ]
+    }
+  ]
+}

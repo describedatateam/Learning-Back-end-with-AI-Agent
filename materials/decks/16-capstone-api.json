@@ -1,0 +1,142 @@
+{
+  "exercise": "16-capstone-api",
+  "subtitle": "Put the pieces together: a to-do API where every user sees only their own tasks.",
+  "notes": "This deck goes with exercise 16, the capstone. By the end you should be able to explain how model, serializer, viewset, router, permissions and ownership work together, and why scoping get_queryset protects every action at once.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Think of a hotel. Everyone uses the same front door and corridors (the **same URLs**), but your key card opens only **your** room.\n\nIn data terms: all tasks sit in one big table. For each request, filter it to the rows whose `owner` is **the logged-in user**, and only ever work with that.",
+      "notes": "The front desk is the permission check: it turns away people who aren't guests at all. The key card is the filtered list of tasks. This is a small version of core/api_views.py in this project."
+    },
+    {
+      "type": "terms",
+      "title": "Recap: how the pieces fit together",
+      "terms": [
+        {"term": "Model `Task`", "meaning": "The table: `owner`, `title`, `done`, `created_at`. Given to you."},
+        {"term": "Ownership", "meaning": "`owner` points to a user; `filter(owner=user)` gets their tasks."},
+        {"term": "Serializer", "meaning": "Task to JSON dict, and checks incoming data. Add a read-only `owner`."},
+        {"term": "Viewset", "meaning": "One class for list, create, read, update and delete."},
+        {"term": "Router", "meaning": "Creates `/tasks/` and `/tasks/<id>/` and connects them to the viewset."},
+        {"term": "Permissions", "meaning": "`IsAuthenticated`: anonymous requests get 401."},
+        {"term": "New: `get_queryset`", "meaning": "Returns only the current user's tasks."},
+        {"term": "New: `perform_create`", "meaning": "Sets `owner` to the logged-in user on create."}
+      ],
+      "notes": "Every row except the last two is something you built in an earlier exercise. The two new ones are where the privacy comes from."
+    },
+    {
+      "type": "code",
+      "title": "One request's journey",
+      "caption": "Ada sends `GET /tasks/7/`, but task 7 belongs to Bob:",
+      "code": "# 1. Router:       \"/tasks/7/\" matches the detail URL -> TaskViewSet\n# 2. Permissions:  is someone logged in?  No -> 401.  Yes (Ada) -> go on\n# 3. get_queryset: take only Ada's tasks\n# 4. Look up id 7 inside Ada's tasks: it isn't there -> 404\n#    (if it were Ada's: the serializer turns it into JSON -> 200)",
+      "notes": "Step 3 is the trick. Because the viewset only looks inside Ada's tasks, Bob's are invisible for reading, changing and deleting. No separate check per action."
+    },
+    {
+      "type": "code",
+      "title": "What the tests send",
+      "caption": "No single function this time: the tests send **HTTP requests** to your router's URLs.",
+      "code": "# Users ada and bob, one task each: \"Ada's task\" and \"Bob's task\"\nGET    /tasks/  (not logged in)          # 1: 401\n# Now logged in as Ada:\nGET    /tasks/                           # 2: 200, titles [\"Ada's task\"]\nGET    /tasks/<Ada's id>/                # 3: 200, JSON below\nPOST   /tasks/  {\"title\": \"New\", \"owner\": <Bob's id>}  # 4: 201, owner is Ada\nGET    /tasks/<Bob's id>/                # 5: 404\nPATCH or DELETE /tasks/<Bob's id>/       # 6: 404, Bob's task unchanged\nPATCH then DELETE /tasks/<Ada's id>/     # 7: 200, then 204\nPOST   /tasks/  {}                       # 8: 400, a title is required\n\n# test 3 expects:\n{\"id\": 1, \"title\": \"Ada's task\", \"done\": False, \"owner\": \"ada\"}",
+      "notes": "Two things to notice: owner shows the username \"ada\", not a number. And test 4 tries to make Bob the owner; your API must ignore that. The starter answers 404 to everything because nothing is registered yet."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "authenticated", "meaning": "Logged in: `request.user` is a real user."},
+        {"term": "401 Unauthorized", "meaning": "\"I don't know who you are. Log in first.\""},
+        {"term": "404 Not Found", "meaning": "\"Nothing here.\" Also for others' tasks, so they stay hidden."},
+        {"term": "scope a queryset", "meaning": "Filter the rows down to the ones this user may see."},
+        {"term": "read-only field", "meaning": "Shown in responses, ignored in requests."},
+        {"term": "override a method", "meaning": "Write your own version of a method the class already has."}
+      ],
+      "notes": "Inside a viewset method, self.request.user is the user who sent the current request. Anonymous means not logged in."
+    },
+    {
+      "type": "code",
+      "title": "Tool: overriding (same name, yours wins)",
+      "code": "class Shop:\n    def opening_message(self):\n        return \"Welcome!\"\n    def open(self):\n        print(self.opening_message())\n\nclass TeaShop(Shop):\n    def opening_message(self):          # replaces Shop's version\n        return \"Welcome! The tea is ready.\"\n\nTeaShop().open()",
+      "output": "Welcome! The tea is ready.",
+      "notes": "Write a method with the same name as one the class already has, and the framework calls yours instead. open belongs to Shop, but it calls your opening_message. ModelViewSet's built-in code calls self.get_queryset() and self.perform_create(serializer) the same way."
+    },
+    {
+      "type": "code",
+      "title": "Tool: ReadOnlyField (shown, never set)",
+      "code": "class EmailDemoSerializer(serializers.ModelSerializer):\n    owner_email = serializers.ReadOnlyField(source=\"owner.email\")  # owner, then email\n\n    class Meta:\n        model = Task\n        fields = [\"title\", \"owner_email\"]\n\nprint(EmailDemoSerializer(task).data)    # task belongs to grace\nincoming = EmailDemoSerializer(data={\"title\": \"Plan\", \"owner_email\": \"x@evil.io\"})\nprint(incoming.is_valid(), incoming.validated_data)",
+      "output": "{'title': 'Write report', 'owner_email': 'grace@example.com'}\nTrue {'title': 'Plan'}",
+      "notes": "The read-only field was ignored in the incoming data. Common mistake: adding the field but forgetting its name in Meta.fields, so it never appears."
+    },
+    {
+      "type": "code",
+      "title": "Tool: serializer.save(owner=...)",
+      "caption": "Keywords you pass to `save()` are **added** to the checked data: the server fills them in.",
+      "code": "class TitleSerializer(serializers.ModelSerializer):\n    class Meta:\n        model = Task\n        fields = [\"id\", \"title\"]\n\nincoming = TitleSerializer(data={\"title\": \"Plan the trip\"})\nincoming.is_valid()\ntask = incoming.save(owner=grace)      # grace is a User\nprint(task.owner.username, task.title)",
+      "output": "grace Plan the trip",
+      "notes": "This is how the owner gets set without trusting the client. The client never gets to choose it."
+    },
+    {
+      "type": "compare",
+      "title": "queryset = ... vs get_queryset(self)",
+      "left": {
+        "heading": "queryset = Task.objects.all()",
+        "bullets": ["A class variable, fixed when the file loads", "Can't know who is asking", "Everyone sees everyone's tasks", "The router guesses the URL name from it"]
+      },
+      "right": {
+        "heading": "def get_queryset(self):",
+        "bullets": ["A method, called **for each request**", "Can use `self.request.user`", "Returns only this user's tasks", "Needs `basename=` on the router"]
+      },
+      "notes": "Without basename you get: AssertionError: basename argument not specified, and could not automatically determine the name from the viewset. That's the router's way of saying it has nothing to guess from."
+    },
+    {
+      "type": "code",
+      "title": "Tool: .filter(...) and .order_by(...)",
+      "caption": "Keep the matching rows, then sort them, like `df.sort_values(\"title\")` in pandas.",
+      "code": "Task.objects.create(owner=grace, title=\"B task\", done=True)\nTask.objects.create(owner=grace, title=\"A task\", done=True)\nTask.objects.create(owner=grace, title=\"C task\")\n\nfinished = Task.objects.filter(done=True).order_by(\"title\")\nprint([t.title for t in finished])",
+      "output": "['A task', 'B task']",
+      "notes": "Your get_queryset uses the same two tools: filter by owner, order by id."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Serializer: a `ReadOnlyField` `owner` whose `source` ends in `.username`", "tests": ""},
+        {"text": "Add `\"owner\"` to `Meta.fields`", "tests": "helps test 3"},
+        {"text": "Viewset: `permission_classes = [IsAuthenticated]`", "tests": "helps test 1"},
+        {"text": "Replace `queryset` with `get_queryset`: my tasks, ordered by `\"id\"`", "tests": "helps 2, 5, 6"},
+        {"text": "Router: register the viewset at `\"tasks\"` with `basename=\"task\"`", "tests": "1-3, 5-8"},
+        {"text": "`perform_create(self, serializer)`: save with `owner=self.request.user`", "tests": "test 4"}
+      ],
+      "notes": "Most tests can only pass once step 5 connects the viewset to a URL. Test 8 needs no code: title is required in the model, so the serializer already rejects an empty body."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Removing `queryset` but forgetting `basename=\"task\"`: `AssertionError`",
+        "Keeping `Task.objects.all()`: everyone sees everything",
+        "`request.user` inside a method: it's `self.request.user`",
+        "`source=\"owner\"` without `.username`: test 3 wants `\"ada\"`",
+        "Taking the owner from `request.data`: never trust the client"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "Almost every real DRF endpoint that holds user data has this shape: notes, orders, messages, invoices. Log in, scope the queryset to the user, set the owner on the server.",
+      "bullets": [
+        "\"Broken access control\" is the most common serious web security bug",
+        "Scoping `get_queryset()` is the simplest, strongest defence",
+        "Always test the boundary: can user A reach user B's data?"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Ada asks for Bob's task. Why is 404 a good answer?",
+        "Why can't `queryset = ...` filter by the current user?",
+        "A client sends `\"owner\": 2` when creating a task. What happens, and why?",
+        "Which piece turns anonymous requests away, and with which status?"
+      ]
+    }
+  ]
+}

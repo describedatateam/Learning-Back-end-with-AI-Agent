@@ -1,0 +1,35 @@
+{
+  "title": "Consistent error responses",
+  "week": 2,
+  "concept": "Errors",
+  "file": "exceptions.py",
+  "lesson": "lessons/week-2/day-13-validation-and-errors-lesson.md",
+  "summary": "Write a custom DRF exception handler so every error has the same shape.",
+  "hints": [
+    "Keep the first line, <code>response = exception_handler(exc, context)</code>. Right after it: <code>if response is None: return None</code>. That lets real bugs become 500 errors.",
+    "<code>isinstance(exc, ValidationError)</code> is <code>True</code> only for validation errors. Check it first, because validation errors have no <code>\"detail\"</code> key.",
+    "For every other error, DRF puts the message in <code>response.data[\"detail\"]</code>. Wrap it in <code>str(...)</code> to get plain text.",
+    "Build the new body as a dict inside a dict: <code>{\"error\": {\"status\": ..., \"message\": ..., \"details\": ...}}</code>. Use <code>response.status_code</code> for the status, never a typed number.",
+    "Put your dict in <code>response.data = ...</code> and <code>return response</code>. Don't return the dict itself: the tests read <code>response.status_code</code>."
+  ],
+  "quiz": [
+    {
+      "question": "Why give every error the same JSON shape?",
+      "options": ["It looks nicer", "Clients can write one piece of error-handling code instead of special cases", "It's faster", "HTTP requires it"],
+      "answer": 1,
+      "explanation": "Predictable errors make an API much easier to consume, for frontends, mobile apps and other services alike."
+    },
+    {
+      "question": "Your handler returns <code>None</code> for an unexpected <code>KeyError</code>. What happens?",
+      "options": ["The client gets 200", "The exception propagates and Django returns a 500", "DRF retries", "The request is ignored"],
+      "answer": 1,
+      "explanation": "Unexpected errors should become 500s, and in production you log them. Don't dress bugs up as 400s."
+    },
+    {
+      "question": "Where do you activate a custom exception handler?",
+      "options": ["In each view", "<code>REST_FRAMEWORK['EXCEPTION_HANDLER']</code> in settings", "In urls.py", "In the model"],
+      "answer": 1,
+      "explanation": "It's a setting: <code>'EXCEPTION_HANDLER': 'core.exceptions.api_exception_handler'</code>."
+    }
+  ]
+}

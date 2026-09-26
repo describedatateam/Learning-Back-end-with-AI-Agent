@@ -1,0 +1,374 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Security essentials</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 3 · Exercise 15 · Security</strong></p><h1>Security essentials</h1>
+<h2>The big idea</h2>
+<p>A backend is open to the whole internet, so some of the people sending requests
+are <strong>attackers</strong>: people who try to trick your code into doing something it
+shouldn't. Most successful attacks don't use clever magic. They use small, ordinary
+mistakes that are easy to make and easy to fix, once you know about them.</p>
+<p>In this exercise you fix four of those mistakes. Each one is a single small
+function, and each defends against a real, common attack. Think of it like the
+locks on a house: none of them is complicated, but you need one on every door.</p>
+<p>As with data cleaning, the rule behind all four is the same: <strong>never trust what
+comes in from outside</strong>. A value a user typed is data to check, never an
+instruction to follow.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>attacker</strong></td>
+<td>Someone who sends requests on purpose to break or misuse your app.</td>
+</tr>
+<tr>
+<td><strong>redirect</strong></td>
+<td>A response that says "go to this other address instead". The browser follows it automatically.</td>
+</tr>
+<tr>
+<td><strong><code>?next=</code></strong></td>
+<td>A query value that says where to send the user after logging in, like <code>/login?next=/tasks/</code>.</td>
+</tr>
+<tr>
+<td><strong>host</strong></td>
+<td>The website part of an address, like <code>backendlab.test</code> in <code>https://backendlab.test/account/</code>.</td>
+</tr>
+<tr>
+<td><strong>relative path</strong></td>
+<td>An address with no host, like <code>/dashboard/</code>. It always stays on the current site.</td>
+</tr>
+<tr>
+<td><strong>API key</strong></td>
+<td>A long secret password that a program (not a person) sends to prove who it is.</td>
+</tr>
+<tr>
+<td><strong>log</strong></td>
+<td>A text file where your app writes down what happened, for developers to read later.</td>
+</tr>
+<tr>
+<td><strong>personal data</strong></td>
+<td>Anything that identifies a real person, like an email address.</td>
+</tr>
+<tr>
+<td><strong>SQL</strong></td>
+<td>The language databases understand, like <code>SELECT id FROM sandbox_task WHERE title = 'Deploy'</code>.</td>
+</tr>
+<tr>
+<td><strong>parameterised query</strong></td>
+<td>SQL with a placeholder (<code>%s</code>) where the value goes, and the value passed <strong>separately</strong>.</td>
+</tr>
+</tbody>
+</table>
+<h2>The four attacks, as short stories</h2>
+<h3>1. Open redirect</h3>
+<p>Your login page sends people to <code>?next=</code> after they log in. An attacker emails your
+users a link: <code>https://backendlab.test/login?next=https://backendlab-login.evil.example</code>.
+The link starts with your real site, so Ada trusts it and logs in. Your site then
+<strong>redirects her to the attacker's copy of your site</strong>, which says "Session expired,
+please type your password again". She does, and the attacker has her password.</p>
+<p><strong>Fix:</strong> only redirect to your own site. Anything else goes to <code>/</code> (the home page).</p>
+<h3>2. Timing attack</h3>
+<p>Imagine a guard who checks a password one letter at a time and says "wrong!" the
+moment a letter doesn't match. A wrong first letter gets a very quick "wrong!"; a
+right first letter gets a slightly slower one. By timing the answers very carefully,
+an attacker can guess the secret <strong>one letter at a time</strong>. Python's <code>==</code> on strings
+can behave like that guard.</p>
+<p><strong>Fix:</strong> compare secrets with <code>hmac.compare_digest</code>, which always takes the same
+time, wherever the strings differ.</p>
+<h3>3. Personal data in logs</h3>
+<p>Your app logs "Password reset for ada.lovelace@example.com". Logs get copied into
+monitoring tools, emailed around while fixing bugs, and kept for months. One day a
+log file leaks, and now thousands of customers' emails are public, which in many
+countries is also against the law.</p>
+<p><strong>Fix:</strong> mask the data before logging it: <code>a***@example.com</code> is still useful for
+debugging, but doesn't expose the person.</p>
+<h3>4. SQL injection</h3>
+<p>A search box looks tasks up by title, and the code glues the typed text straight
+into SQL. Someone types <code>x' OR '1'='1</code> into the box. The quote <code>'</code> ends the title
+early, and the rest becomes <strong>part of the SQL command</strong>: "title is x, OR 1 equals 1".
+Since 1 always equals 1, the query returns <strong>every task of every user</strong>. With other
+typed text, an attacker could even delete tables.</p>
+<p><strong>Fix:</strong> never build SQL by gluing strings together. Pass the value separately, so
+the database treats it as plain data.</p>
+<h2>What your code receives and returns</h2>
+<p><strong>The tests call your four functions and pass the values in.</strong> Here are the real
+inputs, copied from the tests. <code>HOSTS</code> is <code>["backendlab.test"]</code>.</p>
+<p><strong><code>safe_next_url(url, allowed_hosts)</code></strong> (tests 1-2)</p>
+<table>
+<thead>
+<tr>
+<th>call</th>
+<th>must return</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>safe_next_url("/dashboard/", HOSTS)</code></td>
+<td><code>"/dashboard/"</code> (unchanged)</td>
+</tr>
+<tr>
+<td><code>safe_next_url("/tasks/?page=2", HOSTS)</code></td>
+<td><code>"/tasks/?page=2"</code></td>
+</tr>
+<tr>
+<td><code>safe_next_url("https://backendlab.test/account/", HOSTS)</code></td>
+<td><code>"https://backendlab.test/account/"</code></td>
+</tr>
+<tr>
+<td><code>safe_next_url("https://evil.example/login", HOSTS)</code></td>
+<td><code>"/"</code></td>
+</tr>
+<tr>
+<td><code>safe_next_url("//evil.example", HOSTS)</code></td>
+<td><code>"/"</code> (<code>//</code> means "another site" to a browser)</td>
+</tr>
+<tr>
+<td><code>safe_next_url("javascript:alert(1)", HOSTS)</code></td>
+<td><code>"/"</code> (would run code in the browser)</td>
+</tr>
+<tr>
+<td><code>safe_next_url("http://backendlab.test.evil.example/", HOSTS)</code></td>
+<td><code>"/"</code> (starts like ours, but it's a different host)</td>
+</tr>
+<tr>
+<td><code>safe_next_url("", HOSTS)</code> and <code>safe_next_url(None, HOSTS)</code></td>
+<td><code>"/"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>api_key_matches(provided, expected)</code></strong> (tests 3-5)</p>
+<table>
+<thead>
+<tr>
+<th>call</th>
+<th>must return</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api_key_matches("sk_live_abc123", "sk_live_abc123")</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>api_key_matches("sk_live_abc124", "sk_live_abc123")</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>api_key_matches("", "")</code> and <code>api_key_matches(None, None)</code></td>
+<td><code>False</code> (empty keys never match, not even each other)</td>
+</tr>
+<tr>
+<td><code>api_key_matches(None, "secret")</code> and <code>api_key_matches("secret", "")</code></td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<p>Test 5 also checks that your function really calls <code>hmac.compare_digest(...)</code>.</p>
+<p><strong><code>mask_email(email)</code></strong> (tests 6-7)</p>
+<table>
+<thead>
+<tr>
+<th>call</th>
+<th>must return</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mask_email("ada.lovelace@example.com")</code></td>
+<td><code>"a***@example.com"</code></td>
+</tr>
+<tr>
+<td><code>mask_email("b@x.io")</code></td>
+<td><code>"b***@x.io"</code></td>
+</tr>
+<tr>
+<td><code>mask_email("not-an-email")</code>, <code>mask_email("")</code>, <code>mask_email(None)</code>, <code>mask_email("@example.com")</code></td>
+<td><code>"***"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>find_tasks_by_title(title)</code></strong> (tests 8-10). The tests first create two tasks,
+<code>"Deploy"</code> and <code>"Secret task"</code>, then:</p>
+<table>
+<thead>
+<tr>
+<th>call</th>
+<th>must return</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>find_tasks_by_title("Deploy")</code></td>
+<td>a list with the Deploy task's id, like <code>[1]</code></td>
+</tr>
+<tr>
+<td><code>find_tasks_by_title("x' OR '1'='1")</code></td>
+<td><code>[]</code> (nothing is called that)</td>
+</tr>
+<tr>
+<td><code>find_tasks_by_title("Ada's task")</code> (after creating that task)</td>
+<td>a list with its id</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The starter code runs, but every function is unsafe on purpose. For example the
+starter's <code>safe_next_url</code> returns any address it gets, attacker's sites included.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<h3><code>url_has_allowed_host_and_scheme(url, allowed_hosts=...)</code></h3>
+<ul>
+<li>Django's own "is this address safe to redirect to?" check. It's a <strong>function</strong>
+  (already imported at the top of your file) that gives back <code>True</code> or <code>False</code>.</li>
+<li>Pass the address first and the allowed hosts second. Writing <code>allowed_hosts=</code>
+  makes the call easier to read. A list or a set of hosts both work.</li>
+<li>It already rejects other hosts, <code>//...</code>, <code>javascript:...</code>, and empty or missing
+  addresses.</li>
+</ul>
+<pre><code class="language-python">from django.utils.http import url_has_allowed_host_and_scheme
+
+for url in [&quot;/cart/&quot;, &quot;https://shop.test/cart/&quot;, &quot;https://evil.example/&quot;, &quot;//evil.example&quot;]:
+    print(url, url_has_allowed_host_and_scheme(url, allowed_hosts=[&quot;shop.test&quot;]))
+# /cart/ True
+# https://shop.test/cart/ True
+# https://evil.example/ False
+# //evil.example False
+</code></pre>
+<ul>
+<li>Common mistake: writing your own check like <code>url.startswith("/")</code>. It lets
+  <code>//evil.example</code> through, because that starts with <code>/</code> too.</li>
+</ul>
+<h3><code>not value</code>: catching empty and missing at once</h3>
+<ul>
+<li><code>not ""</code> and <code>not None</code> are both <code>True</code>, so <code>if not value:</code> catches both "empty"
+  and "missing" in one check.</li>
+</ul>
+<pre><code class="language-python">for value in [&quot;&quot;, None, &quot;abc&quot;]:
+    print(repr(value), not value)
+# '' True
+# None True
+# 'abc' False
+</code></pre>
+<h3><code>hmac.compare_digest(a, b)</code></h3>
+<ul>
+<li>Compares two values in <strong>constant time</strong> (always the same speed) and gives back
+  <code>True</code> or <code>False</code>.</li>
+<li>It's a function inside the <code>hmac</code> module, which your file already imports, so call
+  it as <code>hmac.compare_digest(...)</code>.</li>
+<li>Turn strings into <strong>bytes</strong> first with <code>.encode()</code>. Plain strings only work if they
+  contain no accented or special letters (<code>"café"</code> would crash).</li>
+</ul>
+<pre><code class="language-python">import hmac
+
+print(hmac.compare_digest(&quot;tea&quot;.encode(), &quot;tea&quot;.encode()))   # True
+print(hmac.compare_digest(&quot;tea&quot;.encode(), &quot;tee&quot;.encode()))   # False
+</code></pre>
+<ul>
+<li>Common mistake: calling <code>.encode()</code> on <code>None</code> crashes. Check for empty or missing
+  values <strong>before</strong> comparing.</li>
+</ul>
+<h3><code>text.partition("@")</code> and <code>text[0]</code></h3>
+<ul>
+<li>You met <code>partition</code> in exercise 1: it splits at the first separator and gives
+  back 3 pieces. If the separator isn't there, the last two pieces are empty.</li>
+<li><code>text[0]</code> is the first character of a string.</li>
+</ul>
+<pre><code class="language-python">print(&quot;tea@shop.test&quot;.partition(&quot;@&quot;))   # ('tea', '@', 'shop.test')
+print(&quot;no-at-sign&quot;.partition(&quot;@&quot;))      # ('no-at-sign', '', '')
+print(&quot;@shop.test&quot;.partition(&quot;@&quot;))      # ('', '@', 'shop.test')
+print(&quot;tea&quot;[0])                         # t
+</code></pre>
+<ul>
+<li><code>partition</code> crashes on <code>None</code>. A handy trick: <code>(value or "")</code> gives <code>""</code> when
+  <code>value</code> is <code>None</code>, and the value itself otherwise.</li>
+</ul>
+<h3><code>cursor.execute(sql, [values])</code>: a parameterised query</h3>
+<ul>
+<li><code>connection.cursor()</code> lets you send raw SQL to the database. <code>cursor.execute(...)</code>
+  takes the SQL as the <strong>first</strong> argument, and a <strong>list</strong> of values as the second.</li>
+<li>In the SQL, write <code>%s</code> (no quotes around it!) wherever a value goes. The database
+  driver puts the value in safely, so quotes inside it are just letters.</li>
+</ul>
+<pre><code class="language-python">from django.db import connection
+from sandbox.models import Task
+
+pen = Task.objects.create(title=&quot;Buy pens&quot;)
+with connection.cursor() as cursor:
+    cursor.execute(&quot;SELECT title FROM sandbox_task WHERE id = %s&quot;, [pen.id])
+    print(cursor.fetchall())   # [('Buy pens',)]
+</code></pre>
+<ul>
+<li>Common mistake: <code>"... WHERE title = '%s'"</code> with quotes around <code>%s</code>, or
+  <code>"..." % title</code>. Both glue the value into the text again. The value must go in
+  the separate list.</li>
+</ul>
+<h3>See the injection happen</h3>
+<p>The starter's <code>find_tasks_by_title</code> builds its SQL with an f-string. This shows what
+the database actually receives:</p>
+<pre><code class="language-python">title = &quot;x' OR '1'='1&quot;
+print(f&quot;SELECT id FROM sandbox_task WHERE title = '{title}'&quot;)
+# SELECT id FROM sandbox_task WHERE title = 'x' OR '1'='1'
+</code></pre>
+<p>And this runs your own <code>find_tasks_by_title</code> against a small test database:</p>
+<pre><code class="language-python">from sandbox.models import Task
+
+Task.objects.create(title=&quot;Deploy&quot;)
+Task.objects.create(title=&quot;Secret task&quot;)
+print(find_tasks_by_title(&quot;x' OR '1'='1&quot;))
+# With the starter code: [1, 2]  &lt;- every row!
+# After your fix:        []
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<p>The step numbers match the <code>TODO</code> numbers in your file.</p>
+<h3><code>safe_next_url(url, allowed_hosts)</code></h3>
+<p><strong>Step 1.</strong> If <code>url</code> is not empty and <code>url_has_allowed_host_and_scheme(...)</code> says
+it's safe, return <code>url</code> unchanged. Pass <code>allowed_hosts=allowed_hosts</code>.
+<strong>→ test 1</strong></p>
+<p><strong>Step 2.</strong> Otherwise return <code>"/"</code>. <strong>→ test 2</strong></p>
+<h3><code>api_key_matches(provided, expected)</code></h3>
+<p><strong>Step 3.</strong> If either key is empty or <code>None</code>, return <code>False</code> straight away. Use
+<code>if not provided or not expected:</code>. <strong>→ test 4</strong></p>
+<p><strong>Step 4.</strong> Otherwise return the result of <code>hmac.compare_digest(...)</code> on the two
+keys, each turned into bytes with <code>.encode()</code>. <strong>→ tests 3 and 5</strong></p>
+<h3><code>mask_email(email)</code></h3>
+<p><strong>Step 5.</strong> Split the email at the <code>@</code> with <code>partition</code>, using <code>(email or "")</code> so
+<code>None</code> doesn't crash: <code>local, at, domain = ...</code>.</p>
+<p><strong>Step 6.</strong> If any of the three pieces is empty, return <code>"***"</code>. An empty <code>at</code>
+means there was no <code>@</code>; an empty <code>local</code> means the email started with <code>@</code>.
+<strong>→ test 7</strong></p>
+<p><strong>Step 7.</strong> Otherwise build the masked email with an f-string: the first character
+of <code>local</code>, then <code>***@</code>, then the domain. <strong>→ test 6</strong></p>
+<h3><code>find_tasks_by_title(title)</code></h3>
+<p><strong>Step 8.</strong> Change only the <code>cursor.execute(...)</code> line. Keep the same <code>SELECT</code>,
+but replace <code>'{title}'</code> with a bare <code>%s</code>, turn the f-string into a normal string,
+and pass <code>[title]</code> as the second argument. Keep the <code>return</code> line as it is.
+<strong>→ tests 8, 9 and 10</strong></p>
+<p>Test 10 shows why this matters even without an attacker: with the f-string, the
+quote in <code>Ada's task</code> breaks the SQL and the query crashes.</p>
+<h2>Common mistakes</h2>
+<ul>
+<li><code>url.startswith("/")</code> as the redirect check: <code>//evil.example</code> sneaks through.</li>
+<li>Returning the result of <code>url_has_allowed_host_and_scheme(...)</code> itself. It gives
+  <code>True</code> or <code>False</code>, but <code>safe_next_url</code> must return an <strong>address</strong>: <code>url</code> or <code>"/"</code>.</li>
+<li>Using <code>provided == expected</code> for the keys: tests 3-4 may pass, but test 5 checks
+  for <code>hmac.compare_digest</code>. Also, <code>"" == ""</code> is <code>True</code>, which test 4 forbids.</li>
+<li><code>email.split("@")</code> crashes on <code>None</code> and gives the wrong number of pieces for
+  <code>"not-an-email"</code>. <code>partition</code> always gives exactly three.</li>
+<li>Putting quotes around the placeholder (<code>'%s'</code>) or using <code>%</code> / an f-string to fill
+  it in. The value must travel in the separate list: <code>[title]</code>.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>These four mistakes are in every list of common web security bugs. Django already
+protects you in many places: the ORM (<code>Task.objects.filter(title=title)</code>) always uses
+parameterised queries, and Django's login view checks <code>?next=</code> with the same
+function you used. Knowing the attacks helps you spot the places where you step
+outside that protection yourself.</p><h2>Keep learning</h2><ul><li><a href="https://www.freecodecamp.org/news/what-is-sql-injection-how-to-prevent-it/">SQL Injection Tutorial – What is SQL Injection and How to Prevent it</a> (freeCodeCamp, beginner). Start here: shows how string-built SQL gets hijacked and why parameterized queries stop it.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/security/">Security in Django</a> (Django docs, beginner). A tour of what Django protects you from automatically and where you still have to be careful.</li><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html">Unvalidated Redirects and Forwards Cheat Sheet</a> (OWASP, intermediate). Explains the open-redirect attack your safe_next_url function blocks with url_has_allowed_host_and_scheme.</li><li><a href="https://docs.python.org/3/library/hmac.html#hmac.compare_digest">hmac.compare_digest</a> (Python docs, intermediate). Reference for the constant-time comparison you use for API keys, so timing does not leak the secret.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/sql/#passing-parameters-into-raw">Performing raw SQL queries: passing parameters</a> (Django docs, intermediate). Shows the safe way to pass values to cursor.execute with placeholders instead of string formatting.</li></ul></body></html>

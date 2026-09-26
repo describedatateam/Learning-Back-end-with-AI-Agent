@@ -1,0 +1,45 @@
+{
+  "exercise": "03-models",
+  "resources": [
+    {
+      "title": "Django models",
+      "url": "https://tutorial.djangogirls.org/en/django_models/",
+      "source": "Django Girls Tutorial",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: explains what a model is using everyday objects, then builds one step by step."
+    },
+    {
+      "title": "Django Model Fields – Common Use Cases and How They Work",
+      "url": "https://www.freecodecamp.org/news/common-django-model-fields-and-their-use-cases/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Plain-language tour of CharField, IntegerField, DateField and default values, with examples of when to use each."
+    },
+    {
+      "title": "Writing your first Django app, part 2",
+      "url": "https://docs.djangoproject.com/en/5.2/intro/tutorial02/",
+      "source": "Django docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "The official tutorial step where you create models, add a __str__ method and a custom method, just like the Book model."
+    },
+    {
+      "title": "Models",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/models/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The main guide to fields, Meta options and model methods; read it once you have written your first model."
+    },
+    {
+      "title": "Model Meta options",
+      "url": "https://docs.djangoproject.com/en/5.2/ref/models/options/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reference for class Meta settings such as ordering, which controls the default sort order of your table."
+    }
+  ]
+}

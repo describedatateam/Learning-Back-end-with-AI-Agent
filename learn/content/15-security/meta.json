@@ -1,0 +1,34 @@
+{
+  "title": "Security essentials",
+  "week": 3,
+  "concept": "Security",
+  "file": "security.py",
+  "lesson": "lessons/week-3/day-20-security-essentials-lesson.md",
+  "summary": "Block open redirects, compare secrets in constant time, keep personal data out of logs, and never build SQL with string formatting.",
+  "hints": [
+    "Redirects: don't write your own check. <code>url_has_allowed_host_and_scheme(url, allowed_hosts=allowed_hosts)</code> is already imported and gives <code>True</code> or <code>False</code>. Return <code>url</code> when it's <code>True</code>, and <code>'/'</code> otherwise.",
+    "API keys: first <code>if not provided or not expected: return False</code> (this catches both <code>''</code> and <code>None</code>). Then <code>hmac.compare_digest(provided.encode(), expected.encode())</code>, which takes the same time wherever the keys differ.",
+    "Emails: <code>local, at, domain = (email or '').partition('@')</code> always gives three pieces. If any of them is empty, return <code>'***'</code>; otherwise build <code>f'{local[0]}***@{domain}'</code>.",
+    "SQL: only change the <code>cursor.execute(...)</code> line. Use a plain string with a bare <code>%s</code> (no quotes around it), and pass the title in a list as the second argument: <code>cursor.execute('SELECT ... WHERE title = %s', [title])</code>."
+  ],
+  "quiz": [
+    {
+      "question": "What's an <em>open redirect</em>?",
+      "options": ["A redirect with no status code", "A login page that sends users to any <code>?next=</code> URL, including an attacker's lookalike site", "A 301 redirect", "A CORS error"],
+      "answer": 1,
+      "explanation": "Phishers love them: the link starts with your trusted domain and ends up on theirs. Only redirect to your own hosts."
+    },
+    {
+      "question": "Why is <code>token == expected</code> risky for secrets?",
+      "options": ["It's not, it's fine", "It can return faster the earlier the strings differ, which leaks information through timing", "== is slow", "It's case-insensitive"],
+      "answer": 1,
+      "explanation": "A timing attack can guess a secret one character at a time. <code>hmac.compare_digest</code> takes the same time regardless of where they differ."
+    },
+    {
+      "question": "<code>f\"SELECT * FROM task WHERE title = '{title}'\"</code>: what can go wrong?",
+      "options": ["Nothing", "SQL injection: <code>title = \"x' OR '1'='1\"</code> changes the query itself", "It's just slower", "Titles get lower-cased"],
+      "answer": 1,
+      "explanation": "Never build SQL with string formatting. Use the ORM, or pass parameters separately so the database treats them as data, not code."
+    }
+  ]
+}

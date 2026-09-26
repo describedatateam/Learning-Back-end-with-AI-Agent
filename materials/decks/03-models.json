@@ -1,0 +1,127 @@
+{
+  "exercise": "03-models",
+  "subtitle": "Describe a database table as a Python class, and let Django build it for you.",
+  "notes": "This deck goes with exercise 3. By the end you should be able to write a model with fields, defaults, a default ordering and your own methods.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "A backend must **remember** things between requests, so it keeps them in a **database**. A database table looks like a DataFrame: named **columns**, one **row** per record.\n\nThe difference: a table is **strict**. You decide up front each column's name, type and rules. In Django you write that plan as a Python class, a **model**, and Django builds the table.",
+      "notes": "Picture the books table: columns id, title, author, published_year, is_available. Each row comes back to you as a Python object, so book.title is that one book's title."
+    },
+    {
+      "type": "code",
+      "title": "What the tests do with your class",
+      "caption": "There's no function to call: the tests use your `Book` class directly.",
+      "code": "Book._meta.get_field(\"author\").max_length     # expects 100\n\nbook = Book.objects.create(title=\"Dune\", author=\"Frank Herbert\")\nbook.is_available     # expects True (nobody set it)\nbook.created_at       # expects a date and time, not None\nstr(book)             # expects \"Dune by Frank Herbert\"\n\n# saved as Neuromancer, Dune, Foundation; expected back in this order:\n# [\"Dune\", \"Foundation\", \"Neuromancer\"]\n\nBook(title=\"1984\", author=\"Orwell\", published_year=1949).is_classic()  # True\nBook(title=\"X\", author=\"Y\", published_year=1950).is_classic()          # False\nBook(title=\"Unknown\", author=\"Anon\").is_classic()                      # False",
+      "notes": "Before the tests run, the grader builds the table from your model. _meta.get_field is how the tests inspect a field; you won't need _meta in your own code. 1950 is not before 1950, so it's not a classic."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "model", "meaning": "A Python class that describes one table."},
+        {"term": "field", "meaning": "One attribute of a model. It becomes one column."},
+        {"term": "object", "meaning": "One row, as a Python value: `Book(title=\"Dune\")`."},
+        {"term": "NULL / None", "meaning": "\"No value\": the database says `NULL`, Python says `None`."},
+        {"term": "method / self", "meaning": "A function inside a class; `self` is the one object it's called on."},
+        {"term": "migration", "meaning": "A file that updates the database tables to match your models."}
+      ],
+      "notes": "The ORM is the part of Django that turns Python like Book.objects.create(...) into database commands, so you never write SQL yourself."
+    },
+    {
+      "type": "code",
+      "title": "Tools: field types",
+      "caption": "Each field is one line inside the class. The options set the rules for that column.",
+      "code": "class Movie(models.Model):\n    name = models.CharField(max_length=150)                       # text\n    runtime = models.PositiveIntegerField(null=True, blank=True)  # optional\n    is_showing = models.BooleanField(default=False)               # yes / no\n    added_at = models.DateTimeField(auto_now_add=True)            # automatic",
+      "notes": "CharField always needs max_length. default= is used when nobody gives a value. auto_now_add=True sets the date and time once, when the row is first saved; you never set it yourself."
+    },
+    {
+      "type": "compare",
+      "title": "null=True vs blank=True",
+      "left": {
+        "heading": "null=True",
+        "bullets": ["About the **database**", "The column may store `NULL`", "Python sees `None`", "Without it, saving no value fails", "Test 2 checks `field.null`"]
+      },
+      "right": {
+        "heading": "blank=True",
+        "bullets": ["About **checking input**", "Forms and serializers allow it empty", "The user may leave it out", "Without it, input checks say \"required\"", "Test 2 checks `field.blank`"]
+      },
+      "notes": "Every field is required unless you say otherwise. An optional number needs both options: the database must accept no value, and input checks must allow an empty one."
+    },
+    {
+      "type": "code",
+      "title": "Tool: making and saving objects",
+      "caption": "`Book(...)` lives in memory only. `.save()` writes it; `objects.create(...)` does both.",
+      "code": "book = Book(title=\"Emma\")\nprint(book.title)            # Emma\nprint(book.pk)               # None  (not saved yet)\nbook.save()\nprint(book.pk)               # 1  (the database gave it an id)\nBook.objects.create(title=\"Beloved\")\nprint(Book.objects.count())  # 2",
+      "notes": "pk means primary key: the row's id. The Console starts with an empty database each time you run something."
+    },
+    {
+      "type": "code",
+      "title": "Tool: class Meta and ordering",
+      "caption": "Settings for the whole table go in a small class inside the model.",
+      "code": "class Movie(models.Model):\n    name = models.CharField(max_length=150)\n\n    class Meta:\n        ordering = [\"-name\"]     # Z to A;  [\"name\"] would be A to Z\n\nMovie.objects.order_by(\"name\")   # or sort just one query by hand",
+      "notes": "ordering is a list, so it needs square brackets. The - in front reverses the order. Without it, rows come back in whatever order the database likes, usually the order they were saved."
+    },
+    {
+      "type": "code",
+      "title": "Tool: methods and __str__",
+      "caption": "A plain Python class (not a model) with both kinds of method:",
+      "code": "class Film:\n    name = \"Alien\"\n    year = 1979\n\n    def __str__(self):\n        return f\"{self.name} ({self.year})\"\n\n    def is_old(self):\n        return self.year < 1990\n\nfilm = Film()\nprint(film)            # Alien (1979)\nprint(film.is_old())   # True",
+      "notes": "Python calls __str__ for print(obj) or str(obj), and it must return a string. You call your own methods with brackets, film.is_old(), but never pass self yourself."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: check for None first",
+      "caption": "`None < 1950` crashes with a `TypeError`. `and` stops early, so check for `None` first.",
+      "code": "score = None\nprint(score is not None and score > 50)\n\nscore = 72\nprint(score is not None and score > 50)",
+      "output": "False\nTrue",
+      "notes": "If the left side of and is False, Python never runs the right side, so the comparison with None never happens. is_classic needs exactly this shape."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Add `author`: a `CharField` with `max_length=100`", "tests": "test 1"},
+        {"text": "Add `published_year`: a `PositiveIntegerField`, `null` and `blank`", "tests": "test 2"},
+        {"text": "Add `is_available`: a `BooleanField` with `default=True`", "tests": "test 3"},
+        {"text": "Add `created_at`: a `DateTimeField` with `auto_now_add=True`", "tests": "test 4"},
+        {"text": "`__str__` returns title, `by`, author, from `self`", "tests": "test 5"},
+        {"text": "Add `class Meta:` with `ordering = [\"title\"]`", "tests": "test 6"},
+        {"text": "`is_classic(self)`: a year that isn't `None` and is `< 1950`", "tests": "test 7"}
+      ],
+      "notes": "Everything goes inside class Book(models.Model):, lined up with the title line that's already there. When you're done, try Book.objects.create(title=\"Emma\", author=\"Jane Austen\") in the Console and print it."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "A `CharField` without `max_length`: Django refuses to load the model",
+        "Only `null=True` or only `blank=True`: test 2 needs both",
+        "`ordering = \"title\"` (text) instead of a list, or outside `class Meta:`",
+        "`published_year` instead of `self.published_year` inside a method",
+        "`__str__` that prints instead of returning, or `<= 1950` instead of `< 1950`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A library app needs to store books, members and loans. Each one is a model, and every screen and API endpoint reads from them.",
+      "bullets": [
+        "After changing a model, run `python manage.py makemigrations`, then `migrate`",
+        "The admin, forms and serializers all read their rules from your fields",
+        "A good `__str__` turns `Book object (1)` into `Dune by Frank Herbert` in the admin"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What is the difference between `null=True` and `blank=True`?",
+        "What does `auto_now_add=True` do, and when?",
+        "Where does `ordering` go, and why does it need square brackets?",
+        "Why check `is not None` before comparing a year with 1950?"
+      ]
+    }
+  ]
+}

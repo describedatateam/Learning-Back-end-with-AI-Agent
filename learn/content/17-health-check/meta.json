@@ -1,0 +1,35 @@
+{
+  "title": "Health checks & logging",
+  "week": 4,
+  "concept": "Observability",
+  "file": "views.py",
+  "lesson": "lessons/week-4/day-28-observability-and-maintenance-lesson.md",
+  "summary": "Write a health endpoint that really checks the database, returns 503 when it's down, and logs the failure.",
+  "hints": [
+    "POST should give 405: put <code>@require_GET</code> on its own line directly above <code>def health(request):</code>. It's already imported.",
+    "The cheapest real database check is <code>with connection.cursor() as cursor:</code> followed by <code>cursor.execute('SELECT 1')</code>. Put both lines inside <code>try:</code>, because in the tests it's <code>connection.cursor()</code> itself that fails.",
+    "Catch <code>except DatabaseError:</code>. It's the family name for database errors, so it also catches the <code>OperationalError</code> the tests raise.",
+    "In the <code>except</code> block, use <code>logger.exception('...')</code>, not <code>logger.error</code>: it logs at ERROR level <em>and</em> adds the traceback. Then return the error dict with <code>status=503</code>, written by hand, with no error message in it.",
+    "Use the <code>connection</code> imported at the top of the file. The tests replace <code>views.connection</code> with a broken one to fake an outage."
+  ],
+  "quiz": [
+    {
+      "question": "Why return 503 (not 200 or 500) when the database is down?",
+      "options": ["It's shorter", "503 = temporarily unavailable, so load balancers stop routing traffic to this instance", "500 is reserved for Django", "Browsers retry 503 forever"],
+      "answer": 1,
+      "explanation": "Orchestrators (Kubernetes, load balancers) poll health endpoints and act on the status code. The body is for humans."
+    },
+    {
+      "question": "What's wrong with <code>except Exception: pass</code> in production code?",
+      "options": ["Nothing", "Failures vanish without a trace. Nobody knows anything broke", "It's slow", "It's a syntax error"],
+      "answer": 1,
+      "explanation": "If you catch an error, log it (with the traceback) or re-raise it. Silent failures are the hardest bugs to find."
+    },
+    {
+      "question": "Which should NOT go in a public health-check response?",
+      "options": ["<code>\"status\": \"ok\"</code>", "The database password or full error message", "A per-check status", "The HTTP status code"],
+      "answer": 1,
+      "explanation": "Health endpoints are often public. Log the details and expose only coarse status."
+    }
+  ]
+}

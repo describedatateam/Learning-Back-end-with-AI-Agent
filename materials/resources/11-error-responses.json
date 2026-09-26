@@ -1,0 +1,37 @@
+{
+  "exercise": "11-error-responses",
+  "resources": [
+    {
+      "title": "Errors and Exceptions",
+      "url": "https://docs.python.org/3/tutorial/errors.html",
+      "source": "Python docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: a refresher on raising and catching exceptions, since an exception handler is just code that receives one."
+    },
+    {
+      "title": "HTTP response status codes",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status",
+      "source": "MDN Web Docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "The meaning of 400, 401, 403, 404 and 500, so every error your handler shapes keeps the right status."
+    },
+    {
+      "title": "Exceptions: custom exception handling",
+      "url": "https://www.django-rest-framework.org/api-guide/exceptions/#custom-exception-handling",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Official guide to writing a handler that calls DRF's exception_handler and reshapes its response, as this exercise does."
+    },
+    {
+      "title": "RFC 9457: Problem Details for HTTP APIs",
+      "url": "https://www.rfc-editor.org/rfc/rfc9457.html",
+      "source": "IETF RFC Editor",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The web standard for a consistent JSON error shape; skim it later to see how real APIs agree on error formats."
+    }
+  ]
+}

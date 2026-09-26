@@ -1,0 +1,147 @@
+{% extends "learn/base.html" %}
+
+{% block title %}My notebook · Backend Lab{% endblock %}
+
+{% block style %}
+  .nb-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+  .nb-head .intro { flex: 1 1 480px; }
+  .nb-head p { margin: 4px 0 0; }
+  .nb-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+  .nb-toc a { font-size: 12.5px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+  .nb-toc a.done { border-color: var(--xp); color: var(--xp); font-weight: 600; }
+  .nb-toc a.locked { color: var(--muted); }
+  .page { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 18px; overflow: hidden; }
+  .page.locked { opacity: .7; }
+  .page > header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .page > header h2 { margin: 0; font-size: 18px; }
+  .page > header .num { font-family: var(--mono); color: var(--muted); font-size: 13px; }
+  .page > header .spacer { flex: 1; }
+  .page .body { padding: 16px 18px 20px; }
+  .page .summary { font-size: 15.5px; margin: 0 0 14px; }
+  .page h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 20px 0 8px; }
+  .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .tool { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+  .tool strong { font-family: var(--mono); font-size: 14px; color: var(--xp); }
+  .tool p { margin: 4px 0 6px; font-size: 14px; }
+  .tool pre { margin: 6px 0 0; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tool pre.out { background: #111418; color: #e5e5e5; }
+  .usecase { background: var(--ok-soft); border-radius: 8px; padding: 10px 14px; font-size: 14.5px; }
+  .difficulty { border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 10px; font-size: 14.5px; }
+  .difficulty strong { display: block; margin-bottom: 4px; }
+  .difficulty .solved { margin-top: 6px; color: var(--ok); }
+  .page ul { margin: 0; padding-left: 20px; }
+  .page li { margin: 4px 0; }
+  .next { font-size: 14.5px; }
+  details.code summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  details.code pre { margin-top: 8px; }
+  .gen-status { font-size: 13px; color: var(--muted); }
+  .gen-error { color: var(--bad); font-size: 14px; }
+  .empty-page { color: var(--muted); font-size: 14.5px; margin: 0; }
+  .empty-page .tool-list code { margin-right: 4px; }
+{% endblock %}
+
+{% block content %}
+<main>
+  <section class="nb-head">
+    <div class="intro">
+      <h1>My notebook 📓</h1>
+      <p class="muted">One page for every exercise you've passed: the tools you learned (with examples), where they're used in real backends,
+        what you found hard and how you solved it, and your final code. Pages are written by AI from your tutor chats and test history.</p>
+    </div>
+    <div class="muted"><strong style="color:var(--text)">{{ passed_count }}</strong> of {{ pages|length }} pages unlocked</div>
+  </section>
+
+  <nav class="nb-toc">
+    {% for p in pages %}
+      <a href="#page-{{ p.exercise.slug }}" class="{% if p.passed %}done{% else %}locked{% endif %}">#{{ p.exercise.number|stringformat:"02d" }} {{ p.exercise.title }}</a>
+    {% endfor %}
+  </nav>
+
+  <div id="pages"></div>
+  {% csrf_token %}
+</main>
+
+{{ notebook_data|json_script:"notebook-data" }}
+{% endblock %}
+
+{% block script %}
+<script>
+(() => {
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const canRun = {{ can_run|yesno:"true,false" }};
+  const pages = JSON.parse(document.getElementById('notebook-data').textContent);
+  const box = document.getElementById('pages');
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  // Inline `code` in AI text becomes <code>.
+  const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  function entryHtml(page, data) {
+    const tools = (data.tools || []).map((t) => `
+      <div class="tool"><strong>${esc(t.name)}</strong><p>${rich(t.what_it_does)}</p>
+        ${t.example ? `<pre><code class="language-python">${esc(t.example)}</code></pre>` : ''}
+        ${t.output ? `<pre class="out">${esc(t.output)}</pre>` : ''}</div>`).join('');
+    const difficulties = (data.difficulties || []).map((d) => `
+      <div class="difficulty"><strong>${rich(d.what)}</strong>${rich(d.why_it_was_hard)}
+        <div class="solved">✓ ${rich(d.how_you_solved_it)}</div></div>`).join('');
+    return `
+      <p class="summary">${rich(data.summary)}</p>
+      <h3>Tools you learned</h3><div class="tools">${tools || '<p class="empty-page">No tools listed.</p>'}</div>
+      <h3>Where it's used</h3><div class="usecase">${rich(data.use_case)}</div>
+      <h3>What you found difficult, and how you solved it</h3>
+      ${difficulties || '<p class="empty-page">Nothing stood out as hard in your chats and test runs. Nice!</p>'}
+      <h3>Takeaways</h3><ul>${(data.takeaways || []).map((t) => `<li>${rich(t)}</li>`).join('')}</ul>
+      <h3>Next step</h3><p class="next">${rich(data.next_step)}</p>
+      ${page.code ? `<h3>Your final code</h3><details class="code"><summary>Show your passing code</summary>
+        <pre class="cm-s-vscode"><code class="language-python">${esc(page.code)}</code></pre></details>` : ''}`;
+  }
+
+  function render(page) {
+    const data = page.data;
+    const el = document.getElementById('page-' + page.slug) || document.createElement('article');
+    el.id = 'page-' + page.slug;
+    el.className = 'page' + (page.passed ? '' : ' locked');
+    let body;
+    if (!page.passed) {
+      body = `<p class="empty-page">Pass this exercise to unlock its page.${page.tools.length
+        ? ` You'll learn: <span class="tool-list">${page.tools.map((t) => `<code>${esc(t)}</code>`).join(' ')}</span>` : ''}</p>`;
+    } else if (data) {
+      body = entryHtml(page, data);
+    } else {
+      body = `<p class="empty-page">You passed this exercise. Write its notebook page from your tutor chats and test history (takes about a minute).</p>`;
+    }
+    const button = page.passed && canRun
+      ? `<button class="btn ${data ? '' : 'primary'}" data-generate>${data ? 'Rewrite page' : '✨ Write my page'}</button>` : '';
+    el.innerHTML = `
+      <header><span class="num">#${String(page.number).padStart(2, '0')}</span><h2>${esc(page.title)}</h2>
+        <span class="badge ${page.passed ? 'done' : 'new'}">${page.passed ? 'Passed' : 'Locked'}</span>
+        <span class="spacer"></span>
+        ${page.updated && data ? `<span class="gen-status">Written ${esc(page.updated)}</span>` : ''}
+        <a class="btn" href="${page.url}">Open exercise →</a>${button}</header>
+      <div class="body">${body}<p class="gen-error" hidden></p></div>`;
+    if (!el.parentElement) box.appendChild(el);
+    el.querySelector('[data-generate]')?.addEventListener('click', () => generate(page, el));
+    window.highlightCode?.(el);
+  }
+
+  async function generate(page, el) {
+    const btn = el.querySelector('[data-generate]');
+    const error = el.querySelector('.gen-error');
+    btn.disabled = true; btn.textContent = 'Writing… (about a minute)';
+    error.hidden = true;
+    try {
+      const res = await fetch(page.generate_url, {method: 'POST', headers: {'X-CSRFToken': csrf}});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      page.data = data.page;
+      page.updated = 'just now';
+      render(page);
+    } catch (err) {
+      error.hidden = false; error.textContent = err.message;
+      btn.disabled = false; btn.textContent = 'Try again';
+    }
+  }
+
+  pages.forEach(render);
+})();
+</script>
+{% endblock %}

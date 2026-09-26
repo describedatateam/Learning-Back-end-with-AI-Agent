@@ -1,0 +1,118 @@
+{
+  "exercise": "01-http-requests",
+  "subtitle": "Read the text message every web request really is, and pull out the useful parts.",
+  "notes": "This deck goes with exercise 1. By the end you should be able to explain what a request is made of and which Python tools split it apart.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "When you open a website, your browser sends a short **text message** to a server: an **HTTP request**. One page needs many of them: one for the HTML, then more for each image, CSS and JavaScript file.\n\nA backend's first job is to **read** that message. It's like cleaning data: one messy string in, tidy labelled fields out.",
+      "notes": "Link it to what you already know: you've split messy text columns into tidy fields in pandas. A request is one messy string that needs the same treatment."
+    },
+    {
+      "type": "code",
+      "title": "What a request looks like",
+      "caption": "This is the exact text the tests pass to your function as `raw`. `\\r\\n` means \"new line\".",
+      "code": "raw = (\n    \"GET /api/tasks/?status=done&page=2 HTTP/1.1\\r\\n\"   # request line\n    \"Host: localhost:8000\\r\\n\"                          # headers...\n    \"Accept:   application/json  \\r\\n\"\n    \"\\r\\n\"                                              # blank line = end of head\n)                                                        # body: empty for GET",
+      "notes": "You never type this yourself. The tests call parse_request(raw) and pass this text in."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "method", "meaning": "The verb: `GET` reads something, `POST` creates something."},
+        {"term": "path", "meaning": "The address that was asked for, like `/api/tasks/`."},
+        {"term": "query string", "meaning": "Extras after `?`, like `status=done&page=2`."},
+        {"term": "headers", "meaning": "`Name: value` lines with extra information."},
+        {"term": "head / body", "meaning": "Everything before / after the first blank line."},
+        {"term": "parameter", "meaning": "The name a function gives its input, like `raw`."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "What your function must return",
+      "caption": "`parse_request(raw)` turns the text into one dictionary:",
+      "code": "{\n    \"method\": \"GET\",\n    \"path\": \"/api/tasks/\",\n    \"query\": {\"status\": \"done\", \"page\": \"2\"},\n    \"version\": \"HTTP/1.1\",\n    \"headers\": {\"host\": \"localhost:8000\", \"accept\": \"application/json\"},\n    \"body\": \"\",\n}",
+      "notes": "Notice the header names are lower-case and the values have no extra spaces."
+    },
+    {
+      "type": "code",
+      "title": "Tool: partition splits once",
+      "caption": "`text.partition(sep)` is a **method**: it cuts at the **first** separator and gives back 3 pieces.",
+      "code": "before, sep, after = \"name: Ada Lovelace\".partition(\": \")\nprint(before)\nprint(after)\n\nname, _, value = \"Host: localhost:8000\".partition(\":\")\nprint(value.strip())",
+      "output": "name\nAda Lovelace\nlocalhost:8000",
+      "notes": "Use _ for a piece you don't need. Because partition only splits once, the colon inside localhost:8000 is kept."
+    },
+    {
+      "type": "compare",
+      "title": "split vs partition",
+      "left": {
+        "heading": "text.split(sep)",
+        "bullets": ["Cuts at **every** separator", "Gives back a **list**", "`\"a,b,c\".split(\",\")` gives `[\"a\", \"b\", \"c\"]`", "Good for: splitting the head into lines"]
+      },
+      "right": {
+        "heading": "text.partition(sep)",
+        "bullets": ["Cuts at the **first** separator only", "Always gives back **3 pieces**", "`\"a:b:c\".partition(\":\")` gives `(\"a\", \":\", \"b:c\")`", "Good for: head vs body, and each header line"]
+      }
+    },
+    {
+      "type": "code",
+      "title": "Tools: urlsplit and parse_qsl",
+      "caption": "Both are **functions**: pass the text in brackets. `urlsplit` results use dots (`.path`), not `[\"path\"]`.",
+      "code": "from urllib.parse import parse_qsl, urlsplit\n\nparts = urlsplit(\"/shop/search/?item=tea&size=large\")\nprint(parts.path)\nprint(parts.query)\nprint(dict(parse_qsl(parts.query)))",
+      "output": "/shop/search/\nitem=tea&size=large\n{'item': 'tea', 'size': 'large'}",
+      "notes": "Common mistakes from the chat: raw.urlsplit(...) (it's a function, not a method) and parts[\"path\"] (use parts.path)."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: loop and build a dictionary",
+      "caption": "The same shape you need for the headers, on different data:",
+      "code": "lines = [\"Fruit : Apple \", \"Colour: Red\"]\ninfo = {}\nfor line in lines:\n    key, _, value = line.partition(\":\")\n    info[key.strip().lower()] = value.strip()\nprint(info)",
+      "output": "{'fruit': 'Apple', 'colour': 'Red'}",
+      "notes": "Start with an empty dict, and fill in one key per line inside the loop. Methods can be chained: key.strip().lower()."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Split `raw` into head and body at `\"\\r\\n\\r\\n\"` with `partition`", "tests": "test 7"},
+        {"text": "Split the head into lines; the first one is the request line", "tests": ""},
+        {"text": "Split the request line into method, target and version", "tests": "test 1"},
+        {"text": "`urlsplit(target)` gives the path; `dict(parse_qsl(...))` gives the query", "tests": "tests 2-4"},
+        {"text": "Loop over header lines and build `{lower-case name: stripped value}`", "tests": "tests 5-6"},
+        {"text": "`is_safe_method`: upper-case the method, then check it's in `{\"GET\", \"HEAD\", \"OPTIONS\"}`", "tests": "tests 8-9"}
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`raw.urlsplit(...)`: `urlsplit` is a function, so write `urlsplit(target)`",
+        "`parts[\"path\"]`: `urlsplit` results use dots, `parts.path`",
+        "`.split(\":\")` on `Host: localhost:8000` gives 3 pieces; use `partition`",
+        "Forgetting `dict(...)` gives a list of pairs, not a dictionary",
+        "`NameError: raw is not defined` in the Console: make your own sample string first"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A to-do app asks your server: `GET /api/tasks/?status=done`. Before your code can answer, something has to work out that the client wants to **read** tasks, only the **done** ones.",
+      "bullets": [
+        "Django does this parsing for you: `request.method`, `request.path`, `request.GET`, `request.headers`, `request.body`",
+        "`is_safe_method` is how servers decide what anonymous visitors may do: reading is often allowed, changing is not",
+        "Knowing the raw format helps you debug APIs with browser dev tools or `curl`"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What separates the head of a request from its body?",
+        "Why use `partition(\":\")` instead of `split(\":\")` for header lines?",
+        "Is `urlsplit` a function or a method? How do you read the path from its result?",
+        "Why do `GET` and `HEAD` count as safe, but `POST` doesn't?"
+      ]
+    }
+  ]
+}

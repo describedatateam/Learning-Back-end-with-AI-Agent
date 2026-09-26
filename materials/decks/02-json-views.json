@@ -1,0 +1,138 @@
+{
+  "exercise": "02-json-views",
+  "subtitle": "Write Django views that read what the client sent and answer with JSON and the right status code.",
+  "notes": "This deck goes with exercise 2. By the end you should be able to write a view that reads a query or a JSON body, checks it, and replies with JSON and a fitting status code.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "In exercise 1 you split a raw request by hand. Django does that for you, then **calls a function you wrote** and passes the request in. That function is a **view**.\n\nA view is like a clerk at a counter: take the form, check it, hand back a reply slip with a stamp on top: \"OK\", \"filled in wrong\" or \"wrong counter\". The stamp is the **status code**.",
+      "notes": "Link to data work: before you do maths on a column, you check it exists and holds numbers. A view does the same with what the client sent."
+    },
+    {
+      "type": "code",
+      "title": "What the tests send",
+      "caption": "You don't build `request` yourself: the tests make a fake one and call your view with it.",
+      "code": "factory = RequestFactory()\n\ngreet(factory.get(\"/greet/\", {\"name\": \"Ada\"}))   # like GET /greet/?name=Ada\n\nadd(factory.post(\"/add/\", data='{\"a\": 2, \"b\": 3.5}',\n                 content_type=\"application/json\"))   # a POST with a JSON body",
+      "notes": "RequestFactory makes request objects without running a server. Inside greet, request is a GET whose query has name set to Ada. Inside add, the body is the text {\"a\": 2, \"b\": 3.5}."
+    },
+    {
+      "type": "code",
+      "title": "What your views must return",
+      "caption": "The tests check the status code and the JSON. Error messages must match exactly.",
+      "code": "GET  /greet/?name=Ada           200  {\"message\": \"Hello, Ada!\"}\nGET  /greet/?name=  Grace       200  {\"message\": \"Hello, Grace!\"}\nGET  /greet/   (no name)        400  {\"error\": \"name is required\"}\nPOST /greet/                    405  (Django fills this in)\nPOST /add/  {\"a\": 2, \"b\": 3.5}  200  {\"result\": 5.5}\nPOST /add/  {not json           400  {\"error\": \"invalid JSON\"}\nPOST /add/  {\"a\": \"1\", \"b\": 2}  400  {\"error\": \"a and b must be numbers\"}\nGET  /add/                      405  (Django fills this in)",
+      "notes": "A name of only spaces also gets the 400. For add, {\"a\": 1} (b missing) and {\"a\": null, \"b\": 2} get the same 'must be numbers' error. null is JSON's way of writing None."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "view", "meaning": "A function that receives a request and returns a response."},
+        {"term": "request object", "meaning": "The request, already split up: `request.method`, `request.GET`, ..."},
+        {"term": "JSON", "meaning": "Text data that looks like a dict: `{\"message\": \"Hello\"}`."},
+        {"term": "status code", "meaning": "`200` OK, `400` client sent something wrong, `405` wrong method."},
+        {"term": "query / body", "meaning": "Values in the address after `?` / data sent inside the request."},
+        {"term": "decorator", "meaning": "An `@` line just above `def` that adds behaviour."}
+      ],
+      "notes": "Codes starting with 4 mean the client made a mistake. Codes starting with 5 mean the server broke. A user's typo should never cause a 500."
+    },
+    {
+      "type": "code",
+      "title": "Tool: request.GET.get",
+      "caption": "`request.GET` holds the query. `.get(name, default)` gives the default instead of crashing.",
+      "code": "request = RequestFactory().get(\"/weather/\", {\"city\": \"  Paris  \"})\nprint(request.method)\nprint(request.GET.get(\"city\", \"\"))\nprint(request.GET.get(\"country\", \"unknown\"))\nprint(request.GET.get(\"city\", \"\").strip())",
+      "output": "GET\n  Paris  \nunknown\nParis",
+      "notes": "request.GET[\"city\"] with square brackets crashes when the parameter is missing. The value is always text, so .strip() works on it."
+    },
+    {
+      "type": "code",
+      "title": "Tool: JsonResponse",
+      "caption": "A class you call like a function. The status is 200 unless you pass `status=`.",
+      "code": "response = JsonResponse({\"error\": \"city is required\"}, status=400)\nprint(response.status_code)\nprint(response.content)\nprint(JsonResponse({\"temp\": 21}).status_code)",
+      "output": "400\nb'{\"error\": \"city is required\"}'\n200",
+      "notes": "The b'...' means bytes: raw text ready to send over the network. You don't need to do anything with it."
+    },
+    {
+      "type": "code",
+      "title": "Tool: @require_POST and @require_GET",
+      "caption": "Write it on the line directly above `def`. A wrong method gets a 405 and your code never runs.",
+      "code": "@require_POST\ndef ping(request):\n    return JsonResponse({\"pong\": True})\n\nprint(ping(RequestFactory().post(\"/ping/\")).status_code)\nprint(ping(RequestFactory().get(\"/ping/\")).status_code)",
+      "output": "200\n405",
+      "notes": "No brackets: @require_GET, not @require_GET(). The Console also logs 'Method Not Allowed (GET): /ping/'. That's Django noting the 405, not a bug."
+    },
+    {
+      "type": "code",
+      "title": "Tools: json.loads and try / except",
+      "code": "body = b'{\"item\": \"tea\", \"qty\": 2}'     # what request.body looks like\ndata = json.loads(body)\nprint(data[\"qty\"] * 10)\nprint(data.get(\"price\"))\n\ntry:\n    json.loads(\"{oops\")\nexcept json.JSONDecodeError:\n    print(\"That was not valid JSON\")",
+      "output": "20\nNone\nThat was not valid JSON",
+      "notes": "json.loads is a function: it turns JSON text or bytes into Python. Broken JSON raises an error, which would be a 500. try / except catches it so you can reply with a polite 400 instead."
+    },
+    {
+      "type": "compare",
+      "title": "Query vs body",
+      "left": {
+        "heading": "request.GET",
+        "bullets": ["Values in the **address**, after `?`", "Already split up for you", "Always **text**", "Read with `.get(\"name\", \"\")`", "Used by `greet`"]
+      },
+      "right": {
+        "heading": "request.body",
+        "bullets": ["Data sent **inside** the request", "Raw **bytes**", "Parse it with `json.loads(...)`", "Numbers stay numbers", "Used by `add`"]
+      },
+      "notes": "request.POST is a trap: it only holds HTML form data, not JSON. For JSON, always use json.loads(request.body)."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: check, then use",
+      "caption": "The same shape you need in `add`, on different data (just the logic, not a view):",
+      "code": "data = {\"width\": 4, \"height\": \"tall\"}\nw, h = data.get(\"width\"), data.get(\"height\")\nif not isinstance(w, (int, float)) or not isinstance(h, (int, float)):\n    print(\"width and height must be numbers\")\nelse:\n    print(w * h)",
+      "output": "width and height must be numbers",
+      "notes": "isinstance(value, (int, float)) asks 'is it any of these types?'. The text \"3\" and None both give False. Use or: the error is needed if either value is bad."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "Put `@require_GET` directly above `def greet`", "tests": "test 4"},
+        {"text": "Read the name with `request.GET.get(\"name\", \"\").strip()`", "tests": ""},
+        {"text": "If the name is empty, return the error with `status=400`", "tests": "test 3"},
+        {"text": "Otherwise return `{\"message\": f\"Hello, {name}!\"}`", "tests": "tests 1-2"},
+        {"text": "Put `@require_POST` directly above `def add`", "tests": "test 8"},
+        {"text": "`json.loads(request.body)` inside `try`; bad JSON gives a 400", "tests": "test 6"},
+        {"text": "If `a` or `b` is not an int or float, return a 400", "tests": "test 7"},
+        {"text": "Return `{\"result\": ...}` with the sum", "tests": "test 5"}
+      ],
+      "notes": "Steps 1-4 are greet, steps 5-8 are add. if not name: catches both a missing name and one made only of spaces, because an empty string counts as false."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Error dict without `status=400`: the JSON looks right, the status is 200",
+        "`request.POST` for JSON: it only holds form data; use `request.body`",
+        "`if a and b:` isn't a number check: `\"1\"` is true, `0` is false",
+        "`and` instead of `or`: the error is needed if **either** value is bad",
+        "A typo like `\"Name is required\"`: the tests compare text exactly"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A shop's mobile app sends `POST /api/cart/` with `{\"item\": 42, \"qty\": \"two\"}`. Your view must spot the bad quantity and reply **400** with a clear message, not crash with a **500**.",
+      "bullets": [
+        "Every Django API endpoint is a view: read, validate, return JSON and a status",
+        "The app shows your error message to the user, so it must be clear",
+        "Django REST Framework later does the parsing and checking for you, in the same pattern"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "What does `request.GET.get(\"name\", \"\")` give when the name is missing?",
+        "Which status fits a missing name: 200, 400, 405 or 500? Why?",
+        "Where is a JSON body in a plain Django view, and how do you read it?",
+        "Why is `isinstance(value, (int, float))` safer than `if value:`?"
+      ]
+    }
+  ]
+}

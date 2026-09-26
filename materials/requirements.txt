@@ -1,0 +1,4 @@
+# Only needed to build the study materials (python materials/build_materials.py).
+python-pptx==1.0.2
+Pygments==2.21.0
+Markdown==3.8

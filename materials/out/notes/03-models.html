@@ -1,0 +1,303 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Design a model</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.55; color: #1c2330; max-width: 820px; }
+code, pre { font-family: Consolas, monospace; }
+pre { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; }
+table { border-collapse: collapse; } th, td { border: 1px solid #dde1e7; padding: 4px 8px; text-align: left; }
+</style></head><body><p><strong>Backend Lab · Week 1 · Exercise 03 · Models &amp; ORM</strong></p><h1>Design a model</h1>
+<h2>The big idea</h2>
+<p>A backend needs to <strong>remember</strong> things between requests: users, tasks, books.
+It keeps them in a <strong>database</strong>. A database stores data in <strong>tables</strong>, and a
+table looks a lot like a pandas DataFrame: it has named <strong>columns</strong>, and each
+<strong>row</strong> is one record.</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>title</th>
+<th>author</th>
+<th>published_year</th>
+<th>is_available</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Dune</td>
+<td>Frank Herbert</td>
+<td>1965</td>
+<td>True</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1984</td>
+<td>George Orwell</td>
+<td>1949</td>
+<td>True</td>
+</tr>
+</tbody>
+</table>
+<p>The difference from a DataFrame is that a database table is <strong>strict</strong>. You
+decide up front what every column is called, what type it holds (text, whole
+number, true/false, date) and what's allowed in it. The database then refuses
+anything that doesn't fit.</p>
+<p>In Django you don't write that table by hand. You write a Python <strong>class</strong> called
+a <strong>model</strong>, and each attribute of the class becomes one column. Django reads the
+class and creates the table for you. Later, each row comes back to you as a Python
+<strong>object</strong> of that class, so <code>book.title</code> gives you the title of that one book.</p>
+<h2>New words</h2>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>database</strong></td>
+<td>The program that stores your app's data permanently, in tables.</td>
+</tr>
+<tr>
+<td><strong>table</strong></td>
+<td>One kind of thing, like books. Columns are the fields, rows are the records.</td>
+</tr>
+<tr>
+<td><strong>model</strong></td>
+<td>A Python class that describes one table. Django builds the table from it.</td>
+</tr>
+<tr>
+<td><strong>field</strong></td>
+<td>One attribute of a model, like <code>title = models.CharField(...)</code>. It becomes one column.</td>
+</tr>
+<tr>
+<td><strong>object / instance</strong></td>
+<td>One row, as a Python value. <code>Book(title="Dune")</code> makes one.</td>
+</tr>
+<tr>
+<td><strong><code>NULL</code> / <code>None</code></strong></td>
+<td>"No value". The database calls it <code>NULL</code>, Python calls it <code>None</code>.</td>
+</tr>
+<tr>
+<td><strong>method</strong></td>
+<td>A function written inside a class. It works on one object, called <code>self</code>.</td>
+</tr>
+<tr>
+<td><strong>migration</strong></td>
+<td>A file that tells the database how to change its tables to match your models.</td>
+</tr>
+<tr>
+<td><strong>ORM</strong></td>
+<td>The part of Django that turns Python like <code>Book.objects.create(...)</code> into database commands, so you never write SQL yourself.</td>
+</tr>
+</tbody>
+</table>
+<h2>What your code receives and returns</h2>
+<p>This exercise is a bit different: <strong>there's no function for the tests to call.</strong>
+You write the <code>Book</code> class in <code>sandbox/models.py</code>, and the tests <strong>use your class</strong>.
+Before the tests run, the grader builds the database table from your model (in a
+real project you'd do that with <code>makemigrations</code> and <code>migrate</code>, see below).</p>
+<p>These lines are copied from the tests, with what they expect:</p>
+<pre><code class="language-python">Book._meta.get_field(&quot;title&quot;).max_length      # expects 200
+Book._meta.get_field(&quot;author&quot;).max_length     # expects 100
+
+book = Book.objects.create(title=&quot;Dune&quot;, author=&quot;Frank Herbert&quot;)
+book.is_available                             # expects True (nobody set it)
+book.created_at                               # expects a date and time, not None
+
+str(Book(title=&quot;Dune&quot;, author=&quot;Frank Herbert&quot;))    # expects &quot;Dune by Frank Herbert&quot;
+</code></pre>
+<p>For ordering, the tests create three books called <code>"Neuromancer"</code>, <code>"Dune"</code> and
+<code>"Foundation"</code> (in that order), then ask for all of them <strong>without</strong> saying how
+to sort. They expect <code>["Dune", "Foundation", "Neuromancer"]</code>: alphabetical by title.</p>
+<p>For <code>is_classic()</code> they expect:</p>
+<table>
+<thead>
+<tr>
+<th>book</th>
+<th><code>book.is_classic()</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Book(title="1984", author="Orwell", published_year=1949)</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>Book(title="Dune", author="Herbert", published_year=1965)</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>Book(title="X", author="Y", published_year=1950)</code></td>
+<td><code>False</code> (1950 is not <em>before</em> 1950)</td>
+</tr>
+<tr>
+<td><code>Book(title="Unknown", author="Anon")</code> (no year)</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>Book._meta.get_field("title")</code> is how the tests look up a field on your class.
+You won't need <code>_meta</code> in your own code.</p>
+</blockquote>
+<h2>Tools you'll use</h2>
+<p>Your file starts with <code>from django.db import models</code>, so every field type below
+is written <code>models.Something(...)</code>.</p>
+<h3><code>models.CharField(max_length=...)</code></h3>
+<ul>
+<li>A column for <strong>short text</strong>, like a name or a title.</li>
+<li><code>max_length</code> is <strong>required</strong>: the most characters the column can hold.</li>
+<li>The starter already has one, <code>title</code>, so you can check it in the Console:</li>
+</ul>
+<pre><code class="language-python">field = Book._meta.get_field(&quot;title&quot;)
+print(field.max_length)   # 200
+</code></pre>
+<h3><code>models.PositiveIntegerField(null=True, blank=True)</code></h3>
+<ul>
+<li>A column for <strong>whole numbers of 0 or more</strong>. Good for years, ages, counts.</li>
+<li>Every field is <strong>required</strong> unless you say otherwise. To make it <strong>optional</strong>
+  you need two options, and they do different jobs:<ul>
+<li><code>null=True</code>: the <strong>database</strong> may store <code>NULL</code> (no value) in this column.</li>
+<li><code>blank=True</code>: <strong>checking</strong> of input (forms, and later serializers) lets the
+  user leave it empty.</li>
+</ul>
+</li>
+<li>When an optional field isn't given, its value is <code>None</code>.</li>
+</ul>
+<h3><code>models.BooleanField(default=True)</code></h3>
+<ul>
+<li>A column for <code>True</code> / <code>False</code>.</li>
+<li><code>default=...</code> is the value used when nobody sets one. It works on any field type.</li>
+</ul>
+<h3><code>models.DateTimeField(auto_now_add=True)</code></h3>
+<ul>
+<li>A column for a date and a time.</li>
+<li><code>auto_now_add=True</code> means Django fills it in <strong>by itself</strong>, once, when the row
+  is first saved. You never set it yourself.</li>
+</ul>
+<h3>Making and saving objects</h3>
+<ul>
+<li><code>Book(title="Emma")</code> makes an object <strong>in memory only</strong>. It isn't saved and has
+  no id yet (<code>pk</code> is <code>None</code>).</li>
+<li><code>.save()</code> writes it to the database. <code>Book.objects.create(...)</code> makes <strong>and</strong>
+  saves in one step.</li>
+</ul>
+<pre><code class="language-python">book = Book(title=&quot;Emma&quot;)
+print(book.title)    # Emma
+print(book.pk)       # None  (not saved yet)
+book.save()
+print(book.pk)       # 1     (the database gave it an id)
+saved = Book.objects.create(title=&quot;Beloved&quot;)
+print(Book.objects.count())   # 2
+</code></pre>
+<p>The Console starts with an empty database each time you run something.</p>
+<h3><code>class Meta:</code> and <code>ordering</code></h3>
+<ul>
+<li>A small class written <strong>inside</strong> your model, indented under it. It holds
+  settings about the table as a whole, not about one column.</li>
+<li>
+<p><code>ordering = ["title"]</code> means "unless I say otherwise, sort by title, A to Z".
+  A <code>-</code> in front, like <code>["-title"]</code>, means Z to A. It's a <strong>list</strong>, so it needs
+  the square brackets.</p>
+</li>
+<li>
+<p>The shape is: inside <code>Book</code>, a line <code>class Meta:</code>, and under it, indented one
+  more level, the line <code>ordering = [...]</code>.</p>
+</li>
+<li>Without it, books come back in whatever order the database likes (usually the
+  order they were saved). You can also sort one query by hand with
+  <code>.order_by(...)</code>, which takes the same kind of names:</li>
+</ul>
+<pre><code class="language-python">for title in [&quot;Emma&quot;, &quot;Persuasion&quot;, &quot;Beloved&quot;]:
+    Book.objects.create(title=title)
+print(list(Book.objects.values_list(&quot;title&quot;, flat=True)))                     # ['Emma', 'Persuasion', 'Beloved']
+print(list(Book.objects.order_by(&quot;-title&quot;).values_list(&quot;title&quot;, flat=True)))  # ['Persuasion', 'Emma', 'Beloved']
+</code></pre>
+<p><code>values_list("title", flat=True)</code> gives just the titles, like picking one column
+from a DataFrame. The first line shows the saved order. Once your <code>Meta</code> is in
+place, the first line prints them A to Z instead.</p>
+<h3><code>def __str__(self):</code> and other methods</h3>
+<ul>
+<li>A <strong>method</strong> is a function written inside a class, indented one level. Its
+  first parameter is always <code>self</code>, which means "the one object this was called
+  on". Inside, <code>self.year</code> is that object's year.</li>
+<li><code>__str__</code> is a special method: Python calls it when you do <code>print(obj)</code> or
+  <code>str(obj)</code>. It must <strong>return</strong> a string.</li>
+<li>Here's a plain Python class (not a model) with both kinds of method:</li>
+</ul>
+<pre><code class="language-python">class Film:
+    name = &quot;Alien&quot;
+    year = 1979
+
+    def __str__(self):
+        return f&quot;{self.name} ({self.year})&quot;
+
+    def is_old(self):
+        return self.year &lt; 1990
+
+film = Film()
+print(film)            # Alien (1979)
+print(film.is_old())   # True
+</code></pre>
+<ul>
+<li>You call your own methods with brackets, <code>film.is_old()</code>, but never pass
+  <code>self</code> in yourself. Python does that for you.</li>
+</ul>
+<h3>Checking for <code>None</code> first</h3>
+<ul>
+<li>Comparing <code>None</code> with a number crashes:
+  <code>None &lt; 1950</code> gives <code>TypeError: '&lt;' not supported between instances of 'NoneType' and 'int'</code>.</li>
+<li>So check for <code>None</code> <strong>before</strong> comparing. <code>and</code> stops early: if the left side is
+  <code>False</code>, the right side never runs.</li>
+</ul>
+<pre><code class="language-python">score = None
+print(score is not None and score &gt; 50)   # False (no crash)
+score = 72
+print(score is not None and score &gt; 50)   # True
+</code></pre>
+<p><strong>Try it:</strong> paste any example above into the editor, highlight it and press
+<strong>Shift+Enter</strong>. The result appears in the Console tab.</p>
+<h2>Step by step</h2>
+<p>All of this goes inside <code>class Book(models.Model):</code>, indented like the <code>title</code>
+line that's already there.</p>
+<ol>
+<li><strong>Add <code>author</code>.</strong> A <code>CharField</code> with <code>max_length=100</code>. (<code>title</code> is already done.)
+   <strong>→ test 1</strong></li>
+<li><strong>Add <code>published_year</code>.</strong> A <code>PositiveIntegerField</code> that's optional, so give it
+   both <code>null=True</code> and <code>blank=True</code>. <strong>→ test 2</strong></li>
+<li><strong>Add <code>is_available</code>.</strong> A <code>BooleanField</code> whose default is <code>True</code>. <strong>→ test 3</strong></li>
+<li><strong>Add <code>created_at</code>.</strong> A <code>DateTimeField</code> with <code>auto_now_add=True</code>. <strong>→ test 4</strong></li>
+<li><strong>Write <code>__str__</code>.</strong> Return the title, the word <code>by</code>, and the author, using an
+   f-string with <code>self.title</code> and <code>self.author</code>, for example <code>"Dune by Frank Herbert"</code>.
+   <strong>→ test 5</strong></li>
+<li><strong>Set the default order.</strong> Add a <code>class Meta:</code> inside <code>Book</code> with
+   <code>ordering = ["title"]</code>. <strong>→ test 6</strong></li>
+<li><strong>Write <code>is_classic(self)</code>.</strong> Return <code>True</code> only when <code>self.published_year</code> is
+   <strong>not <code>None</code></strong> and is <strong>less than 1950</strong>. Otherwise return <code>False</code>. Use the
+   "check for <code>None</code> first" pattern from above. <strong>→ test 7</strong></li>
+</ol>
+<p>When you're done, check your work in the Console:</p>
+<pre><code class="language-python">book = Book.objects.create(title=&quot;Emma&quot;, author=&quot;Jane Austen&quot;)
+print(book)                  # Emma by Jane Austen
+print(book.is_available)     # True
+print(book.created_at)       # today's date and time, e.g. 2026-09-25 14:03:11.520311+00:00
+print(book.is_classic())     # False (no year given)
+</code></pre>
+<h2>Common mistakes</h2>
+<ul>
+<li>Forgetting <code>max_length</code> on a <code>CharField</code>. Django refuses to load the model.</li>
+<li>Only <code>null=True</code> or only <code>blank=True</code> on <code>published_year</code>. Test 2 needs both.</li>
+<li>Writing <code>ordering = "title"</code> (a string) instead of <code>ordering = ["title"]</code> (a list),
+  or putting <code>ordering</code> directly in <code>Book</code> instead of inside <code>class Meta:</code>.</li>
+<li>Forgetting <code>self</code> in <code>def is_classic(self):</code>, or writing <code>published_year</code>
+  instead of <code>self.published_year</code> inside the method (<code>NameError</code>).</li>
+<li><code>__str__</code> that prints instead of returning. It must <code>return</code> the text.</li>
+<li><code>&lt;= 1950</code> instead of <code>&lt; 1950</code>. A book from 1950 is <strong>not</strong> a classic here.</li>
+</ul>
+<h2>Why it matters</h2>
+<p>Every Django app is built on models like this one. In a real project, after you
+change a model you run <code>python manage.py makemigrations</code> (Django writes a
+migration file describing the change) and then <code>python manage.py migrate</code> (it
+applies that change to the database). The ORM then lets you save and query rows
+with plain Python, and the admin, forms and serializers all read their rules from
+your fields.</p><h2>Keep learning</h2><ul><li><a href="https://tutorial.djangogirls.org/en/django_models/">Django models</a> (Django Girls Tutorial, beginner). Start here: explains what a model is using everyday objects, then builds one step by step.</li><li><a href="https://www.freecodecamp.org/news/common-django-model-fields-and-their-use-cases/">Django Model Fields – Common Use Cases and How They Work</a> (freeCodeCamp, beginner). Plain-language tour of CharField, IntegerField, DateField and default values, with examples of when to use each.</li><li><a href="https://docs.djangoproject.com/en/5.2/intro/tutorial02/">Writing your first Django app, part 2</a> (Django docs, beginner). The official tutorial step where you create models, add a __str__ method and a custom method, just like the Book model.</li><li><a href="https://docs.djangoproject.com/en/5.2/topics/db/models/">Models</a> (Django docs, intermediate). The main guide to fields, Meta options and model methods; read it once you have written your first model.</li><li><a href="https://docs.djangoproject.com/en/5.2/ref/models/options/">Model Meta options</a> (Django docs, intermediate). Reference for class Meta settings such as ordering, which controls the default sort order of your table.</li></ul></body></html>

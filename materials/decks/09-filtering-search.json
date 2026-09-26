@@ -1,0 +1,147 @@
+{
+  "exercise": "09-filtering-search",
+  "subtitle": "Turn ?status=todo&search=deploy&ordering=-due_date into a safe database question.",
+  "notes": "This deck goes with exercise 9. By the end you should be able to turn query parameters into a filtered, sorted queryset, and explain why ordering needs a whitelist.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "Users don't want every task. They want \"my **high-priority** tasks due **before Friday**, most urgent first\". The client asks by adding **query parameters**:\n\n`GET /api/tasks/?status=todo&priority=high&ordering=due_date`\n\nYou're writing the backend half of a filter panel. `?status=todo` is like `df[df[\"status\"] == \"todo\"]` in pandas.",
+      "notes": "The backend turns those parameters into a database question: which rows, and in what order. In Django that question is a queryset. ?ordering=-due_date is like df.sort_values(\"due_date\", ascending=False)."
+    },
+    {
+      "type": "code",
+      "title": "What your function receives",
+      "caption": "The tests call `filter_tasks(queryset, params)`. `queryset` holds these four tasks:",
+      "code": "# id  title              status       priority  due_date\n#  1  Deploy API         todo         high      2025-03-01\n#  2  Write docs         done         low       2025-02-01\n#  3  Fix deploy script  todo         low       (none)\n#  4  Answer email       in_progress  medium    2025-04-01\n\nparams = {\"status\": \"todo\"}   # a dict, like request.query_params",
+      "notes": "You don't create these yourself. The tests create the tasks, then call your function with Task.objects.all() and a plain dict of parameters."
+    },
+    {
+      "type": "code",
+      "title": "What it must return",
+      "caption": "A **queryset**. The tests compare its titles, in order, for each `params`:",
+      "code": "{}                                     # all 4, in id order        (test 1)\n{\"status\": \"todo\"}                     # Deploy API, Fix deploy script\n{\"status\": \"todo\", \"priority\": \"low\"}  # Fix deploy script          (test 4)\n{\"search\": \"DEPLOY\"}                   # Deploy API, Fix deploy script\n{\"due_before\": \"2025-03-01\"}           # Deploy API, Write docs     (test 6)\n{\"due_before\": \"next friday\"}          # raises ValueError          (test 7)\n{\"ordering\": \"-title\"}                 # Write docs, Fix deploy script, ...\n{\"ordering\": \"status\"}                 # not allowed: id order     (test 9)\n{\"status\": \"\", \"search\": \"\"}           # empty = ignored: all 4    (test 10)",
+      "notes": "Test 6 keeps a task due exactly on 2025-03-01, and leaves out Fix deploy script, which has no due date. The starter returns the queryset unchanged, so tests 1, 9 and 10 already pass by luck."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "query parameters", "meaning": "The `name=value` pairs after `?`, joined by `&`."},
+        {"term": "query_params", "meaning": "Where DRF puts them: a dict-like `request.query_params`."},
+        {"term": "queryset", "meaning": "Which rows to fetch, and in what order. Django writes the SQL."},
+        {"term": "filter", "meaning": "Keep only matching rows. Several filters mean AND."},
+        {"term": "lookup", "meaning": "A word after `__`, like `title__icontains`, that changes the comparison."},
+        {"term": "ordering", "meaning": "The sort: `\"title\"` is A to Z, `\"-title\"` is Z to A."},
+        {"term": "whitelist", "meaning": "A fixed list of allowed values; anything else is ignored."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: queryset.filter(field=value)",
+      "caption": "Gives back a **new**, narrower queryset, so store it: `qs = qs.filter(...)`, like `df = df[...]`.",
+      "code": "from sandbox.models import Task\nTask.objects.create(title=\"Buy milk\", status=\"done\", priority=\"low\")\nTask.objects.create(title=\"Book dentist\", status=\"todo\", priority=\"high\")\nTask.objects.create(title=\"Call Milo\", status=\"todo\", priority=\"low\")\nqs = Task.objects.all()\nqs = qs.filter(status=\"todo\")\nprint(qs)\nqs = qs.filter(priority=\"high\")\nprint(qs)",
+      "output": "<QuerySet [<Task: Book dentist>, <Task: Call Milo>]>\n<QuerySet [<Task: Book dentist>]>",
+      "notes": "The condition is written like a keyword argument, field=value with one =. Querysets are lazy: nothing touches the database until the results are used, so chaining filters is cheap."
+    },
+    {
+      "type": "code",
+      "title": "Tools: lookups and order_by",
+      "caption": "A lookup goes after the field with **two** underscores. `-` in `order_by` sorts backwards.",
+      "code": "Task.objects.create(title=\"Buy milk\", due_date=date(2024, 5, 10))\nTask.objects.create(title=\"Book dentist\", due_date=date(2024, 6, 1))\nTask.objects.create(title=\"Call Milo\")\nprint(Task.objects.filter(title__icontains=\"MIL\"))\nprint(Task.objects.filter(due_date__lte=date(2024, 5, 31)))\nprint(Task.objects.order_by(\"-title\"))",
+      "output": "<QuerySet [<Task: Buy milk>, <Task: Call Milo>]>\n<QuerySet [<Task: Buy milk>]>\n<QuerySet [<Task: Call Milo>, <Task: Buy milk>, <Task: Book dentist>]>",
+      "notes": "icontains = contains, ignoring case. lte = less than or equal, so on or before that date. Rows with no due date are left out. Plain contains may care about capitals on some databases, so use icontains for search."
+    },
+    {
+      "type": "code",
+      "title": "Tool: params.get(\"name\"), no KeyError",
+      "code": "params = {\"colour\": \"red\", \"size\": \"\"}\nprint(params.get(\"colour\"))\nprint(params.get(\"size\"))\nprint(params.get(\"shape\"))\nif params.get(\"size\"):\n    print(\"size was given\")\nelse:\n    print(\"no size, skip it\")",
+      "output": "red\n\nNone\nno size, skip it",
+      "notes": "params.get gives None instead of a KeyError when the key is missing, and None and \"\" both count as false in an if. The blank second line of output is the empty string being printed. One if skips both missing and empty parameters, which is what test 10 needs."
+    },
+    {
+      "type": "code",
+      "title": "Tools: date.fromisoformat and in",
+      "caption": "`date.fromisoformat` is called on `date` itself; bad text raises `ValueError`.",
+      "code": "print(date.fromisoformat(\"2024-12-25\"))\n\nSIZES = {\"small\", \"large\"}\nprint(\"large\" in SIZES, \"huge\" in SIZES, None in SIZES)\n\nprint(date.fromisoformat(\"tomorrow\"))",
+      "output": "2024-12-25\nTrue False False\nValueError: Invalid isoformat string: 'tomorrow'",
+      "notes": "That ValueError is exactly what test 7 wants, so don't catch it. ALLOWED_ORDERING at the top of your file is a set like SIZES, and None in it is simply False."
+    },
+    {
+      "type": "compare",
+      "title": "Exact match vs lookup",
+      "left": {
+        "heading": "field=value",
+        "bullets": [
+          "`status=\"todo\"`",
+          "The value must match **exactly**",
+          "`\"Todo\"` would not match `\"todo\"`",
+          "Use for: `status`, `priority`"
+        ]
+      },
+      "right": {
+        "heading": "field__lookup=value",
+        "bullets": [
+          "`title__icontains=\"deploy\"`",
+          "Changes **how** it compares",
+          "**Two** underscores: one gives `FieldError`",
+          "Use for: `search`, `due_before`"
+        ]
+      },
+      "notes": "Both go inside filter(...) and both return a new queryset. The parameter name in the URL (search, due_before) is not the field name: you choose the field and lookup."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: one if per parameter",
+      "caption": "The same shape on a plain list: each `if` narrows the result and stores it back.",
+      "code": "fruits = [\"apple\", \"banana\", \"cherry\", \"avocado\"]\nparams = {\"starts_with\": \"a\", \"max_length\": \"\"}\nif params.get(\"starts_with\"):\n    fruits = [f for f in fruits if f.startswith(params[\"starts_with\"])]\nif params.get(\"max_length\"):\n    fruits = [f for f in fruits if len(f) <= int(params[\"max_length\"])]\nprint(fruits)",
+      "output": "['apple', 'avocado']",
+      "notes": "max_length was empty, so its if was skipped. In your function, each if replaces queryset with queryset.filter(...)."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "If `status` has a value: `queryset = queryset.filter(status=...)`", "tests": "test 2"},
+        {"text": "The same for `priority`; together they mean AND", "tests": "tests 3-4"},
+        {"text": "If `search` has a value, filter with `title__icontains=`", "tests": "test 5"},
+        {"text": "`due_before`: `date.fromisoformat(...)`, then `due_date__lte=`", "tests": "tests 6-7"},
+        {"text": "If `ordering` is in `ALLOWED_ORDERING`, sort by it; else by `\"id\"`", "tests": "tests 8-9"},
+        {"text": "Return the sorted queryset", "tests": "tests 1-10"}
+      ],
+      "notes": "Sorting by id on purpose keeps tests 1 and 10 passing for the right reason, not by luck."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`queryset.filter(...)` alone does nothing: store it, `queryset = ...`",
+        "`params[\"status\"]` raises `KeyError` when missing: use `.get`",
+        "`title_icontains` with one underscore gives `FieldError`",
+        "Any ordering straight into `order_by` crashes on unknown fields",
+        "`order_by` also returns a new queryset: return its result"
+      ],
+      "notes": "Test 9 checks that ordering=status is ignored even though status is a real field: it isn't on the whitelist."
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "A task board has a filter panel: status, priority, a search box and \"sort by due date\". Each click changes the query string, and your code turns it into one queryset.",
+      "bullets": [
+        "A whitelist blocks `?ordering=owner__password`, which could leak secrets",
+        "Unknown fields would crash with a `500` and reveal your field names",
+        "`django-filter`, `SearchFilter` and `OrderingFilter` do this for you in real projects"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why store the result: `queryset = queryset.filter(...)`?",
+        "Which lookup finds \"Deploy\" when the user searches \"DEPLOY\"?",
+        "Why does test 6 leave out a task with no due date?",
+        "Why check `?ordering=` against a whitelist?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "exercise": "04-users-ownership",
+  "subtitle": "Store passwords safely, and make sure each user only ever sees their own data.",
+  "notes": "This deck goes with exercise 4. By the end you should be able to create users with hashed passwords, refuse duplicates, and fetch only the rows a user owns.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "**1. Keep passwords safe.** Never store what the user typed. Store a **hash**: a one-way fingerprint. The same password always gives the same fingerprint, but you can't rebuild the password from it.\n\n**2. Only show people their own data.** Each note has an **owner**. The query itself keeps only Ada's notes, like `df[df.owner == \"ada\"]` in pandas.",
+      "notes": "If a database with plain passwords leaks, every account is exposed, and people reuse passwords, so their email and bank too. To check a login, Django hashes what was typed and compares fingerprints."
+    },
+    {
+      "type": "code",
+      "title": "The Note model you're given",
+      "caption": "Already written in `sandbox/models.py`. The `owner` column points at a user.",
+      "code": "class Note(models.Model):\n    owner = models.ForeignKey(\n        settings.AUTH_USER_MODEL,    # points at the User model\n        on_delete=models.CASCADE,    # user deleted -> their notes deleted\n        related_name=\"notes\",        # lets you write user.notes.all()\n    )\n    text = models.CharField(max_length=200)\n    created_at = models.DateTimeField(auto_now_add=True)",
+      "notes": "A foreign key is a column that points at a row in another table. Here each note points at one user."
+    },
+    {
+      "type": "code",
+      "title": "What the tests call",
+      "caption": "The tests call your three functions and pass the values in. `ada` and `bob` are users they made.",
+      "code": "user = register_user(\"ada\", \"ada@example.com\", \"s3cret-pass!\")\nuser.password                          # NOT \"s3cret-pass!\"\nuser.check_password(\"s3cret-pass!\")    # True\n\nregister_user(\"ADA\", \"other@example.com\", \"another-pass!\")\n# raises ValueError(\"username already taken\"), still only 1 user\n\ncreate_note(ada, \"Buy milk\")    # a saved Note whose owner is ada\n\nnotes_for(ada)    # only Ada's notes, never Bob's\nnotes_for(ada)    # newest first: [\"new\", \"middle\", \"old\"]",
+      "notes": "Inside your functions these arrive as parameters: username, email, password, user, text. You don't create users for the tests yourself."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "hash", "meaning": "A scrambled, one-way version of a password, like `pbkdf2_sha256$...`"},
+        {"term": "plain text", "meaning": "The password exactly as typed. Never store this."},
+        {"term": "foreign key", "meaning": "A column that points at a row in another table."},
+        {"term": "queryset", "meaning": "What `.filter(...)` gives back: a list-like set of rows."},
+        {"term": "raise", "meaning": "Stop a function and report an error: `raise ValueError(\"...\")`."},
+        {"term": "service function", "meaning": "A plain function for one job, so views stay short."}
+      ]
+    },
+    {
+      "type": "code",
+      "title": "Tool: create_user",
+      "caption": "Creates and saves a user, and **hashes the password** for you.",
+      "code": "grace = User.objects.create_user(\n    username=\"grace\", email=\"grace@example.com\", password=\"tea-time\"\n)\nprint(grace.password)                    # md5$lbkk...$b9d0...  (a hash)\nprint(grace.check_password(\"tea-time\"))  # True\nprint(grace.check_password(\"coffee\"))    # False",
+      "notes": "The Console and the tests use a fast md5 hasher so they run quickly. A real project uses a slow, strong one, and hashes start with pbkdf2_sha256$. The hash is different every time."
+    },
+    {
+      "type": "compare",
+      "title": "create vs create_user",
+      "left": {
+        "heading": "User.objects.create(...)",
+        "bullets": ["Saves the user", "Stores the password as **plain text**", "Logins never work", "A leak exposes every password", "The starter's bug"]
+      },
+      "right": {
+        "heading": "User.objects.create_user(...)",
+        "bullets": ["Saves the user", "Stores a **hash**", "`check_password(...)` works", "A leak exposes only fingerprints", "What you should use"]
+      },
+      "notes": "Both look almost the same and both save a user. That's why this bug is so easy to miss: nothing crashes. Test 2 catches it."
+    },
+    {
+      "type": "code",
+      "title": "Tools: filter, __iexact and exists",
+      "caption": "Add `__iexact` (two underscores) to ignore upper/lower case. `.exists()` gives `True` or `False`.",
+      "code": "User.objects.create_user(username=\"grace\", email=\"Grace@Example.com\",\n                         password=\"x\")\nprint(User.objects.filter(email=\"grace@example.com\").exists())\nprint(User.objects.filter(email__iexact=\"grace@example.com\").exists())",
+      "output": "False\nTrue",
+      "notes": "The first filter needs an exact match, so the capital letters make it miss. __iexact is how you'd catch 'ADA' when 'ada' already exists."
+    },
+    {
+      "type": "code",
+      "title": "Tool: raise ValueError",
+      "caption": "`raise` stops the function right there. The caller can catch it with `try` / `except`.",
+      "code": "def set_age(age):\n    if age < 0:\n        raise ValueError(\"age cannot be negative\")\n    return age\n\nprint(set_age(30))            # 30\ntry:\n    set_age(-5)\nexcept ValueError as error:\n    print(\"Caught:\", error)   # Caught: age cannot be negative",
+      "notes": "The tests catch your error exactly like this and check the message. Writing return ValueError(...) instead of raise quietly hands back an error object and carries on."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: only one owner's rows, sorted",
+      "code": "grace = User.objects.create_user(username=\"grace\", password=\"x\")\nlinus = User.objects.create_user(username=\"linus\", password=\"x\")\nNote.objects.create(owner=grace, text=\"Water plants\")\nNote.objects.create(owner=linus, text=\"Fix kernel\")\nNote.objects.create(owner=grace, text=\"Call mum\")\n\nprint([n.text for n in Note.objects.filter(owner=grace)])\nprint([n.text for n in linus.notes.all()])\nprint([n.text for n in Note.objects.order_by(\"-text\")])",
+      "output": "['Water plants', 'Call mum']\n['Fix kernel']\n['Water plants', 'Fix kernel', 'Call mum']",
+      "notes": "Pass the whole user object: owner=grace, not owner=\"grace\". The - in order_by reverses the order. You can chain .order_by(...) straight after .filter(...)."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "If taken (any case): `raise ValueError(\"username already taken\")`", "tests": "test 3"},
+        {"text": "Swap `create(...)` for `create_user(...)` and return the user", "tests": "tests 1-2"},
+        {"text": "`create_note`: `Note.objects.create(...)` with `owner=user`", "tests": "test 4"},
+        {"text": "`notes_for`: `.filter(...)` on the owner instead of `.all()`", "tests": "test 5"},
+        {"text": "Chain `.order_by(...)` on `created_at`, with a `-`", "tests": "test 6"}
+      ],
+      "notes": "Order matters in register_user: check for the duplicate before creating anything. Otherwise the duplicate is already saved and test 3 sees 2 users."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "Keeping `create(...)`: \"The password was stored as plain text!\"",
+        "`filter(username=...)` without `__iexact` lets `\"ADA\"` in",
+        "Creating the user first, then checking: the duplicate is already saved",
+        "`order_by(\"created_at\")` without the `-` gives the oldest first",
+        "`owner=user.username`: the foreign key needs the `User` object"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "Ada opens a notes app and it calls `GET /api/notes/`. The server must answer with **Ada's** notes only, even if someone calls the API directly and skips the app.",
+      "bullets": [
+        "The logged-in user is `request.user` in a Django view",
+        "Every private list filters by it: `Note.objects.filter(owner=request.user)`",
+        "Hiding data in the frontend isn't enough: the rule lives in the query"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why must a password never be stored as plain text?",
+        "What's the difference between `create(...)` and `create_user(...)`?",
+        "What does `__iexact` change in a `.filter(...)`?",
+        "Why check for a duplicate **before** creating the user?"
+      ]
+    }
+  ]
+}

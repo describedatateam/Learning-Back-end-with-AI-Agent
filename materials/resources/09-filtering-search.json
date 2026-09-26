@@ -1,0 +1,45 @@
+{
+  "exercise": "09-filtering-search",
+  "resources": [
+    {
+      "title": "Django ORM and QuerySets",
+      "url": "https://tutorial.djangogirls.org/en/django_orm/",
+      "source": "Django Girls Tutorial",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: try filter(), __contains lookups and order_by() in the shell, much like filtering a pandas DataFrame."
+    },
+    {
+      "title": "Making queries",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/queries/",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "Explains that querysets are lazy and can be chained, which is why you can add one filter at a time."
+    },
+    {
+      "title": "QuerySet API reference: field lookups",
+      "url": "https://docs.djangoproject.com/en/5.2/ref/models/querysets/#field-lookups",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Reference for icontains, lte and every other lookup, plus order_by with a minus sign for descending order."
+    },
+    {
+      "title": "datetime: date.fromisoformat",
+      "url": "https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "How to turn a '2025-01-31' string from the URL into a real date, and the ValueError you get on bad input."
+    },
+    {
+      "title": "Filtering",
+      "url": "https://www.django-rest-framework.org/api-guide/filtering/",
+      "source": "Django REST framework",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "How DRF offers the same search and ordering features built in, once you understand the manual version."
+    }
+  ]
+}

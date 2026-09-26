@@ -1,0 +1,486 @@
+{% extends "learn/base.html" %}
+
+{% block title %}{{ exercise.title }} · Backend Lab{% endblock %}
+
+{% block style %}
+  .crumbs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; }
+  .crumbs .spacer { flex: 1; }
+  .layout { display: grid; grid-template-columns: minmax(340px, 5fr) 7fr; gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 8px; }
+  .tabs button {
+    border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600;
+    padding: 11px 12px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-body { padding: 4px 20px 20px; max-height: calc(100vh - 170px); overflow-y: auto; }
+  .tab-body[hidden] { display: none; }
+  .lesson h1 { font-size: 22px; margin-top: 16px; }
+  .lesson h2 { font-size: 17px; }
+  .lesson h3 { font-size: 15px; }
+  .lesson table { border-collapse: collapse; font-size: 14px; }
+  .lesson th, .lesson td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+  .lesson blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+  .lesson blockquote p { margin: 4px 0; }
+  details.hint { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 12px; }
+  details.hint summary { cursor: pointer; font-weight: 600; }
+  .q { margin-top: 18px; }
+  .q .prompt { font-weight: 600; margin-bottom: 6px; }
+  .q label { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; margin-top: 6px; cursor: pointer; }
+  .q label.right { border-color: var(--ok); background: var(--ok-soft); }
+  .q label.wrong { border-color: var(--bad); background: var(--bad-soft); }
+  .q .why { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+
+  .editor-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .editor-head .file { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-right: auto; }
+  .editor { background: #1e1e1e; height: 440px; resize: vertical; overflow: hidden; }
+  .editor .CodeMirror { height: 100%; font: 13.5px/1.6 var(--mono); }
+  .editor .CodeMirror-scroll { padding-top: 8px; }
+  textarea#code {  /* plain fallback when CodeMirror can't load */
+    width: 100%; height: 100%; border: 0; outline: none; resize: none; background: #1e1e1e; color: #d4d4d4;
+    padding: 12px 14px; font: 13.5px/1.6 var(--mono); white-space: pre; overflow: auto; tab-size: 4;
+  }
+  .kbd { font-size: 12px; color: var(--muted); }
+  .kbd b { font-weight: 600; color: var(--text); }
+  .bottom-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--border); padding: 0 8px; }
+  .bottom-tabs .spacer { flex: 1; }
+  .bottom-tabs .count { font-weight: 400; color: var(--muted); }
+  .results, .console { padding: 12px 16px 18px; max-height: 420px; overflow-y: auto; }
+  .results .summary { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 4px; }
+  .results .empty, .console .empty { color: var(--muted); font-size: 14px; }
+  .test { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 14px; align-items: flex-start; }
+  .test:first-of-type { border-top: 0; }
+  .test .icon { width: 20px; flex-shrink: 0; font-weight: 700; text-align: center; color: var(--muted); }
+  .test .body { flex: 1; min-width: 0; }
+  .test.passed .icon { color: var(--ok); }
+  .test.failed .icon, .test.error .icon { color: var(--bad); }
+  .test.running .icon { animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .test pre { margin: 6px 0 0; font-size: 12.5px; white-space: pre-wrap; }
+  .run-one { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 6px;
+    font-size: 12px; padding: 2px 8px; cursor: pointer; flex-shrink: 0; }
+  .run-one:hover { color: var(--accent); border-color: var(--accent); }
+  .run-one:disabled { opacity: .5; cursor: wait; }
+  .console-entry { border-top: 1px solid var(--border); padding: 10px 0; }
+  .console-entry:first-child { border-top: 0; padding-top: 2px; }
+  .console-entry .prompt { display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .console-entry pre { margin: 4px 0 0; font-size: 12.5px; white-space: pre-wrap; border-radius: 6px; padding: 8px 12px; }
+  .console-entry pre.code { background: #1e1e1e; }
+  .console-entry pre.out { background: #111418; color: #e5e5e5; }
+  .console-entry pre.err { background: var(--bad-soft); color: var(--bad); }
+  .console-entry .note { font-size: 12.5px; color: var(--muted); margin-top: 6px; white-space: pre-wrap; }
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+  .alert.bad { background: var(--bad-soft); color: var(--bad); }
+  .alert.ok { background: var(--ok-soft); color: var(--ok); }
+  .alert pre { margin: 8px 0 0; white-space: pre-wrap; }
+  dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); width: min(820px, 92vw); padding: 0; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  dialog header strong { margin-right: auto; }
+  dialog pre { margin: 0; border-radius: 0; max-height: 65vh; }
+  .rewards { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+  .chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--xp-soft); color: var(--xp); }
+  .chip.gone { background: var(--surface-2); color: var(--muted); text-decoration: line-through; }
+  .quiz-note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  #tab-tutor:not([hidden]) { display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 420px; padding-top: 12px; }
+  .ask-tutor { margin-top: 12px; }
+{% endblock %}
+
+{% block content %}
+<main class="wide">
+  <div class="crumbs">
+    <a href="{% url 'learn:dashboard' %}">All exercises</a>
+    <span class="muted">/ Week {{ exercise.week }} / #{{ exercise.number|stringformat:"02d" }}</span>
+    <span id="status-badge">
+      {% if progress.passed %}<span class="badge done">Passed</span>
+      {% elif progress %}<span class="badge wip">In progress</span>
+      {% else %}<span class="badge new">Not started</span>{% endif %}
+    </span>
+    <span class="spacer"></span>
+    {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">📑 Slides</a>{% endif %}
+    {% if previous %}<a class="btn" href="{% url 'learn:exercise' previous.slug %}">← {{ previous.title }}</a>{% endif %}
+    {% if next %}<a class="btn" href="{% url 'learn:exercise' next.slug %}">{{ next.title }} →</a>{% endif %}
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="tabs" role="tablist">
+        <button class="active" data-tab="lesson">Lesson</button>
+        <button data-tab="hints">Hints ({{ exercise.hints|length }})</button>
+        <button data-tab="quiz">Quiz ({{ quiz|length }})</button>
+        <button data-tab="tutor">Tutor ✨</button>
+      </div>
+      <div class="tab-body lesson" id="tab-lesson">
+        <div class="rewards" title="XP you can earn in this exercise">
+          <span class="chip">★ {{ rewards.pass }} XP to complete</span>
+          <span class="chip">+5 XP per test</span>
+          <span class="chip {% if progress.solution_viewed and not progress.passed %}gone{% endif %}" id="chip-nopeek">+{{ rewards.no_peek }} no-peek</span>
+          <span class="chip {% if progress.attempts and not progress.passed %}gone{% endif %}">+{{ rewards.first_try }} first try</span>
+          <span class="chip {% if quiz_taken %}gone{% endif %}" id="chip-quiz">+{{ rewards.quiz }} quiz</span>
+        </div>
+        {{ exercise.instructions_html|safe }}
+        <p class="muted" style="font-size:13px">Related lesson in this repo: <code>{{ exercise.lesson }}</code></p>
+      </div>
+      <div class="tab-body" id="tab-hints" hidden>
+        <p class="muted">Try on your own first — open one hint at a time.</p>
+        {% for hint in exercise.hints %}
+          <details class="hint"><summary>Hint {{ forloop.counter }}</summary><div>{{ hint|safe }}</div></details>
+        {% endfor %}
+        <p style="margin-top:20px"><button class="btn" id="show-solution">Show reference solution</button></p>
+      </div>
+      <div class="tab-body" id="tab-quiz" hidden>
+        <p class="quiz-note">{% if quiz_taken %}You've already taken this quiz. Retakes are for practice and don't earn XP.{% else %}Quiz XP is earned on your <strong>first attempt</strong> ({{ rewards.quiz }} XP max), so think before you check!{% endif %}</p>
+        <form id="quiz-form">
+          {% for q in quiz %}
+            {% with qi=forloop.counter0 %}
+            <div class="q" data-q="{{ qi }}">
+              <div class="prompt">{{ forloop.counter }}. {{ q.question|safe }}</div>
+              {% for option in q.options %}
+                <label><input type="radio" name="q{{ qi }}" value="{{ forloop.counter0 }}"> <span>{{ option|safe }}</span></label>
+              {% endfor %}
+              <div class="why" hidden></div>
+            </div>
+            {% endwith %}
+          {% endfor %}
+          <p style="margin-top:18px; display:flex; gap:12px; align-items:center">
+            <button class="btn primary" type="submit">Check answers</button>
+            <span id="quiz-score" class="muted">{% if progress.quiz_total %}Best score: {{ progress.quiz_correct }}/{{ progress.quiz_total }}{% endif %}</span>
+          </p>
+        </form>
+      </div>
+      <div class="tab-body" id="tab-tutor" hidden>
+        {% include "learn/_tutor.html" with tutor_topic=exercise.slug %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="editor-head">
+        <span class="file">{{ exercise.file }}</span>
+        <span class="kbd" title="Ctrl+/ toggles comments · Ctrl+Space shows suggestions"><b>Shift+Enter</b> run selection · <b>Ctrl+Enter</b> run tests</span>
+        <button class="btn" id="reset">Reset</button>
+        <button class="btn" id="run-selection" {% if not can_run %}disabled title="Open this page from localhost to run code"{% else %}title="Run the highlighted code (or the current line)"{% endif %}>▶ Run selection</button>
+        <button class="btn primary" id="run" {% if not can_run %}disabled title="Open this page from localhost to run code"{% endif %}>▶ Run tests</button>
+      </div>
+      <div class="editor" id="editor-box">
+        <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off">{{ code }}</textarea>
+      </div>
+      <div class="bottom-tabs tabs">
+        <button class="active" data-panel="results">Tests <span class="count">({{ tests|length }})</span></button>
+        <button data-panel="console">Console</button>
+        <span class="spacer"></span>
+        <button class="run-one" id="clear-console" hidden>Clear console</button>
+      </div>
+      <div class="results" id="results"></div>
+      <div class="console" id="console" hidden>
+        <p class="empty">Highlight some code and press <strong>Shift+Enter</strong> (or click <strong>Run selection</strong>) to run just that part.
+          The rest of your file (imports, functions, classes) loads first, and the value of the last line is printed, like in a Python shell.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog id="solution-dialog">
+  <header><strong>Reference solution</strong><button class="btn" id="copy-solution">Load into editor</button><button class="btn" id="close-solution">Close</button></header>
+  <pre><code id="solution-code" class="language-python"></code></pre>
+</dialog>
+
+{% csrf_token %}
+{{ starter|json_script:"starter-code" }}
+{{ tests|json_script:"test-list" }}
+<script>
+  window.LEARN_LAST_RUN = {% if progress.tests_total %}"Last full run: {{ progress.tests_passed }}/{{ progress.tests_total }} tests passed."{% else %}null{% endif %};
+</script>
+{% endblock %}
+
+{% block script %}
+<script>
+(() => {
+  const urls = {
+    run: "{% url 'learn:run' exercise.slug %}",
+    runSelection: "{% url 'learn:run_selection' exercise.slug %}",
+    quiz: "{% url 'learn:quiz' exercise.slug %}",
+    solution: "{% url 'learn:solution' exercise.slug %}",
+  };
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const draftKey = 'learn-draft:{{ exercise.slug }}';
+  const $ = (sel) => document.querySelector(sel);
+  const results = $('#results'), consoleBox = $('#console');
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const post = (url, body) => fetch(url, {
+    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf}, body: JSON.stringify(body),
+  }).then((r) => r.json());
+  const canRun = {{ can_run|yesno:"true,false" }};
+
+  // ---- Side tabs (lesson / hints / quiz / tutor) ----
+  const sideTabs = document.querySelectorAll('.panel > .tabs:not(.bottom-tabs) button');
+  const showTab = (name) => {
+    sideTabs.forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-body').forEach((body) => body.hidden = body.id !== 'tab-' + name);
+  };
+  sideTabs.forEach((btn) => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+
+  // ---- Bottom panel tabs (tests / console) ----
+  const panelTabs = document.querySelectorAll('.bottom-tabs button[data-panel]');
+  const showPanel = (name) => {
+    panelTabs.forEach((b) => b.classList.toggle('active', b.dataset.panel === name));
+    results.hidden = name !== 'results';
+    consoleBox.hidden = name !== 'console';
+    $('#clear-console').hidden = name !== 'console';
+  };
+  panelTabs.forEach((btn) => btn.addEventListener('click', () => showPanel(btn.dataset.panel)));
+
+  // ---- Editor ----
+  const textarea = $('#code');
+  try { const draft = localStorage.getItem(draftKey); if (draft) textarea.value = draft; } catch (e) {}
+  const saveDraft = () => { try { localStorage.setItem(draftKey, editor.getValue()); } catch (e) {} };
+  const handlers = {onRun: () => runTests(), onRunSelection: () => runSelection(), onChange: saveDraft};
+  const editor = window.createPythonEditor ? window.createPythonEditor(textarea, handlers) : plainEditor(textarea, handlers);
+  new ResizeObserver(() => editor.refresh?.()).observe($('#editor-box'));
+
+  function plainEditor(el, h) {  // used when CodeMirror can't load (offline)
+    el.addEventListener('input', h.onChange);
+    el.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); h.onRun(); }
+      else if (e.shiftKey && e.key === 'Enter') { e.preventDefault(); h.onRunSelection(); }
+      else if (e.key === 'Tab') { e.preventDefault(); el.setRangeText('    ', el.selectionStart, el.selectionEnd, 'end'); h.onChange(); }
+    });
+    const lineOf = (pos) => el.value.slice(0, pos).split('\n').length;
+    return {
+      getValue: () => el.value,
+      setValue: (v) => { el.value = v; },
+      focus: () => el.focus(),
+      getSelectionInfo: () => {
+        const {selectionStart: s, selectionEnd: t, value: v} = el;
+        if (s !== t) return {text: v.slice(s, t), start: lineOf(s), end: lineOf(t), whole: false};
+        const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+        const lineEnd = v.indexOf('\n', s) === -1 ? v.length : v.indexOf('\n', s);
+        return {text: v.slice(lineStart, lineEnd), start: lineOf(s), end: lineOf(s), whole: true};
+      },
+    };
+  }
+
+  // ---- Colour code in the lesson and the solution ----
+  window.highlightCode?.($('#tab-lesson'));
+
+  $('#reset').addEventListener('click', () => {
+    if (!confirm('Replace your code with the starter code?')) return;
+    editor.setValue(JSON.parse($('#starter-code').textContent));
+    saveDraft();
+  });
+
+  // ---- Tests: the full list is shown up front, and each one can run on its own ----
+  const TESTS = JSON.parse($('#test-list').textContent);
+  const status = {};          // test id -> latest result record
+  let running = new Set();    // test ids currently running
+  let banner = '';            // alert shown above the list
+  let footer = '';            // print() output / tutor button below the list
+  let lastResult = null;
+  const icons = {passed: '✓', failed: '✗', error: '!', running: '…', none: '○'};
+
+  window.tutorContext = () => ({code: editor.getValue(), result: lastResult});
+
+  function renderTests() {
+    const known = TESTS.filter((t) => status[t.id]);
+    const passed = known.filter((t) => status[t.id].outcome === 'passed').length;
+    const notRun = TESTS.length - known.length;
+    let html = banner;
+    if (!banner) {
+      html += known.length
+        ? `<div class="summary">${passed}/${TESTS.length} tests passing${notRun ? ` <span class="muted" style="font-weight:400">· ${notRun} not run yet</span>` : ''}</div>`
+        : `<p class="empty">${esc(window.LEARN_LAST_RUN || 'Write your code, then run all tests, or click ▶ next to a test to run just that one.')}</p>`;
+    }
+    html += '<div>';
+    for (const t of TESTS) {
+      const record = status[t.id];
+      const state = running.has(t.id) ? 'running' : record ? record.outcome : 'none';
+      const detail = record && record.outcome !== 'passed' && !running.has(t.id)
+        ? `<pre>${esc(record.message)}${record.trace ? '\n\n' + esc(record.trace) : ''}</pre>` : '';
+      html += `<div class="test ${state}"><span class="icon">${icons[state]}</span>
+        <div class="body">${esc(t.description)}${detail}</div>
+        <button class="run-one" type="button" data-test="${esc(t.id)}" ${canRun && !running.size ? '' : 'disabled'} title="Run only this test">▶</button></div>`;
+    }
+    html += '</div>' + footer;
+    results.innerHTML = html;
+    results.querySelectorAll('.run-one').forEach((b) => b.addEventListener('click', () => runOne(b.dataset.test)));
+    results.querySelector('.ask-tutor')?.addEventListener('click', (e) => {
+      showTab('tutor');
+      window.askTutor?.(e.target.dataset.question);
+    });
+    lastResult = {
+      passed, total: TESTS.length,
+      tests: known.map((t) => status[t.id]),
+      error: banner && banner.includes('alert bad') ? results.querySelector('.alert.bad pre')?.textContent : undefined,
+    };
+  }
+
+  const tutorButton = (label, question) =>
+    `<button class="btn ask-tutor" type="button" data-question="${esc(question)}">✨ ${label}</button>`;
+
+  function loadErrorBanner(data) {
+    return `<div class="alert bad"><strong>Your code didn't load.</strong><pre>${esc(data.error)}</pre></div>`;
+  }
+
+  const runBtn = $('#run');
+  async function runTests() {
+    if (runBtn.disabled || running.size) return;
+    showPanel('results');
+    runBtn.disabled = true; runBtn.textContent = 'Running…';
+    running = new Set(TESTS.map((t) => t.id));
+    banner = ''; footer = ''; renderTests();
+    try {
+      const data = await post(urls.run, {code: editor.getValue()});
+      running = new Set();
+      TESTS.forEach((t) => delete status[t.id]);
+      (data.tests || []).forEach((r) => { status[r.id] = r; });
+      if (data.error && !data.tests?.length) {
+        banner = loadErrorBanner(data);
+        footer = (data.stdout ? `<p class="muted" style="margin:12px 0 4px">Output</p><pre>${esc(data.stdout)}</pre>` : '')
+          + tutorButton('Ask the tutor what this error means', "My code won't load. What does this error mean and where should I look?");
+      } else {
+        banner = data.all_passed
+          ? `<div class="alert ok" style="margin-bottom:6px"><strong>All ${data.total} tests passed. Nice work!</strong> Try the quiz, or move on to the next exercise.</div>`
+          : '';
+        footer = (data.stdout.trim() ? `<p class="muted" style="margin:12px 0 4px">Output from print()</p><pre>${esc(data.stdout)}</pre>` : '')
+          + (data.all_passed ? '' : tutorButton('Ask the tutor why', "My tests aren't passing. Can you help me understand what's wrong, without giving me the full answer?"));
+        if (data.all_passed) $('#status-badge').innerHTML = '<span class="badge done">Passed</span>';
+        else if (!$('#status-badge .done')) $('#status-badge').innerHTML = '<span class="badge wip">In progress</span>';
+      }
+      celebrate(data.xp);
+    } catch (err) {
+      running = new Set();
+      banner = `<div class="alert bad">Could not reach the server: ${esc(err)}</div>`;
+    } finally {
+      runBtn.disabled = !canRun; runBtn.textContent = '▶ Run tests';
+      renderTests();
+    }
+  }
+
+  async function runOne(testId) {
+    if (running.size) return;
+    showPanel('results');
+    running = new Set([testId]);
+    banner = ''; renderTests();
+    try {
+      const data = await post(urls.run, {code: editor.getValue(), test: testId});
+      if (data.error && !data.tests?.length) {
+        banner = loadErrorBanner(data);
+        footer = tutorButton('Ask the tutor what this error means', "My code won't load. What does this error mean and where should I look?");
+      } else {
+        (data.tests || []).forEach((r) => { status[r.id] = r; });
+        const record = status[testId];
+        footer = (data.stdout?.trim() ? `<p class="muted" style="margin:12px 0 4px">Output from print()</p><pre>${esc(data.stdout)}</pre>` : '')
+          + (record && record.outcome !== 'passed'
+            ? tutorButton('Ask the tutor about this test', `This test is failing: "${record.description}". Can you help me understand why, without giving me the full answer?`)
+            : '');
+      }
+      if (!$('#status-badge .done')) $('#status-badge').innerHTML = '<span class="badge wip">In progress</span>';
+    } catch (err) {
+      banner = `<div class="alert bad">Could not reach the server: ${esc(err)}</div>`;
+    } finally {
+      running = new Set();
+      renderTests();
+    }
+  }
+  runBtn.addEventListener('click', runTests);
+  renderTests();
+
+  // ---- Run selection: a small Python console ----
+  const selBtn = $('#run-selection');
+  let consoleStarted = false;
+  async function runSelection() {
+    if (selBtn.disabled) return;
+    const sel = editor.getSelectionInfo();
+    if (!sel.text.trim()) {
+      showPanel('console');
+      addConsoleEntry('', '', 'Highlight some code first (or put the cursor on a line with code).', []);
+      return;
+    }
+    showPanel('console');
+    selBtn.disabled = true; selBtn.textContent = 'Running…';
+    const entry = addConsoleEntry(sel.text, '', '', [], true);
+    try {
+      const data = await post(urls.runSelection, {
+        code: editor.getValue(), selection: sel.text, start_line: sel.start, end_line: sel.end,
+      });
+      fillConsoleEntry(entry, sel.text, data.output || '', data.error || '', data.notes || []);
+    } catch (err) {
+      fillConsoleEntry(entry, sel.text, '', `Could not reach the server: ${err}`, []);
+    } finally {
+      selBtn.disabled = !canRun; selBtn.textContent = '▶ Run selection';
+      editor.focus();
+    }
+  }
+  function addConsoleEntry(code, output, error, notes, pending) {
+    if (!consoleStarted) { consoleBox.innerHTML = ''; consoleStarted = true; }
+    const entry = document.createElement('div');
+    entry.className = 'console-entry';
+    consoleBox.appendChild(entry);
+    fillConsoleEntry(entry, code, output, error, notes, pending);
+    return entry;
+  }
+  function fillConsoleEntry(entry, code, output, error, notes, pending) {
+    const lines = code ? code.replace(/\n+$/, '').split('\n').length : 0;
+    entry.innerHTML =
+      (code ? `<div class="prompt"><span>&gt;&gt;&gt; ran ${lines} line${lines === 1 ? '' : 's'}</span></div>
+        <pre class="code cm-s-vscode"><code class="language-python">${esc(code.replace(/\n+$/, ''))}</code></pre>` : '')
+      + (pending ? '<div class="note">Running…</div>' : '')
+      + (output ? `<pre class="out">${esc(output.replace(/\n$/, ''))}</pre>` : '')
+      + (error ? `<pre class="err">${esc(error)}</pre>` : '')
+      + (!pending && code && !output && !error ? '<div class="note">(no output)</div>' : '')
+      + notes.map((n) => `<div class="note">ℹ ${esc(n)}</div>`).join('');
+    window.highlightCode?.(entry);
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+  }
+  selBtn.addEventListener('click', runSelection);
+  $('#clear-console').addEventListener('click', () => {
+    consoleStarted = false;
+    consoleBox.innerHTML = '<p class="empty">Console cleared.</p>';
+  });
+
+  // ---- Quiz ----
+  $('#quiz-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const blocks = [...document.querySelectorAll('.q')];
+    const answers = blocks.map((b) => {
+      const checked = b.querySelector('input:checked');
+      return checked ? Number(checked.value) : null;
+    });
+    const data = await post(urls.quiz, {answers});
+    data.results.forEach((r, i) => {
+      const labels = blocks[i].querySelectorAll('label');
+      labels.forEach((l, j) => {
+        l.classList.toggle('right', j === r.answer);
+        l.classList.toggle('wrong', j === answers[i] && !r.correct);
+      });
+      const why = blocks[i].querySelector('.why');
+      why.hidden = !r.explanation; why.innerHTML = r.explanation;
+    });
+    $('#quiz-score').textContent = `You got ${data.correct}/${data.total}`;
+    $('#chip-quiz').classList.add('gone');
+    celebrate(data.xp);
+  });
+
+  // ---- Solution ----
+  const dialog = $('#solution-dialog');
+  $('#show-solution').addEventListener('click', async () => {
+    const passed = !!document.querySelector('#status-badge .done');
+    const warning = passed
+      ? 'Show the reference solution?'
+      : 'Peek at the solution? You learn more by struggling a little first, and you will lose the +{{ rewards.no_peek }} XP no-peek bonus for this exercise.';
+    if (!confirm(warning)) return;
+    const data = await post(urls.solution, {});
+    if (!passed) $('#chip-nopeek').classList.add('gone');
+    const codeEl = $('#solution-code');
+    codeEl.textContent = data.solution;
+    delete codeEl.dataset.highlighted;
+    window.highlightCode?.(dialog);
+    dialog.showModal();
+  });
+  $('#close-solution').addEventListener('click', () => dialog.close());
+  $('#copy-solution').addEventListener('click', () => {
+    editor.setValue($('#solution-code').textContent); saveDraft(); dialog.close();
+  });
+})();
+</script>
+{% endblock %}

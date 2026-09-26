@@ -1,0 +1,45 @@
+{
+  "exercise": "02-json-views",
+  "resources": [
+    {
+      "title": "Django views – time to create!",
+      "url": "https://tutorial.djangogirls.org/en/django_views/",
+      "source": "Django Girls Tutorial",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "Start here: a gentle first look at what a view is (a function that takes a request and returns a response)."
+    },
+    {
+      "title": "HTTP response status codes",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status",
+      "source": "MDN Web Docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "Look up what 200, 400 and 405 mean so you pick the right status for each response."
+    },
+    {
+      "title": "json: JSON encoder and decoder",
+      "url": "https://docs.python.org/3/library/json.html",
+      "source": "Python docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "The reference for json.loads, which turns the request body into a Python dict, and the error it raises on bad input."
+    },
+    {
+      "title": "Request and response objects (JsonResponse)",
+      "url": "https://docs.djangoproject.com/en/5.2/ref/request-response/#jsonresponse-objects",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "The official reference for request.GET, request.body and JsonResponse, the exact tools your views use."
+    },
+    {
+      "title": "View decorators: allowed HTTP methods",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/http/decorators/#allowed-http-methods",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Explains require_GET and require_POST, which reject the wrong method with a 405 for you."
+    }
+  ]
+}

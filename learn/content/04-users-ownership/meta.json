@@ -1,0 +1,34 @@
+{
+  "title": "Users & ownership",
+  "week": 1,
+  "concept": "Auth",
+  "file": "services.py",
+  "lesson": "lessons/week-1/day-05-users-and-ownership-lesson.md",
+  "summary": "Create users safely with hashed passwords and only return data a user owns.",
+  "hints": [
+    "Test 2 fails because the starter uses <code>User.objects.create(...)</code>, which saves the password as plain text. <code>User.objects.create_user(username=..., email=..., password=...)</code> hashes it for you.",
+    "Check for a duplicate <strong>before</strong> creating the user: <code>User.objects.filter(username__iexact=username).exists()</code> is <code>True</code> for \"ADA\" when \"ada\" exists. Then <code>raise ValueError('username already taken')</code>.",
+    "<code>create_note</code> is one line: <code>Note.objects.create(owner=user, text=text)</code>, and return what it gives back.",
+    "Only one user's notes: <code>Note.objects.filter(owner=user)</code>. Newest first: add <code>.order_by('-created_at')</code> on the end (the <code>-</code> means reverse)."
+  ],
+  "quiz": [
+    {
+      "question": "Why must you never store a password as plain text?",
+      "options": ["It uses more disk space", "If the database leaks, every account is exposed", "Django can't read plain text", "It makes logins slower"],
+      "answer": 1,
+      "explanation": "Hashing is one-way. Django stores something like <code>pbkdf2_sha256$...</code> and checks a login by hashing the attempt and comparing."
+    },
+    {
+      "question": "User A requests <code>/api/notes/</code>. Where should the 'only A's notes' rule live?",
+      "options": ["In the frontend: hide other notes", "In the query: <code>filter(owner=request.user)</code>", "In the template", "Nowhere, notes are public"],
+      "answer": 1,
+      "explanation": "Filter on the server, in the query itself. Anything the frontend 'hides' can still be fetched by calling the API directly."
+    },
+    {
+      "question": "What does <code>on_delete=models.CASCADE</code> do on <code>Note.owner</code>?",
+      "options": ["Deletes the user when a note is deleted", "Deletes the user's notes when the user is deleted", "Prevents deleting users", "Sets owner to NULL"],
+      "answer": 1,
+      "explanation": "CASCADE follows the relationship: delete the user and their notes go too. <code>PROTECT</code> or <code>SET_NULL</code> are the alternatives."
+    }
+  ]
+}

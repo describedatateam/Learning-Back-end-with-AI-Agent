@@ -1,0 +1,138 @@
+{
+  "exercise": "14-settings-env",
+  "subtitle": "Read settings from the computer the app runs on, and turn text into real types.",
+  "notes": "This deck goes with exercise 14. By the end you should be able to explain why settings live in environment variables, and write helpers that turn their text into booleans, numbers and lists.",
+  "slides": [
+    {
+      "type": "statement",
+      "title": "The big idea",
+      "text": "The same code runs on your laptop and on the real server (**production**). Each place needs different **settings**: passwords, keys, `DEBUG` on or off.\n\nThe code is a recipe; **environment variables** are the oven dial in each kitchen. The catch: they are **always text**, so `DEBUG=False` arrives as the string `\"False\"`.",
+      "notes": "Like a CSV where numbers and yes/no values arrive as text: you must convert them before use. Secrets in settings.py would also end up in git, where anyone can read them."
+    },
+    {
+      "type": "code",
+      "title": "What your code receives",
+      "caption": "The tests set a variable for a moment, then pass its **name** to your function.",
+      "code": "# 1. The test sets a variable (always text!)\nos.environ[\"APP_PORT\"] = \" 8000 \"\n# 2. It calls your function with the variable's NAME\nenv_int(\"APP_PORT\", 80)                # must return 8000, a number\n\n# More calls from the tests, and what they expect:\nenv_str(\"APP_NAME\", \"fallback\")        # not set -> \"fallback\"\nenv_str(\"APP_NAME\")                    # not set -> ImproperlyConfigured\nenv_bool(\"APP_DEBUG\", default=True)    # \" OFF \" -> False\nenv_bool(\"APP_DEBUG\")                  # \"maybe\" -> ImproperlyConfigured\nenv_list(\"APP_HOSTS\")  # \" localhost, 127.0.0.1 ,,example.com, \"\n                       # -> [\"localhost\", \"127.0.0.1\", \"example.com\"]",
+      "notes": "You never set these yourself. name is just a string like \"APP_PORT\"; your function looks it up. Not set and only spaces both mean: use the default."
+    },
+    {
+      "type": "terms",
+      "title": "New words",
+      "terms": [
+        {"term": "environment variable", "meaning": "A `NAME=value` setting that lives outside your code."},
+        {"term": "production", "meaning": "The real server real users use. Mistakes here hurt."},
+        {"term": "`os.environ`", "meaning": "Python's view of all environment variables: a dict of strings."},
+        {"term": "truthy", "meaning": "What `if` treats as true: every non-empty string, even `\"False\"`."},
+        {"term": "default", "meaning": "The value to use when the variable isn't set."},
+        {"term": "raise", "meaning": "Stop the function right away with an error."}
+      ],
+      "notes": "ImproperlyConfigured is Django's error for 'the settings are wrong'. You raise it to stop the app with a clear message."
+    },
+    {
+      "type": "code",
+      "title": "Tool: os.environ.get(name)",
+      "caption": "A **method** on `os.environ`: gives the value as a **string**, or `None` if it isn't set.",
+      "code": "import os\n\nos.environ[\"MY_COLOUR\"] = \" Blue \"      # set one, just to try it\nprint(repr(os.environ.get(\"MY_COLOUR\")))\nprint(os.environ.get(\"NOT_SET_AT_ALL\"))",
+      "output": "' Blue '\nNone",
+      "notes": "repr shows the quotes so you can see the spaces are kept. os.environ[\"NOT_SET\"] with square brackets crashes with KeyError; .get gives None instead."
+    },
+    {
+      "type": "code",
+      "title": "Why \"False\" is truthy",
+      "caption": "Only the empty string is false, so `bool(...)` can't read settings.",
+      "code": "print(bool(\"False\"))   # the classic bug\nprint(bool(\"0\"))\nprint(bool(\"\"))",
+      "output": "True\nTrue\nFalse",
+      "notes": "This is exactly the bug in the starter's env_bool. You have to look at the words instead."
+    },
+    {
+      "type": "code",
+      "title": "Tools: is None, .strip() and in {...}",
+      "caption": "Check \"missing or blank\" first, then compare the cleaned word against a **set**.",
+      "code": "value = \"   \"\nprint(value is None or not value.strip())   # blank: use the default\n\nSIZES = {\"small\", \"medium\", \"large\"}\nanswer = \" Medium \"\nprint(answer.strip().lower() in SIZES)",
+      "output": "True\nTrue",
+      "notes": "Order matters: check is None first. None.strip() crashes, but or stops as soon as one side is true, so the strip never runs on None."
+    },
+    {
+      "type": "code",
+      "title": "Tool: raise ImproperlyConfigured(...)",
+      "caption": "Stops the function with a clear message. Put the variable's name in it with an f-string.",
+      "code": "from django.core.exceptions import ImproperlyConfigured\n\nname = \"MY_COLOUR\"\nraise ImproperlyConfigured(f\"Please set {name}.\")",
+      "output": "django.core.exceptions.ImproperlyConfigured: Please set MY_COLOUR.",
+      "notes": "It's already imported in your file. The tests check that the message contains the variable's name."
+    },
+    {
+      "type": "code",
+      "title": "Tool: int(text) with try / except",
+      "caption": "`int(\" 42 \")` works, `int(\"forty\")` raises `ValueError`, and `except` catches it.",
+      "code": "for text in [\"42\", \"forty\"]:\n    try:\n        print(int(text) + 1)\n    except ValueError:\n        print(f\"{text!r} is not a number\")",
+      "output": "43\n'forty' is not a number",
+      "notes": "In env_int, the except block raises ImproperlyConfigured instead of printing. {text!r} shows the value with its quotes."
+    },
+    {
+      "type": "compare",
+      "title": "return vs raise",
+      "left": {
+        "heading": "return the error",
+        "bullets": ["Hands the error back as a **normal value**", "The function carries on as if all is fine", "The app runs with a broken setting", "The tests see no error: tests 2 and 5 fail"]
+      },
+      "right": {
+        "heading": "raise the error",
+        "bullets": ["**Stops** the function right away", "Nothing after it runs", "The app refuses to start, with a clear message", "What the tests expect"]
+      },
+      "notes": "Failing loudly at startup beats discovering a wrong setting from a customer's bug report."
+    },
+    {
+      "type": "code",
+      "title": "Pattern: split, clean, keep the good ones",
+      "caption": "The same loop `env_list` needs, on different data:",
+      "code": "raw = \" red , ,green,, blue \"\ncolours = []\nfor piece in raw.split(\",\"):\n    piece = piece.strip()\n    if piece:                   # \"\" is falsy, so empty pieces are skipped\n        colours.append(piece)\nprint(colours)",
+      "output": "['red', 'green', 'blue']",
+      "notes": "Start with an empty list and append inside the loop. If you know list comprehensions, it fits on one line."
+    },
+    {
+      "type": "steps",
+      "title": "Your task, step by step",
+      "steps": [
+        {"text": "In every helper: read with `os.environ.get(name)`; `None` or blank means **missing**", "tests": ""},
+        {"text": "`env_str`: return the stripped value, or `default`", "tests": "test 1"},
+        {"text": "`env_str`: missing and no default? `raise ImproperlyConfigured` naming it", "tests": "test 2"},
+        {"text": "`env_bool`: lower-case, check the true set and the false set, else raise", "tests": "tests 3-5"},
+        {"text": "`env_int`: `int(value)` inside `try`; raise on `ValueError`", "tests": "test 6"},
+        {"text": "`env_list`: missing gives `default` or `[]`; else split, strip, skip empties", "tests": "tests 7-8"}
+      ],
+      "notes": "Step 1 is shared by all four helpers. You can copy it, or write one small helper of your own and call it from all four."
+    },
+    {
+      "type": "bullets",
+      "title": "Common mistakes",
+      "bullets": [
+        "`bool(value)` makes `\"False\"` true; `value == \"True\"` misses `\"true\"` and `\"1\"`",
+        "Calling `.strip()` before checking `is None`: `AttributeError`",
+        "Forgetting that `\"   \"` (only spaces) counts as missing",
+        "`return ImproperlyConfigured(...)` instead of `raise`",
+        "`env_list` returning `None` instead of `[]`; `env_int` returning `\"8000\"`"
+      ]
+    },
+    {
+      "type": "scenario",
+      "title": "Where you'll use this",
+      "text": "You deploy to production and set `DJANGO_DEBUG=ture` by mistake. With `bool(...)` the site quietly runs in debug mode and shows error details to strangers. With `env_bool`, it refuses to start and tells you why.",
+      "bullets": [
+        "Real projects read `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` and database settings this way",
+        "Open `.env.example` and `config/settings.py` in this project to see it",
+        "Libraries like `django-environ` do the same job as your four helpers"
+      ]
+    },
+    {
+      "type": "check",
+      "title": "Check yourself",
+      "questions": [
+        "Why keep passwords and `SECRET_KEY` out of `settings.py`?",
+        "`DJANGO_DEBUG=False`: what does `os.environ.get(\"DJANGO_DEBUG\")` give, and is it truthy?",
+        "Why check `value is None` before calling `.strip()`?",
+        "What is the difference between `return` and `raise` for an error?"
+      ]
+    }
+  ]
+}

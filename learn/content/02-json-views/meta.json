@@ -1,0 +1,35 @@
+{
+  "title": "Your first JSON views",
+  "week": 1,
+  "concept": "Django views",
+  "file": "views.py",
+  "lesson": "lessons/week-1/day-02-django-project-anatomy-lesson.md",
+  "summary": "Write Django views that read query params and JSON bodies and return proper status codes.",
+  "hints": [
+    "Tests 4 and 8 check the method. Put <code>@require_GET</code> on the line directly above <code>def greet</code>, and <code>@require_POST</code> directly above <code>def add</code>. Django then returns 405 for you.",
+    "<code>request.GET.get('name', '')</code> gives the name as text, or <code>''</code> when it's missing. Add <code>.strip()</code> at the end, then <code>if not name:</code> catches both missing and blank.",
+    "A dict alone always gives status 200. For an error write <code>JsonResponse({'error': '...'}, status=400)</code>.",
+    "Put <code>data = json.loads(request.body)</code> inside <code>try:</code> and return the 'invalid JSON' error in <code>except json.JSONDecodeError:</code>.",
+    "Use <code>data.get('a')</code> (gives <code>None</code> if missing, no crash) and check each value with <code>isinstance(value, (int, float))</code>. Text like <code>\"1\"</code> is not a number."
+  ],
+  "quiz": [
+    {
+      "question": "A client sends <code>GET /greet/</code> without the required <code>name</code> parameter. Which status fits best?",
+      "options": ["200 OK", "400 Bad Request", "404 Not Found", "500 Internal Server Error"],
+      "answer": 1,
+      "explanation": "The route exists but the client's input is invalid, so the answer is 4xx and specifically 400. A 500 would mean your server broke."
+    },
+    {
+      "question": "What does Django return automatically when a <code>@require_POST</code> view receives a GET?",
+      "options": ["404", "403", "405 Method Not Allowed", "It runs the view anyway"],
+      "answer": 2,
+      "explanation": "405 means the URL exists but doesn't support that method. Django also sends an <code>Allow</code> header listing the methods it does support."
+    },
+    {
+      "question": "Where is the JSON a client POSTs available in a plain Django view?",
+      "options": ["<code>request.POST</code>", "<code>request.GET</code>", "<code>request.body</code> (raw bytes you parse yourself)", "<code>request.json</code>"],
+      "answer": 2,
+      "explanation": "<code>request.POST</code> only covers form-encoded data. For JSON you <code>json.loads(request.body)</code>, or use DRF, whose <code>request.data</code> does the parsing for you."
+    }
+  ]
+}

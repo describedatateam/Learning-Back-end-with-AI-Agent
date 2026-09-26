@@ -1,0 +1,34 @@
+{
+  "title": "Read an HTTP request",
+  "week": 1,
+  "concept": "HTTP",
+  "file": "http_parser.py",
+  "lesson": "lessons/week-1/day-01-python-and-http-foundations-lesson.md",
+  "summary": "Parse a raw HTTP request into method, path, query, headers and body.",
+  "hints": [
+    "Split head from body first: <code>head, _, body = raw.partition('\r\n\r\n')</code>.",
+    "The first line of the head is the request line. <code>method, target, version = line.split(' ')</code>.",
+    "<code>urllib.parse.urlsplit(target)</code> gives you <code>.path</code> and <code>.query</code>; <code>dict(parse_qsl(query))</code> turns the query into a dict.",
+    "For headers use <code>name, _, value = line.partition(':')</code> so a value like <code>localhost:8000</code> keeps its colon."
+  ],
+  "quiz": [
+    {
+      "question": "Which part of an HTTP request tells the server what the client wants to do?",
+      "options": ["The Host header", "The method (GET, POST, ...)", "The HTTP version", "The body"],
+      "answer": 1,
+      "explanation": "The method expresses intent: GET reads, POST creates, PUT/PATCH update, DELETE removes."
+    },
+    {
+      "question": "What separates the headers from the body?",
+      "options": ["A semicolon", "A single newline", "An empty line (<code>\r\n\r\n</code>)", "The Content-Length header"],
+      "answer": 2,
+      "explanation": "Headers end at the first blank line; everything after it is the body."
+    },
+    {
+      "question": "Why are GET, HEAD and OPTIONS called <em>safe</em> methods?",
+      "options": ["They are encrypted", "They must not change data on the server", "They never return errors", "They don't need a Host header"],
+      "answer": 1,
+      "explanation": "Safe methods only read. That is why browsers and caches can repeat them freely, and why permissions often allow them for everyone."
+    }
+  ]
+}

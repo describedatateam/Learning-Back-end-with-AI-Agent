@@ -1,0 +1,45 @@
+{
+  "exercise": "17-health-check",
+  "resources": [
+    {
+      "title": "What Are Logs in Programming?",
+      "url": "https://www.freecodecamp.org/news/what-are-logs-in-programming/",
+      "source": "freeCodeCamp",
+      "kind": "article",
+      "level": "beginner",
+      "why": "Start here: what logs are for and the five levels (DEBUG to CRITICAL), with Python logging examples."
+    },
+    {
+      "title": "Logging HOWTO",
+      "url": "https://docs.python.org/3/howto/logging.html",
+      "source": "Python docs",
+      "kind": "tutorial",
+      "level": "beginner",
+      "why": "The official beginner tutorial for logging.getLogger(__name__) and logger.exception, used when the database check fails."
+    },
+    {
+      "title": "503 Service Unavailable",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/503",
+      "source": "MDN Web Docs",
+      "kind": "docs",
+      "level": "beginner",
+      "why": "What the 503 status means and why a health endpoint returns it when the database is down."
+    },
+    {
+      "title": "Performing raw SQL queries: executing custom SQL directly",
+      "url": "https://docs.djangoproject.com/en/5.2/topics/db/sql/#executing-custom-sql-directly",
+      "source": "Django docs",
+      "kind": "docs",
+      "level": "intermediate",
+      "why": "Shows connection.cursor() and cursor.execute, which your health check uses to run a tiny 'SELECT 1' test query."
+    },
+    {
+      "title": "Health Endpoint Monitoring pattern",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/health-endpoint-monitoring",
+      "source": "Microsoft Learn",
+      "kind": "article",
+      "level": "intermediate",
+      "why": "The bigger picture: how monitoring tools call /health, what to check (like the database) and how to keep it safe."
+    }
+  ]
+}

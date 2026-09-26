@@ -1,0 +1,35 @@
+{
+  "title": "Capstone: a private task API",
+  "week": 4,
+  "concept": "Putting it together",
+  "file": "api.py",
+  "lesson": "lessons/week-4/day-25-ownership-boundaries-lesson.md",
+  "summary": "Build an authenticated CRUD API where every user sees and changes only their own tasks.",
+  "hints": [
+    "Every test gets 404? The viewset isn't connected to a URL yet. Register it: <code>router.register('tasks', TaskViewSet, basename='task')</code>.",
+    "In the serializer, <code>owner = serializers.ReadOnlyField(source='owner.username')</code> shows the owner's username, and clients can't set it. Remember to add <code>'owner'</code> to <code>fields</code> too.",
+    "Replace the <code>queryset = ...</code> line with a method: <code>def get_queryset(self):</code> returning <code>Task.objects.filter(owner=self.request.user).order_by('id')</code>. Inside the method it's <code>self.request</code>, not <code>request</code>.",
+    "To set the owner on create: <code>def perform_create(self, serializer): serializer.save(owner=self.request.user)</code>.",
+    "Scoping <code>get_queryset</code> is what turns other users' tasks into 404s for reading, changing and deleting. No extra permission class is needed, just <code>permission_classes = [IsAuthenticated]</code>."
+  ],
+  "quiz": [
+    {
+      "question": "A client sends <code>{\"title\": \"x\", \"owner\": 2}</code> to create a task. What should happen?",
+      "options": ["The task belongs to user 2", "<code>owner</code> is read-only and ignored. The task belongs to <code>request.user</code>", "400 error", "500 error"],
+      "answer": 1,
+      "explanation": "Never trust the client to say who owns something. Take the owner from the authenticated request."
+    },
+    {
+      "question": "Why override <code>get_queryset()</code> instead of setting <code>queryset = Task.objects.all()</code>?",
+      "options": ["It's faster", "It runs per request, so it can filter by <code>self.request.user</code>", "Class attributes are deprecated", "Routers need it"],
+      "answer": 1,
+      "explanation": "The class attribute is fixed when the module loads. <code>get_queryset()</code> is called for each request and can use its user."
+    },
+    {
+      "question": "Which test is most important for an API like this?",
+      "options": ["The list endpoint returns JSON", "User A cannot read, change or delete user B's tasks", "Titles can be long", "The router has a root view"],
+      "answer": 1,
+      "explanation": "Broken access control is #1 in the OWASP Top 10. Always test the boundaries between users explicitly."
+    }
+  ]
+}
