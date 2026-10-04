@@ -16,6 +16,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
   .tmsg.assistant pre { margin: 8px 0; font-size: 12.5px; white-space: pre-wrap; }
   .tmsg.assistant h1, .tmsg.assistant h2, .tmsg.assistant h3 { font-size: 15px; margin: 10px 0 6px; }
   .tmsg.error { align-self: stretch; max-width: none; background: var(--bad-soft); color: var(--bad); }
+  .tmsg.notice { align-self: flex-start; font-size: 12.5px; color: var(--muted); padding: 0 4px; margin-bottom: -6px; }
   .tmsg .dots::after { content: '●●●'; letter-spacing: 2px; color: var(--muted); animation: blink 1.2s infinite; }
   @keyframes blink { 50% { opacity: .3; } }
   .tutor-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 8px; }
@@ -126,6 +127,11 @@ tutor_history, can_run. A page can define window.tutorContext() returning
           const event = JSON.parse(line);
           if (event.type === 'text') {
             text += event.text; reply.innerHTML = render(text) + '<span class="dots"></span>'; scroll();
+          } else if (event.type === 'notice') {
+            const note = document.createElement('div');
+            note.className = 'tmsg notice';
+            note.textContent = 'ℹ ' + event.text;
+            log.insertBefore(note, reply);
           } else if (event.type === 'done') {
             reply.innerHTML = render(event.text); window.highlightCode?.(reply); scroll();
           } else if (event.type === 'error') {

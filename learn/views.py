@@ -223,6 +223,8 @@ def tutor_ask(request, topic):
                 if kind == 'text':
                     chunks.append(value)
                     yield json.dumps({'type': 'text', 'text': value}) + '\n'
+                elif kind == 'notice':  # e.g. "Gemini answered instead"
+                    yield json.dumps({'type': 'notice', 'text': value}) + '\n'
                 else:
                     final = value
         except Exception as exc:  # any SDK or network failure becomes a chat message
