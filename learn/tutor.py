@@ -171,22 +171,57 @@ def find_claude_cli():
     return str(max(candidates, key=version)) if candidates else None
 
 
+def gemini_key():
+    return os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+
+
 def backend():
     choice = os.environ.get('LEARN_TUTOR_BACKEND', 'auto')
-    if choice in ('api', 'claude_code'):
+    if choice in ('api', 'claude_code', 'gemini'):
         return choice
     if os.environ.get('ANTHROPIC_API_KEY'):
         return 'api'
-    return 'claude_code' if find_claude_cli() else 'api'
+    if find_claude_cli():
+        return 'claude_code'
+    return 'gemini' if gemini_key() else 'api'
 
 
 def backend_label():
-    return 'your Anthropic API key' if backend() == 'api' else 'your Claude Code login'
+    label = {
+        'api': 'your Anthropic API key',
+        'claude_code': 'your Claude Code login',
+        'gemini': 'Google Gemini',
+    }[backend()]
+    if backend() != 'gemini' and gemini_key():
+        label += ', with Gemini as a backup'
+    return label
 
 
 def stream_reply(system, messages):
-    """Yield ('text', chunk) as the answer streams, then ('final', message)."""
-    if backend() == 'claude_code':
+    """Yield ('text', chunk) as the answer streams, then ('final', message).
+
+    If Claude fails before any text arrives (not signed in, usage limit, no key,
+    no connection) and a Gemini key is set, Gemini answers instead, announced
+    with a ('notice', message) event first.
+    """
+    primary = backend()
+    if primary == 'gemini':
+        yield from _stream_via_gemini(system, messages)
+        return
+    started = False
+    try:
+        for kind, value in _stream_via_claude(primary, system, messages):
+            started = started or kind == 'text'
+            yield kind, value
+    except Exception as exc:
+        if started or not gemini_key():
+            raise
+        yield 'notice', f'Claude wasn\'t available ({friendly_error(exc)}) Gemini answered instead.'
+        yield from _stream_via_gemini(system, messages)
+
+
+def _stream_via_claude(primary, system, messages):
+    if primary == 'claude_code':
         yield from _stream_via_claude_code(system, messages)
         return
     messages = [{'role': m['role'], 'content': m['content']} for m in messages]
@@ -289,10 +324,65 @@ def _stream_via_claude_code(system, messages):
         shutil.rmtree(workdir, ignore_errors=True)
 
 
+GEMINI_MODEL = os.environ.get('LEARN_GEMINI_MODEL', 'gemini-flash-latest')
+GEMINI_MAX_TOKENS = 8192
+# Gemini finish reasons that mean "declined", like Claude's refusal stop reason.
+GEMINI_DECLINED = {'SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'RECITATION'}
+
+
+def _stream_via_gemini(system, messages):
+    """Ask Google Gemini (free API key from Google AI Studio)."""
+    from google import genai
+    from google.genai import types
+
+    if not gemini_key():
+        raise TutorError('No Gemini key: add GEMINI_API_KEY=... to the .env file, then restart the server.')
+    client = genai.Client(api_key=gemini_key())
+    contents = [
+        {'role': 'user' if m['role'] == 'user' else 'model', 'parts': [{'text': m['content']}]}
+        for m in messages
+    ]
+    config = types.GenerateContentConfig(
+        system_instruction='\n\n'.join(block['text'] for block in system),
+        max_output_tokens=GEMINI_MAX_TOKENS,
+    )
+    finish = None
+    for chunk in client.models.generate_content_stream(model=GEMINI_MODEL, contents=contents, config=config):
+        if chunk.text:
+            yield 'text', chunk.text
+        if chunk.candidates and chunk.candidates[0].finish_reason:
+            finish = chunk.candidates[0].finish_reason
+    name = getattr(finish, 'name', str(finish or ''))
+    stop = 'refusal' if name in GEMINI_DECLINED else 'max_tokens' if name == 'MAX_TOKENS' else 'end_turn'
+    yield 'final', SimpleNamespace(stop_reason=stop)
+
+
+def _gemini_error(exc):
+    """A readable message for google-genai errors, or None if it isn't one."""
+    try:
+        from google.genai import errors
+    except ImportError:
+        return None
+    if not isinstance(exc, errors.APIError):
+        return None
+    if exc.code == 429:
+        return 'Gemini\'s free daily limit is used up. Try again later (it resets every day).'
+    if exc.code in (400, 401, 403) and 'key' in str(exc).lower():
+        return 'Gemini rejected the API key. Check GEMINI_API_KEY in the .env file.'
+    if exc.code == 404:
+        return f'Gemini has no model called "{GEMINI_MODEL}". Set LEARN_GEMINI_MODEL in .env to a current model name.'
+    if exc.code >= 500:
+        return 'Gemini is having trouble right now. Please try again in a moment.'
+    return f'Gemini rejected the request ({exc.code}): {exc.message}'
+
+
 def friendly_error(exc):
     """Turn SDK exceptions into a message a learner can act on."""
     if isinstance(exc, TutorError):
         return str(exc)
+    gemini_message = _gemini_error(exc)
+    if gemini_message:
+        return gemini_message
     missing_credentials = isinstance(exc, TypeError) and 'authentication method' in str(exc)
     if missing_credentials or isinstance(exc, (anthropic.AuthenticationError, anthropic.CredentialsError)):
         return ('The tutor needs an Anthropic API key. Add ANTHROPIC_API_KEY=... to the .env file '

@@ -101,7 +101,7 @@ def generate_page(exercise):
     for kind, value in tutor.stream_reply(system, [{'role': 'user', 'content': evidence}]):
         if kind == 'text':
             chunks.append(value)
-        else:
+        elif kind == 'final':
             final = value
     if final is not None and final.stop_reason == 'refusal':
         raise tutor.TutorError('The notebook page could not be written for this exercise. Please try again.')

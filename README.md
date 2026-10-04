@@ -73,8 +73,15 @@ The tutor reaches Claude in one of two ways, chosen automatically:
 - **Anthropic API key.** If `ANTHROPIC_API_KEY` is set in `.env`, the tutor uses the
   API instead, billed to your Anthropic account.
 
-Optional `.env` settings: `LEARN_TUTOR_BACKEND=claude_code` or `api` forces one,
-and `LEARN_TUTOR_MODEL` picks the model.
+- **Google Gemini (free backup).** Add `GEMINI_API_KEY=...` to `.env`, using a free key
+  from <https://aistudio.google.com/apikey>. If Claude fails before answering (not
+  signed in, usage limit, no key), Gemini answers instead and the chat says so. With
+  only a Gemini key, Gemini is the tutor. The free tier has daily limits, and Google
+  may use free-tier prompts to improve its products.
+
+Optional `.env` settings: `LEARN_TUTOR_BACKEND=claude_code`, `api` or `gemini` forces
+one, `LEARN_TUTOR_MODEL` picks the Claude model, and `LEARN_GEMINI_MODEL` picks the
+Gemini model (default `gemini-flash-latest`).
 
 ### Notebook
 

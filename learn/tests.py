@@ -197,7 +197,7 @@ class TutorTests(TestCase):
         self.client_fake = FakeClient()
         for patcher in [
             mock.patch('learn.tutor.get_client', return_value=self.client_fake),
-            mock.patch.dict('os.environ', {'LEARN_TUTOR_BACKEND': 'api'}),
+            mock.patch.dict('os.environ', {'LEARN_TUTOR_BACKEND': 'api', 'GEMINI_API_KEY': '', 'GOOGLE_API_KEY': ''}),
         ]:
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -311,7 +311,7 @@ def text_event(text):
 
 class ClaudeCodeBackendTests(TestCase):
     def setUp(self):
-        patcher = mock.patch.dict('os.environ', {'LEARN_TUTOR_BACKEND': 'claude_code', 'LEARN_CLAUDE_CLI': 'claude.exe'})
+        patcher = mock.patch.dict('os.environ', {'LEARN_TUTOR_BACKEND': 'claude_code', 'LEARN_CLAUDE_CLI': 'claude.exe', 'GEMINI_API_KEY': '', 'GOOGLE_API_KEY': ''})
         patcher.start()
         self.addCleanup(patcher.stop)
         self.system = tutor.build_system(load_exercises()[0])
@@ -561,3 +561,98 @@ class SingleTestRunTests(TestCase):
         response = self.client.get(f'/learn/{self.exercise.slug}/')
         self.assertContains(response, 'Run selection')
         self.assertContains(response, 'SafeMethodTests.test_08_safe_methods')
+
+
+class FakeGemini:
+    """Stands in for google.genai.Client and records each request."""
+
+    def __init__(self, chunks=('Gemini ', 'says hi'), finish='STOP', error=None):
+        self.calls = []
+        self.chunks, self.finish, self.error = chunks, finish, error
+        self.models = SimpleNamespace(generate_content_stream=self._stream)
+
+    def _stream(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error:
+            raise self.error
+        for i, text in enumerate(self.chunks):
+            last = i == len(self.chunks) - 1
+            reason = SimpleNamespace(name=self.finish) if last else None
+            yield SimpleNamespace(text=text, candidates=[SimpleNamespace(finish_reason=reason)])
+
+
+class GeminiTests(TestCase):
+    def setUp(self):
+        self.fake = FakeGemini()
+        for patcher in [
+            mock.patch('google.genai.Client', return_value=self.fake),
+            mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key', 'GOOGLE_API_KEY': '',
+                                           'ANTHROPIC_API_KEY': '', 'LEARN_TUTOR_BACKEND': 'auto'}),
+        ]:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.system = tutor.build_system(load_exercises()[0])
+
+    def test_gemini_is_used_when_it_is_the_only_option(self):
+        with mock.patch('learn.tutor.find_claude_cli', return_value=None):
+            self.assertEqual(tutor.backend(), 'gemini')
+            self.assertEqual(tutor.backend_label(), 'Google Gemini')
+            output = list(tutor.stream_reply(self.system, [
+                {'role': 'user', 'content': 'Hi'},
+                {'role': 'assistant', 'content': 'Hello!'},
+                {'role': 'user', 'content': 'What is HTTP?'},
+            ]))
+        self.assertEqual([v for k, v in output if k == 'text'], ['Gemini ', 'says hi'])
+        self.assertEqual(output[-1][1].stop_reason, 'end_turn')
+        call = self.fake.calls[0]
+        self.assertEqual([c['role'] for c in call['contents']], ['user', 'model', 'user'])
+        self.assertIn('<reference_solution>', call['config'].system_instruction)
+
+    def test_falls_back_when_claude_fails_before_answering(self):
+        def broken_claude(*args):
+            raise tutor.TutorError('Claude Code is not signed in.')
+            yield  # pragma: no cover  (makes this a generator)
+
+        with mock.patch('learn.tutor.find_claude_cli', return_value='claude.exe'), \
+                mock.patch('learn.tutor._stream_via_claude_code', side_effect=broken_claude):
+            self.assertIn('Gemini as a backup', tutor.backend_label())
+            output = list(tutor.stream_reply(self.system, [{'role': 'user', 'content': 'Hi'}]))
+        self.assertEqual(output[0][0], 'notice')
+        self.assertIn('not signed in', output[0][1])
+        self.assertEqual([v for k, v in output if k == 'text'], ['Gemini ', 'says hi'])
+
+    def test_no_fallback_once_claude_has_started_answering(self):
+        def half_answer(*args):
+            yield 'text', 'Partial'
+            raise tutor.TutorError('connection dropped')
+
+        with mock.patch('learn.tutor.find_claude_cli', return_value='claude.exe'), \
+                mock.patch('learn.tutor._stream_via_claude_code', side_effect=half_answer):
+            with self.assertRaises(tutor.TutorError):
+                list(tutor.stream_reply(self.system, [{'role': 'user', 'content': 'Hi'}]))
+        self.assertEqual(self.fake.calls, [])
+
+    def test_safety_block_counts_as_refusal(self):
+        self.fake.finish = 'SAFETY'
+        with mock.patch('learn.tutor.find_claude_cli', return_value=None):
+            output = list(tutor.stream_reply(self.system, [{'role': 'user', 'content': 'Hi'}]))
+        self.assertEqual(output[-1][1].stop_reason, 'refusal')
+
+    def test_daily_limit_message(self):
+        from google.genai import errors
+        error = errors.ClientError(429, {'error': {'code': 429, 'message': 'quota', 'status': 'RESOURCE_EXHAUSTED'}})
+        self.assertIn('free daily limit', tutor.friendly_error(error))
+
+    def test_view_streams_notice_and_saves_answer(self):
+        def broken_claude(*args):
+            raise tutor.TutorError('Claude Code is not signed in.')
+            yield  # pragma: no cover
+
+        exercise = load_exercises()[0]
+        with mock.patch('learn.tutor.find_claude_cli', return_value='claude.exe'), \
+                mock.patch('learn.tutor._stream_via_claude_code', side_effect=broken_claude):
+            response = self.client.post(f'/learn/tutor/{exercise.slug}/ask/', {'question': 'Hi'},
+                                        content_type='application/json')
+            events = [json.loads(line) for line in b''.join(response.streaming_content).decode().splitlines() if line]
+        self.assertEqual([e['type'] for e in events], ['notice', 'text', 'text', 'done'])
+        self.assertEqual(TutorMessage.objects.get(role='assistant').content, 'Gemini says hi')
