@@ -30,9 +30,13 @@ def _exercise_or_404(slug):
     return exercise
 
 
-def _is_local(request):
-    # The runner executes submitted Python, so only serve it to this machine.
-    return request.META.get('REMOTE_ADDR') in LOCAL_ADDRESSES
+def _can_run(request):
+    # The runner executes submitted Python (and the tutor spends AI credit), so
+    # only allow it from this machine or for a logged-in staff account, which is
+    # how the site owner uses it on a public server.
+    if request.META.get('REMOTE_ADDR') in LOCAL_ADDRESSES and not settings.LEARN_REQUIRE_LOGIN:
+        return True
+    return bool(request.user.is_authenticated and request.user.is_staff)
 
 
 def dashboard(request):
@@ -75,7 +79,7 @@ def exercise_detail(request, slug):
         'quiz': public_quiz,
         'previous': exercises[index - 1] if index > 0 else None,
         'next': exercises[index + 1] if index + 1 < len(exercises) else None,
-        'can_run': _is_local(request),
+        'can_run': _can_run(request),
         'player': gamification.player_state(),
         'rewards': gamification.exercise_rewards(exercise),
         'quiz_taken': XPEvent.objects.filter(key=f'quiz:{slug}').exists(),
@@ -89,8 +93,8 @@ def exercise_detail(request, slug):
 @require_POST
 def run(request, slug):
     exercise = _exercise_or_404(slug)
-    if not _is_local(request):
-        return JsonResponse({'error': 'Running code is only allowed from this computer.'}, status=403)
+    if not _can_run(request):
+        return JsonResponse({'error': 'Log in to run code.'}, status=403)
     data = json.loads(request.body or '{}')
     code = data.get('code', '')
     test_id = data.get('test')
@@ -118,8 +122,8 @@ def run(request, slug):
 @require_POST
 def run_code_selection(request, slug):
     exercise = _exercise_or_404(slug)
-    if not _is_local(request):
-        return JsonResponse({'error': 'Running code is only allowed from this computer.'}, status=403)
+    if not _can_run(request):
+        return JsonResponse({'error': 'Log in to run code.'}, status=403)
     data = json.loads(request.body or '{}')
     text = str(data.get('selection', ''))
     if not text.strip():
@@ -190,15 +194,15 @@ def tutor_page(request):
         'player': gamification.player_state(),
         'tutor_history': _chat_history(tutor.GENERAL_TOPIC),
         'tutor_backend': tutor.backend_label(),
-        'can_run': _is_local(request),
+        'can_run': _can_run(request),
     })
 
 
 @require_POST
 def tutor_ask(request, topic):
     exercise = _topic_exercise(topic)
-    if not _is_local(request):
-        return JsonResponse({'error': 'The tutor is only available from this computer.'}, status=403)
+    if not _can_run(request):
+        return JsonResponse({'error': 'Log in to use the tutor.'}, status=403)
     data = json.loads(request.body or '{}')
     question = str(data.get('question', '')).strip()[:tutor.MAX_QUESTION_CHARS]
     if not question:
@@ -283,15 +287,15 @@ def notebook_page(request):
         'notebook_data': data,
         'passed_count': sum(1 for page in pages if page['passed']),
         'player': gamification.player_state(),
-        'can_run': _is_local(request),
+        'can_run': _can_run(request),
     })
 
 
 @require_POST
 def notebook_generate(request, slug):
     exercise = _exercise_or_404(slug)
-    if not _is_local(request):
-        return JsonResponse({'error': 'The notebook is only available from this computer.'}, status=403)
+    if not _can_run(request):
+        return JsonResponse({'error': 'Log in to use the notebook.'}, status=403)
     if not ExerciseProgress.objects.filter(slug=slug, passed=True).exists():
         return JsonResponse({'error': 'Pass this exercise first, then it can go in your notebook.'}, status=400)
     try:

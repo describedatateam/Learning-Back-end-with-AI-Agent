@@ -6,3 +6,6 @@ db.sqlite3
 
 # Personal notebook export (quotes your tutor chats); the rest of materials/out is shared
 materials/out/notes/00-my-learning-journal.html
+
+# collectstatic output
+staticfiles/

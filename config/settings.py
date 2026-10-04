@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'learn.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -124,6 +125,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # `collectstatic` copies the admin's CSS/JS here
+
+# Deployment (e.g. PythonAnywhere). All off by default for local use.
+# Require a staff login for the whole site: Backend Lab runs submitted code.
+LEARN_REQUIRE_LOGIN = os.environ.get('LEARN_REQUIRE_LOGIN', 'False') == 'True'
+LOGIN_URL = '/admin/login/'
+# The https:// address of the site, so form posts pass Django's CSRF origin check.
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+# HTTPS is handled by the host's proxy, which says so in this header.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = LEARN_REQUIRE_LOGIN  # deployed sites use https
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
