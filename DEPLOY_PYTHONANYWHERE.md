@@ -8,6 +8,11 @@ replace **`yourname`** with your PythonAnywhere username.
 > internet, anyone could use that to run code on your account, so the online copy
 > only works for you after you log in.
 
+> **Before you start:** this guide needs the "Prepare Backend Lab for PythonAnywhere"
+> pull request merged into `master` on GitHub (and "Add Google Gemini as a backup
+> tutor" if you want the free tutor). Without the first one, the online copy has no
+> login, so don't put it online until it's merged.
+
 ## What works online
 
 | feature | online? |
@@ -15,12 +20,39 @@ replace **`yourname`** with your PythonAnywhere username.
 | lessons, editor, colours, autocomplete | ✅ |
 | Run tests, ▶ single test, Run selection | ✅ (free accounts get a limited amount of CPU time per day, so heavy use can make runs slow) |
 | XP, quizzes, Notebook pages you already wrote, 📑 Slides | ✅ |
-| **Study tutor and "Write my page"** | ⚠️ Only with an Anthropic API key. Claude Code isn't installed on PythonAnywhere, so your Claude Code login can't be used there. Free accounts can only reach an approved list of websites; if the tutor says it can't connect, check that `api.anthropic.com` is on PythonAnywhere's allowlist, or use a paid account. |
+| **Study tutor and "Write my page"** | ⚠️ Needs an AI key in `.env`, because Claude Code (and so your Claude Code login) isn't available on PythonAnywhere. The free option is a **Google Gemini** key (`GEMINI_API_KEY`) from <https://aistudio.google.com/apikey>; an Anthropic API key works too. Free PythonAnywhere accounts can only reach an approved list of websites, so if the tutor says it can't connect, check that the AI's address (`generativelanguage.googleapis.com` for Gemini, `api.anthropic.com` for Claude) is on PythonAnywhere's allowlist, or use a paid account. |
 
 ## 1. Create an account
 
 Sign up at <https://www.pythonanywhere.com> (the free "Beginner" plan is fine).
 Your username becomes your web address.
+
+## Already tried before? Start here
+
+If you set up a PythonAnywhere web app before Backend Lab was on GitHub, it showed
+only the old project. Reuse your account and web app, but start the code fresh:
+
+1. Open **Consoles → Bash** and move the old copy out of the way (nothing in it is
+   needed):
+
+   ```bash
+   ls
+   mv Learning-Back-end-with-AI-Agent old-attempt
+   ```
+
+   Use whatever the old folder is called in the `ls` list. If the `mv` says "No such
+   file", there's no old copy, so skip it.
+2. Do **steps 2, 3 and 4** below as written.
+3. In step 5, **don't** click "Add a new web app": open your existing one on the
+   **Web** tab and update it instead:
+   - **Python version:** 3.12 (Django 5.2 needs 3.10 or newer).
+   - **Source code**, **Virtualenv**, **Static files** and **Force HTTPS** as listed in step 5.
+   - **WSGI configuration file:** replace *everything* in it with the code from step 5.
+     If you first used PythonAnywhere's "Django" option, the old file points to a
+     different project (often `mysite.settings`), which is why it showed the wrong site.
+   - Click **Reload**.
+4. When it works, you can delete `old-attempt` (and any `mysite` folder the "Django"
+   option made) from the **Files** tab.
 
 ## 2. Get the code
 
@@ -54,7 +86,8 @@ DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=yourname.pythonanywhere.com
 DJANGO_CSRF_TRUSTED_ORIGINS=https://yourname.pythonanywhere.com
 LEARN_REQUIRE_LOGIN=True
-# Optional, for the study tutor:
+# Optional, for the study tutor (remove the # to turn one on):
+# GEMINI_API_KEY=your-free-key-from-google-ai-studio
 # ANTHROPIC_API_KEY=sk-ant-...
 ```
 
