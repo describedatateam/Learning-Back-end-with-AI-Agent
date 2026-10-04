@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 from django.conf import settings
-from django.test import TestCase
+from django.contrib.auth.models import User
+from django.test import TestCase, override_settings
 from django.utils.html import escape
 
 from . import gamification, notebook, tutor
@@ -380,6 +381,52 @@ class ClaudeCodeBackendTests(TestCase):
                     mock.patch('learn.tutor.shutil.which', return_value=None), \
                     mock.patch('learn.tutor.Path.home', return_value=Path(home)):
                 self.assertIn('claude-code-2.1.282', tutor.find_claude_cli())
+
+
+class DeploymentTests(TestCase):
+    """A public deployment (LEARN_REQUIRE_LOGIN=True) is locked to staff logins."""
+
+    def setUp(self):
+        self.exercise = get_exercise('http-requests')
+        self.staff = User.objects.create_user('owner', password='pw', is_staff=True)
+
+    @override_settings(LEARN_REQUIRE_LOGIN=True)
+    def test_pages_need_login(self):
+        response = self.client.get('/learn/')
+        self.assertRedirects(response, '/admin/login/?next=%2Flearn%2F', fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/admin/login/').status_code, 200)
+
+    @override_settings(LEARN_REQUIRE_LOGIN=True)
+    def test_running_code_needs_login_even_from_localhost(self):
+        url = f'/learn/{self.exercise.slug}/run-selection/'
+        body = {'code': '', 'selection': '1 + 1', 'start_line': 1, 'end_line': 1}
+        response = self.client.post(url, body, content_type='application/json')
+        self.assertEqual(response.status_code, 302)
+
+    @override_settings(LEARN_REQUIRE_LOGIN=True)
+    def test_staff_can_use_everything(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get('/learn/').status_code, 200)
+        url = f'/learn/{self.exercise.slug}/run-selection/'
+        body = {'code': '', 'selection': '1 + 1', 'start_line': 1, 'end_line': 1}
+        response = self.client.post(url, body, content_type='application/json', REMOTE_ADDR='203.0.113.5')
+        self.assertEqual(response.json()['output'], '2\n')
+
+    @override_settings(LEARN_REQUIRE_LOGIN=True)
+    def test_non_staff_users_are_kept_out(self):
+        self.client.force_login(User.objects.create_user('visitor', password='pw'))
+        self.assertEqual(self.client.get('/learn/').status_code, 302)
+
+    def test_python_executable_under_a_web_server(self):
+        from learn.exercises import python_executable
+        with tempfile.TemporaryDirectory() as prefix:
+            python = Path(prefix, 'bin', 'python3')
+            python.parent.mkdir()
+            python.write_text('')
+            with mock.patch('learn.exercises.sys.executable', '/usr/local/bin/uwsgi'), \
+                    mock.patch('learn.exercises.sys.prefix', prefix), \
+                    mock.patch.dict('os.environ', {'LEARN_PYTHON': ''}):
+                self.assertEqual(python_executable(), str(python))
 
 
 class SiteNavigationTests(TestCase):

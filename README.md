@@ -31,6 +31,9 @@ admin, and it has no default account: create one with `python manage.py createsu
 if you want it. Your progress, XP, tutor chats and notebook live in the local
 `db.sqlite3`, which isn't in git, so each computer starts fresh.
 
+**Use it from anywhere:** [DEPLOY_PYTHONANYWHERE.md](DEPLOY_PYTHONANYWHERE.md) puts it online
+behind a login, step by step.
+
 Each exercise page has a **📑 Slides** button that opens that lesson's deck. The decks
 are in `materials/out/pdf/` (PDF) and `materials/out/decks/` (PowerPoint). It has 17
 hands-on exercises that follow the four weeks below. Each one has a short lesson,

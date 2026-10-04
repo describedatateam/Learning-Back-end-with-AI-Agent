@@ -117,7 +117,7 @@ def _run_runner(exercise, code, extra_args=(), extra_files=None):
         env['PYTHONIOENCODING'] = 'utf-8'
         try:
             proc = subprocess.run(
-                [sys.executable, str(RUNNER), str(workdir), exercise.file, *extra_args],
+                [python_executable(), str(RUNNER), str(workdir), exercise.file, *extra_args],
                 capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT_SECONDS,
                 cwd=workdir, env=env,
             )
@@ -132,6 +132,24 @@ def _run_runner(exercise, code, extra_args=(), extra_files=None):
         return {'status': 'load_error', 'tests': [], 'stdout': proc.stdout, 'output': proc.stdout,
                 'error': proc.stderr or 'The grader crashed.'}
     return json.loads(proc.stdout[marker_at + len(RESULT_MARKER):])
+
+
+def python_executable():
+    """The Python that runs the grader.
+
+    Under a web server (uWSGI on PythonAnywhere, for example) sys.executable can
+    be the server binary rather than Python, so fall back to the virtualenv's
+    own interpreter. LEARN_PYTHON overrides both.
+    """
+    if os.environ.get('LEARN_PYTHON'):
+        return os.environ['LEARN_PYTHON']
+    if Path(sys.executable).name.lower().startswith('python'):
+        return sys.executable
+    prefix = Path(sys.prefix)
+    for candidate in (prefix / 'bin' / 'python3', prefix / 'bin' / 'python', prefix / 'Scripts' / 'python.exe'):
+        if candidate.exists():
+            return str(candidate)
+    return sys.executable
 
 
 def run_selection(exercise, code, text, start_line, end_line):
