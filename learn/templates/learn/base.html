@@ -1,116 +1,56 @@
-<!doctype html>
-<html lang="en">
+{% load static i18n ui %}{% get_current_language as LANG %}{% get_current_language_bidi as RTL %}<!doctype html>
+<html lang="{{ LANG }}" dir="{% if RTL %}rtl{% else %}ltr{% endif %}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Backend Lab{% endblock %}</title>
+  {% if RTL %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  {% endif %}
+  <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
   <style>
-    :root {
-      --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --border: #dde1e7;
-      --text: #1c2330; --muted: #5d6778; --accent: #2f6fdf; --accent-soft: #e5eefc;
-      --ok: #1f8a4c; --ok-soft: #e3f4ea; --bad: #c43d3d; --bad-soft: #fbe7e7;
-      --warn: #a86a00; --warn-soft: #fdf1dc;
-      --code-bg: #0f1623; --code-text: #e3e8f0; --gutter: #6b7688;
-      --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
-      --radius: 10px;
-      --xp: #8a4fe0; --xp-2: #d84fb5; --xp-soft: #f1e8fd;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #11151c; --surface: #181d26; --surface-2: #1f2530; --border: #2c3442;
-        --text: #e4e8ef; --muted: #9aa4b5; --accent: #6b9bf5; --accent-soft: #1d2a42;
-        --ok: #4cc281; --ok-soft: #173024; --bad: #f07070; --bad-soft: #3a1c1f;
-        --warn: #e8b04a; --warn-soft: #362a14;
-        --code-bg: #0b0f16;
-        --xp: #b38cff; --xp-2: #ff7ad1; --xp-soft: #2a1f42;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    header.top {
-      display: flex; align-items: center; gap: 16px; padding: 12px 24px;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-    }
-    header.top .brand { font-weight: 700; color: var(--text); font-size: 17px; }
-    header.top .brand span { color: var(--accent); }
-    header.top nav { margin-left: auto; display: flex; gap: 16px; font-size: 14px; }
-    main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
-    main.wide { max-width: none; padding: 20px 24px 40px; }
-    h1 { font-size: 26px; margin: 0 0 6px; }
-    h2 { font-size: 18px; margin: 28px 0 12px; }
-    .muted { color: var(--muted); }
-    code, pre { font-family: var(--mono); font-size: 13.5px; }
-    :not(pre) > code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
-    pre { background: var(--code-bg); color: var(--code-text); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
-      background: var(--surface); color: var(--text); padding: 7px 14px; border-radius: 8px;
-      font: inherit; font-size: 14px; cursor: pointer;
-    }
-    .btn:hover { background: var(--surface-2); text-decoration: none; }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-    .btn.primary:hover { filter: brightness(1.08); }
-    .btn:disabled { opacity: .55; cursor: wait; }
-    .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; white-space: nowrap; }
-    .badge.done { background: var(--ok-soft); color: var(--ok); }
-    .badge.wip { background: var(--warn-soft); color: var(--warn); }
-    .badge.new { background: var(--surface-2); color: var(--muted); }
-    .progress { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
-    .progress > div { height: 100%; background: var(--ok); border-radius: 99px; }
-    .hud { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 99px; color: var(--text); font-size: 13px; background: var(--surface-2); }
-    header.top .hud + nav { margin-left: 18px; }
-    .hud:hover { text-decoration: none; border-color: var(--xp); }
-    .hud .lvl { font-weight: 800; color: var(--xp); }
-    .hud .xpbar { width: 90px; height: 7px; background: var(--border); border-radius: 99px; overflow: hidden; }
-    .hud .xpbar span { display: block; height: 100%; background: linear-gradient(90deg, var(--xp), var(--xp-2)); border-radius: 99px; transition: width .8s ease; }
-    .hud .num { font-variant-numeric: tabular-nums; color: var(--muted); }
-    .hud .streak.cold { filter: grayscale(1); opacity: .6; }
-    @media (max-width: 720px) { .hud .title, .hud .xpbar { display: none; } }
-    .toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 50; align-items: flex-end; }
-    .toast {
-      display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; min-width: 220px; max-width: 340px;
-      background: var(--surface); border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 14px;
-      animation: toast-in .35s cubic-bezier(.2,1.4,.4,1) both;
-    }
-    .toast.out { animation: toast-out .3s ease both; }
-    .toast .amt { font-weight: 800; color: var(--xp); white-space: nowrap; }
-    .toast .icon { font-size: 22px; }
-    .toast small { display: block; color: var(--muted); }
-    .toast.big { border-color: var(--xp); background: linear-gradient(135deg, var(--xp-soft), var(--surface)); padding: 14px 18px; }
-    .toast.big strong { font-size: 16px; }
-    @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(.9); } }
-    @keyframes toast-out { to { opacity: 0; transform: translateX(30px); } }
-    @media (prefers-reduced-motion: reduce) { .toast, .toast.out { animation: none; } }
     {% block style %}{% endblock %}
   </style>
   {% include "learn/_code.html" %}
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="{% url 'learn:dashboard' %}">Backend<span>Lab</span></a>
+    <a class="brand" href="{% url 'home' %}">Backend<span>Lab</span></a>
+    {% with here=request.resolver_match.view_name %}
+    <nav aria-label="{% translate 'Main' %}">
+      <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %}>{% icon 'house' %}{% translate 'Home' %}</a>
+      <a href="{% url 'learn:dashboard' %}"{% if here == 'learn:dashboard' %} aria-current="page"{% endif %}>{% icon 'compass' %}{% translate 'Paths' %}</a>
+      <a href="{% url 'learn:tutor' %}"{% if here == 'learn:tutor' %} aria-current="page"{% endif %}>{% icon 'bot' %}{% translate 'Tutor' %}</a>
+      <a href="{% url 'learn:notebook' %}"{% if here == 'learn:notebook' %} aria-current="page"{% endif %}>{% icon 'notebook-pen' %}{% translate 'Notebook' %}</a>
+    </nav>
+    {% endwith %}
     {% if player %}
-    <a class="hud" href="{% url 'learn:dashboard' %}#profile" title="Your level and XP">
+    <a class="hud push" href="{% url 'learn:dashboard' %}#profile" title="{% translate 'Your level and XP' %}">
       <span class="lvl" id="hud-level">Lv {{ player.level.number }}</span>
       <span class="title" id="hud-title">{{ player.level.title }}</span>
       <span class="xpbar"><span id="hud-bar" style="width: {{ player.level.percent }}%"></span></span>
       <span class="num" id="hud-xp">{{ player.xp }} XP</span>
-      <span class="streak {% if not player.streak %}cold{% endif %}" id="hud-streak" title="Daily streak">🔥 {{ player.streak }}</span>
+      <span class="streak {% if not player.streak %}cold{% endif %}" title="{% translate 'Daily streak' %}">{% icon 'flame' %}<span id="hud-streak">{{ player.streak }}</span></span>
     </a>
     {% endif %}
-    <nav>
-      <a href="{% url 'learn:dashboard' %}">Exercises</a>
-      <a href="{% url 'learn:tutor' %}">Tutor ✨</a>
-      <a href="{% url 'learn:notebook' %}">Notebook 📓</a>
-      <a href="/admin/">Admin</a>
-      <a href="/api/health/">API health</a>
-    </nav>
+    <form class="lang-switch{% if not player %} push{% endif %}" action="{% url 'set_language' %}" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% icon 'languages' %}
+      <button type="submit" name="language" value="en" lang="en" aria-pressed="{% if LANG == 'en' %}true{% else %}false{% endif %}">English</button>
+      <span class="sep" aria-hidden="true">|</span>
+      <button type="submit" name="language" value="ar" lang="ar" aria-pressed="{% if LANG == 'ar' %}true{% else %}false{% endif %}">العربية</button>
+    </form>
   </header>
   {% block content %}{% endblock %}
+  <footer class="bottom">
+    <a href="{% url 'home' %}#how">{% translate 'How this works' %}</a>
+    <a href="/admin/">{% translate 'Admin' %}</a>
+    <a href="/api/health/">{% translate 'API health' %}</a>
+  </footer>
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <script>
   // Shows the XP earned by an action and updates the header.
@@ -125,14 +65,15 @@
     }, delay);
     let delay = 0;
     for (const g of xp.gained) { toast(`<span class="amt">+${g.amount} XP</span><span>${esc(g.label)}</span>`, '', 3800, delay); delay += 350; }
-    for (const b of xp.badges) { toast(`<span class="icon">${b.icon}</span><div><strong>Badge unlocked: ${esc(b.name)}</strong><small>${esc(b.description)}</small></div>`, 'big', 6000, delay); delay += 500; }
+    const icon = (name) => `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="{% static 'learn/icons.svg' %}#${name}"/></svg>`;
+    for (const b of xp.badges) { toast(`${icon('trophy')}<div><strong>Badge unlocked: ${esc(b.name)}</strong><small>${esc(b.description)}</small></div>`, 'big', 6000, delay); delay += 500; }
     const p = xp.player;
-    if (xp.level_up) toast(`<span class="icon">🎉</span><div><strong>Level up! Lv ${p.level.number}</strong><small>New rank: ${esc(p.level.title)}</small></div>`, 'big', 7000, delay);
+    if (xp.level_up) toast(`${icon('zap')}<div><strong>Level up! Lv ${p.level.number}</strong><small>New rank: ${esc(p.level.title)}</small></div>`, 'big', 7000, delay);
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
     set('hud-level', `Lv ${p.level.number}`); set('hud-title', p.level.title);
-    set('hud-xp', `${p.xp} XP`); set('hud-streak', `🔥 ${p.streak}`);
+    set('hud-xp', `${p.xp} XP`); set('hud-streak', p.streak);
     const bar = document.getElementById('hud-bar'); if (bar) bar.style.width = p.level.percent + '%';
-    document.getElementById('hud-streak')?.classList.toggle('cold', !p.streak);
+    document.getElementById('hud-streak')?.parentElement.classList.toggle('cold', !p.streak);
   };
   </script>
   {% block script %}{% endblock %}

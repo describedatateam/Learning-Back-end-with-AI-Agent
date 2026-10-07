@@ -65,6 +65,25 @@ def dashboard(request):
     })
 
 
+def home(request):
+    exercises = load_exercises()
+    progress = {p.slug: p for p in ExerciseProgress.objects.all()}
+    done = sum(1 for e in exercises if progress.get(e.slug) and progress[e.slug].passed)
+    # The next step: the first exercise you started but haven't passed, else the first untouched one.
+    unfinished = [e for e in exercises if not (progress.get(e.slug) and progress[e.slug].passed)]
+    started = [e for e in unfinished if e.slug in progress]
+    next_exercise = (started or unfinished or [None])[0]
+    return render(request, 'learn/home.html', {
+        'next_exercise': next_exercise,
+        'next_started': next_exercise is not None and next_exercise.slug in progress,
+        'done': done,
+        'total': len(exercises),
+        'percent': round(100 * done / len(exercises)) if exercises else 0,
+        'has_started': bool(progress),
+        'player': gamification.player_state(),
+    })
+
+
 def exercise_detail(request, slug):
     exercise = _exercise_or_404(slug)
     exercises = load_exercises()

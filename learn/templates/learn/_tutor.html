@@ -12,7 +12,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
   .tmsg.assistant > :first-child { margin-top: 0; }
   .tmsg.assistant > :last-child { margin-bottom: 0; }
   .tmsg.assistant p { margin: 0 0 8px; }
-  .tmsg.assistant ul, .tmsg.assistant ol { margin: 4px 0 8px; padding-left: 22px; }
+  .tmsg.assistant ul, .tmsg.assistant ol { margin: 4px 0 8px; padding-inline-start: 22px; }
   .tmsg.assistant pre { margin: 8px 0; font-size: 12.5px; white-space: pre-wrap; }
   .tmsg.assistant h1, .tmsg.assistant h2, .tmsg.assistant h3 { font-size: 15px; margin: 10px 0 6px; }
   .tmsg.error { align-self: stretch; max-width: none; background: var(--bad-soft); color: var(--bad); }
@@ -84,7 +84,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
     return el;
   };
   const showEmpty = () => {
-    log.innerHTML = `<div class="tutor-empty"><div class="big">🧑‍🏫</div>
+    log.innerHTML = `<div class="tutor-empty">
       <p><strong>Hi! I'm your study tutor.</strong><br>Ask me about any concept that isn't clear yet.
       I'll help you understand it, and I'll give you hints rather than answers when you're stuck.</p></div>`;
   };
