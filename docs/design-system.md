@@ -1,4 +1,4 @@
-# Backend Lab Design System
+# Dev Lab Design System
 
 **Version 1.1 · 2026-10-07** (no emojis, icon set, Arabic and RTL) · Built on the colours already in `learn/templates/learn/base.html`, so the current exercise pages fit in without a redesign.
 

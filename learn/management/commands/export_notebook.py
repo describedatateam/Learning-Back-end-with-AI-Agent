@@ -66,7 +66,7 @@ class Command(BaseCommand):
         body = '<hr>'.join(sections) or '<p>No notebook pages yet. Pass an exercise and write its page first.</p>'
         output.write_text(
             f'<!doctype html><html><head><meta charset="utf-8"><title>My learning journal</title>'
-            f'<style>{CSS}</style></head><body><p><strong>Backend Lab · My learning journal</strong></p>{body}</body></html>',
+            f'<style>{CSS}</style></head><body><p><strong>Dev Lab · My learning journal</strong></p>{body}</body></html>',
             encoding='utf-8',
         )
         self.stdout.write(f'Wrote {len(sections)} page(s) to {output}')

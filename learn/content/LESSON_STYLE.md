@@ -1,4 +1,4 @@
-# How Backend Lab lessons are written
+# How Dev Lab lessons are written
 
 Each exercise's `instructions.md` is the lesson the learner reads next to the editor.
 These rules come from watching a real learner work through exercise 1 with the tutor.
