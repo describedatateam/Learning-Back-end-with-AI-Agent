@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 class LoginRequiredMiddleware:
     """On a public server (LEARN_REQUIRE_LOGIN=True), the whole site needs a staff login.
 
-    Dev Lab runs the Python you submit and stores one person's progress, so a
+    Describe runs the Python you submit and stores one person's progress, so a
     deployed copy must not be usable by strangers. The login page itself, the
     API (which has its own authentication) and the health check stay open.
     """

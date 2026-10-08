@@ -62,8 +62,8 @@ msgid "Welcome back"
 msgstr "مرحبًا بعودتك"
 
 #: learn/templates/learn/home.html:30
-msgid "Welcome to Dev Lab"
-msgstr "مرحبًا بك في Dev Lab"
+msgid "Welcome to Describe"
+msgstr "مرحبًا بك في Describe"
 
 #: learn/templates/learn/home.html:31
 msgid "Pick a path or make your own, then learn by building."

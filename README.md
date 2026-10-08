@@ -23,10 +23,10 @@ Task filters include status, priority, project, and due_date. Lists support sear
 ordering, and pagination with page_size up to 50. Every query is restricted to the
 authenticated user.
 
-## Dev Lab: interactive exercises
+## Describe: interactive exercises
 
 After `migrate` and `runserver`, open <http://127.0.0.1:8000/> (it goes straight to
-Dev Lab at `/learn/`). You don't need a login. `/admin/` is Django's database
+Describe at `/learn/`). You don't need a login. `/admin/` is Django's database
 admin, and it has no default account: create one with `python manage.py createsuperuser`
 if you want it. Your progress, XP, tutor chats and notebook live in the local
 `db.sqlite3`, which isn't in git, so each computer starts fresh.

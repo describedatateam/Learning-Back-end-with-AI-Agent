@@ -1,7 +1,7 @@
 {% extends "learn/base.html" %}
 {% load i18n ui %}
 
-{% block title %}{% translate "Home" %} · Dev Lab{% endblock %}
+{% block title %}{% translate "Home" %} · Describe{% endblock %}
 
 {% block style %}
   .home-hero { margin-block-end: var(--space-5); }
@@ -28,7 +28,7 @@
 {% block content %}
 <main class="narrow">
   <section class="home-hero">
-    <h1>{% if has_started %}{% translate "Welcome back" %}{% else %}{% translate "Welcome to Dev Lab" %}{% endif %}</h1>
+    <h1>{% if has_started %}{% translate "Welcome back" %}{% else %}{% translate "Welcome to Describe" %}{% endif %}</h1>
     <p>{% translate "Pick a path or make your own, then learn by building." %}</p>
   </section>
 
