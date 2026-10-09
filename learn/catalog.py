@@ -168,7 +168,7 @@ class SkillView:
                 status = PROGRESS
             else:
                 status = TODO if any(ch.has_work for ch in chapters) else SOON
-            rows.append({'course': course, 'done': done, 'total': len(chapters), 'exercises': exercises,
+            rows.append({'course': course, 'chapters': chapters, 'done': done, 'total': len(chapters), 'exercises': exercises,
                          'percent': round(100 * done / len(chapters)) if chapters else 0, 'status': status,
                          'current': any(ch.current for ch in chapters)})
         return rows
@@ -187,6 +187,15 @@ def _chapter_status(chapter, exercises, skipped, mark=None):
     if any(states):
         return PROGRESS
     return TODO
+
+
+def mark_current(skill):
+    """Mark "you are here" on a skill path's first chapter that has work left. Returns that chapter."""
+    for chapter in skill.chapters:
+        if chapter.status in (TODO, PROGRESS):
+            chapter.current = True
+            return chapter
+    return None
 
 
 def skill_view(path, states, skipped, prerequisite=False, marks=None):

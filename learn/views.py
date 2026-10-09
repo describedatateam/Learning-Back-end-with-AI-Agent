@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, gamification, generator, notebook, placement, tutor
+from . import catalog, gamification, generator, languages, notebook, placement, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
 from .models import (
     Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
@@ -165,6 +165,7 @@ def path_detail(request, slug):
         context['skill'] = catalog.skill_view(path, catalog.exercise_states(request.user),
                                               catalog.skipped_ids(request.user), prerequisite,
                                               catalog.chapter_marks(request.user))
+        context['current_chapter'] = catalog.mark_current(context['skill'])
         context['jobs'] = Path.objects.filter(steps__skill=path).distinct()
         context['attempt'] = placement.latest_attempt(request.user, path)
     return render(request, 'learn/path.html', context)
@@ -234,6 +235,7 @@ def generate_path(request):
     context = {'levels': generator.LEVELS, 'ai_available': generator.ai_available(),
                'left_today': max(0, generator.DAILY_LIMIT - generator.generated_today(request.user)),
                'mine': Path.objects.filter(owner=request.user).order_by('-created_at'),
+               'lang_groups': languages.grouped(), 'lang_hint': languages.hint_data(),
                'player': gamification.player_state(request.user)}
     if request.method == 'POST':
         form['skill'] = ' '.join(request.POST.get('skill', '').split())[:generator.MAX_SKILL_CHARS]
@@ -308,6 +310,9 @@ def chapter_detail(request, slug, chapter):
         'next': chapters[index + 1] if index + 1 < len(chapters) else None,
         'number': index + 1, 'count': len(chapters), 'pass_needed': math.ceil(QUIZ_PASS_SHARE * len(quiz)),
         'player': gamification.player_state(request.user),
+        'tutor_topic': tutor.chapter_topic(chapter), 'tutor_backend': tutor.backend_label(),
+        'tutor_history': _chat_history(request.user, tutor.chapter_topic(chapter)) if request.user.is_authenticated else [],
+        'can_run': _can_run(request),
     }
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -330,8 +335,18 @@ def chapter_detail(request, slug, chapter):
         if progress.done and not finished_before:
             log_event(request, LearningEvent.LESSON_FINISHED, chapter.slug)
         context.update(progress=progress, correct=correct,
-                       quiz=[dict(q, result=r) for q, r in zip(quiz, results)], checked=True)
+                       quiz=[dict(q, result=r) for q, r in zip(quiz, results)], checked=True,
+                       just_finished=progress.done and not finished_before)
+    context['skill'] = catalog.skill_view(path, catalog.exercise_states(request.user), catalog.skipped_ids(request.user),
+                                          marks=catalog.chapter_marks(request.user))
     return render(request, 'learn/chapter.html', context)
+
+
+def supported_languages(request):
+    """What learners can practise in each language, from learn/languages.py."""
+    return render(request, 'learn/languages.html', {
+        'lang_groups': languages.grouped(), 'player': gamification.player_state(request.user),
+    })
 
 
 def coming_soon(request, section):
@@ -480,9 +495,18 @@ def _chat_history(user, topic):
     return [{'role': m.role, 'text': m.display} for m in TutorMessage.objects.filter(user=user, topic=topic)]
 
 
-def _topic_exercise(topic):
-    """The exercise a tutor topic refers to, or None for the general tutor."""
-    return None if topic == tutor.GENERAL_TOPIC else _exercise_or_404(topic)
+def _topic_target(request, topic):
+    """What a tutor topic refers to: (exercise, chapter), both None for the general tutor."""
+    if topic == tutor.GENERAL_TOPIC:
+        return None, None
+    chapter_id = tutor.chapter_id(topic)
+    if chapter_id is not None:
+        chapter = get_object_or_404(Chapter.objects.select_related('course__path'), id=chapter_id,
+                                    course__path__in=_visible_paths(request.user))
+        if not chapter.content:
+            raise Http404('This chapter has no lesson yet')
+        return None, chapter
+    return _exercise_or_404(topic), None
 
 
 @login_required
@@ -497,9 +521,9 @@ def tutor_page(request):
 
 @require_POST
 def tutor_ask(request, topic):
-    exercise = _topic_exercise(topic)
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to use the tutor.'}, status=403)
+    exercise, chapter = _topic_target(request, topic)
     data = json.loads(request.body or '{}')
     question = str(data.get('question', '')).strip()[:tutor.MAX_QUESTION_CHARS]
     if not question:
@@ -514,10 +538,12 @@ def tutor_ask(request, topic):
         history.pop(0)
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
-    system = tutor.build_system(exercise)
+    system = tutor.build_system(exercise, chapter)
     user = request.user
     if exercise:
         log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))
+    elif chapter:
+        log_event(request, LearningEvent.HINT, chapter.slug, _seconds_spent(data), chapter=True)
 
     def events():
         # One JSON object per line: {"type": "text" | "done" | "error", ...}
@@ -557,7 +583,7 @@ def tutor_ask(request, topic):
 @login_required
 @require_POST
 def tutor_clear(request, topic):
-    _topic_exercise(topic)
+    _topic_target(request, topic)
     TutorMessage.objects.filter(user=request.user, topic=topic).delete()
     return JsonResponse({'cleared': True})
 

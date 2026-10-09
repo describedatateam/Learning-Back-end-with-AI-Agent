@@ -10,7 +10,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
   .tmsg { max-width: 92%; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
   .tmsg.user { align-self: flex-end; background: var(--accent); color: #fff; border-end-end-radius: 4px; white-space: pre-wrap; unicode-bidi: plaintext; }
   .tmsg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-end-start-radius: 4px; }
-  .tmsg.assistant > * { direction: ltr; text-align: start; }  /* tutor replies are English */
+  .tmsg.assistant > * { unicode-bidi: plaintext; text-align: start; }  /* each paragraph follows its own language */
   .tmsg.assistant > :first-child { margin-top: 0; }
   .tmsg.assistant > :last-child { margin-bottom: 0; }
   .tmsg.assistant p { margin: 0 0 8px; }
@@ -42,6 +42,11 @@ tutor_history, can_run. A page can define window.tutorContext() returning
       <button type="button">{% translate "Explain REST like I'm new to it" %}</button>
       <button type="button">{% translate "What's the difference between a model and a serializer?" %}</button>
       <button type="button">{% translate "How do I read a Python traceback?" %}</button>
+    {% elif tutor_chapter %}
+      <button type="button">{% translate "Explain this lesson's main idea simply" %}</button>
+      <button type="button">{% translate "Show me another example" %}</button>
+      <button type="button">{% translate "Help me start the Try it task" %}</button>
+      <button type="button">{% translate "Ask me a question to check I understood" %}</button>
     {% else %}
       <button type="button">{% translate "Explain this lesson's main idea simply" %}</button>
       <button type="button">{% translate "Give me a small hint" %}</button>
@@ -54,7 +59,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
     <button class="btn primary" type="submit" id="tutor-send" {% if not can_run %}disabled title="{% translate "Open this page from localhost to use the tutor" %}"{% endif %}>{% translate "Send" %}</button>
   </form>
   <div class="tutor-foot">
-    <span>{% if tutor_topic == "general" %}{% translate "Ask about any backend concept." %}{% else %}{% translate "The tutor sees the lesson, your current code and your latest test results." %}{% endif %}{% if tutor_backend %} {% blocktranslate trimmed with backend=tutor_backend %}Uses <bdi>{{ backend }}</bdi>.{% endblocktranslate %}{% endif %}</span>
+    <span>{% if tutor_topic == "general" %}{% translate "Ask about any backend concept." %}{% elif tutor_chapter %}{% translate "The tutor sees this chapter's lesson, slides and quiz." %}{% else %}{% translate "The tutor sees the lesson, your current code and your latest test results." %}{% endif %}{% if tutor_backend %} {% blocktranslate trimmed with backend=tutor_backend %}Uses <bdi>{{ backend }}</bdi>.{% endblocktranslate %}{% endif %}</span>
     <button type="button" id="tutor-clear">{% translate "Clear chat" %}</button>
   </div>
 </div>
@@ -66,7 +71,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
 (() => {
   const T = {
     empty: "{{ _("<strong>Hi! I'm your study tutor.</strong><br>Ask me about any concept that isn't clear yet. I'll help you understand it, and I'll give you hints rather than answers when you're stuck.")|escapejs }}",
-    failed: "{{ _('Request failed (%(status)s)')|escapejs }}",
+    failed: "{{ _('Request failed ({status})')|escapejs }}",
     clear: "{{ _('Clear this conversation?')|escapejs }}",
   };
   const askUrl = "{% url 'learn:tutor_ask' tutor_topic %}";
@@ -116,7 +121,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || T.failed.replace('%(status)s', res.status));
+        throw new Error(data.error || T.failed.replace('{status}', res.status));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

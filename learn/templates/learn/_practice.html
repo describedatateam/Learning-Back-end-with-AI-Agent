@@ -1,0 +1,1 @@
+{% load i18n ui %}{% if practice == 'hands-on' %}<span class="tag practice hands-on">{% icon 'code' %}{% translate "Hands-on" %}</span>{% elif practice == 'soon' %}<span class="tag practice soon">{% icon 'clock' %}{% translate "Hands-on soon" %}</span>{% else %}<span class="tag practice reading">{% icon 'book-open' %}{% translate "Reading and quizzes" %}</span>{% endif %}

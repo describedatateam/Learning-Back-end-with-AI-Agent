@@ -1,0 +1,19 @@
+{% load i18n ui %}
+{# One skill path card, featured or generated, so both look the same. Needs `skill` (a SkillView). #}
+<a class="card path-card" href="{% url 'learn:path' skill.path.slug %}">
+  {% path_art skill.path %}
+  <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.path.ai_generated %}{% include "learn/_ai_tag.html" %}{% endif %}{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}{% if skill.skipped %}<span class="tag">{% translate "Already known" %}</span>{% endif %}{% practice_tag skill.path skill.exercise_count %}</div>
+  <h3><bdi>{{ skill.path.title }}</bdi></h3>
+  <div class="promise">
+    <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=skill.path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+    {% if skill.path.ai_generated %}<span>{% icon 'target' %}{% include "learn/_level.html" with level=skill.path.level %}</span>{% endif %}
+    {% if skill.path.project.title %}<span>{% icon 'hammer' %}<bdi>{{ skill.path.project.title }}</bdi></span>{% endif %}
+  </div>
+  <p class="meta">{% blocktranslate trimmed count n=skill.total %}{{ n }} chapter{% plural %}{{ n }} chapters{% endblocktranslate %}{% if skill.exercise_count %} · {% blocktranslate trimmed count n=skill.exercise_count %}{{ n }} exercise{% plural %}{{ n }} exercises{% endblocktranslate %}{% endif %}</p>
+  {% if skill.done %}
+  <div class="progress-row">
+    <div class="progress{% if skill.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ skill.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Skill path progress' %}"><div style="width: {{ skill.percent }}%"></div></div>
+    <span class="meta num">{{ skill.percent }}%</span>
+  </div>
+  {% endif %}
+</a>

@@ -1,0 +1,26 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "What you can practise" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} {% translate "Languages" %}</p>
+  <header class="page-head">
+    <h1>{% translate "What you can practise" %}</h1>
+    <p class="muted">{% translate "Every path has lessons, slides, quizzes and the tutor. Whether you also get hands-on exercises depends on the language, because the code has to run somewhere." %}</p>
+  </header>
+
+  <section class="card">{% include "learn/_lang_groups.html" %}</section>
+
+  <h2>{% translate "The badges on path cards" %}</h2>
+  <ul class="card plain-list">
+    <li>{% include "learn/_practice.html" with practice='hands-on' %}<span>{% translate "Graded exercises you can do today." %}</span></li>
+    <li>{% include "learn/_practice.html" with practice='soon' %}<span>{% translate "The language can run here, and its exercises are on the way." %}</span></li>
+    <li>{% include "learn/_practice.html" with practice='reading' %}<span>{% translate "Lessons, slides and quizzes, with no code runner." %}</span></li>
+  </ul>
+
+  <p class="meta">{% translate "Generated paths start with lessons, slides and quizzes for every language. Hands-on exercises for them come after the browser code runner." %}</p>
+  <div class="actions"><a class="btn primary" href="{% url 'learn:generate' %}">{% icon 'sparkles' %}{% translate "Generate a skill path" %}</a></div>
+</main>
+{% endblock %}

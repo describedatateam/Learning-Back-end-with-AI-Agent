@@ -378,7 +378,7 @@
           + tutorButton(T.askError, T.askErrorQ);
       } else {
         banner = data.all_passed
-          ? `<div class="alert ok" style="margin-bottom:6px">${fmt(T.allPassed, {total: data.total})}</div>`
+          ? `<div class="alert ok celebrate" style="margin-bottom:6px">${fmt(T.allPassed, {total: data.total})}</div>`
           : '';
         footer = (data.stdout.trim() ? `<p class="muted" style="margin:12px 0 4px">${T.outputPrint}</p><pre dir="ltr">${esc(data.stdout)}</pre>` : '')
           + (data.all_passed ? '' : tutorButton(T.askWhy, T.askWhyQ));

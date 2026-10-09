@@ -11,11 +11,16 @@
     <div class="card-head">{% if path.ai_generated %}{% include "learn/_ai_tag.html" %}{% endif %}{% if progress.done %}<span class="badge done">{% icon 'circle-check' %}{% translate "Completed" %}</span>{% endif %}</div>
     <h1><bdi>{{ chapter.title }}</bdi></h1>
     {% if chapter.learning_goal %}<p class="muted" dir="auto">{{ chapter.learning_goal|capfirst }}</p>{% endif %}
+    <div class="progress-row chapter-progress">
+      <div class="progress{% if skill.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ skill.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Skill path progress' %}"><div style="width: {{ skill.percent }}%"></div></div>
+      <span class="meta num">{% blocktranslate trimmed with done=skill.done total=skill.total %}{{ done }} of {{ total }} chapters{% endblocktranslate %}</span>
+    </div>
   </header>
 
   <article class="card lesson" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
     {{ lesson|safe }}
     {% if chapter.exercise_idea %}<p class="try">{% icon 'hammer' %}<span><strong>{% translate "Try it" %}:</strong> {{ chapter.exercise_idea }}</span></p>{% endif %}
+    <p class="meta"><a href="#tutor-section">{% icon 'bot' %} {% translate "Stuck? Ask the tutor about this chapter" %}</a></p>
   </article>
 
   {% if slides %}
@@ -38,7 +43,7 @@
   {% if quiz %}
   <h2>{% translate "Quiz" %}</h2>
   {% if checked %}
-  <div class="notice {% if progress.done %}success{% else %}info{% endif %}" role="status">{% icon 'circle-help' %}<span>
+  <div class="notice {% if progress.done %}success{% else %}info{% endif %}{% if just_finished %} celebrate{% endif %}" role="status">{% if progress.done %}{% icon 'circle-check' %}{% else %}{% icon 'circle-help' %}{% endif %}<span>
     {% blocktranslate trimmed with correct=correct total=quiz|length %}{{ correct }} of {{ total }} right.{% endblocktranslate %}
     {% if progress.done %}{% translate "Chapter completed." %}{% else %}{% blocktranslate trimmed with needed=pass_needed %}Get {{ needed }} right to finish the chapter. Try again.{% endblocktranslate %}{% endif %}
   </span></div>
@@ -65,6 +70,13 @@
       {% else %}<a class="btn primary" href="{% url 'login' %}?next={{ request.path }}">{% translate "Sign in to take the quiz" %}</a>{% endif %}
     </div>
   </form>
+  {% endif %}
+
+  <h2 id="tutor-section">{% translate "Ask the tutor" %}</h2>
+  {% if user.is_authenticated %}
+  <section class="card tutor-box">{% include "learn/_tutor.html" with tutor_chapter=True %}</section>
+  {% else %}
+  <p class="card"><a href="{% url 'login' %}?next={{ request.path }}">{% translate "Sign in to ask the tutor" %}</a></p>
   {% endif %}
 
   <nav class="pager">
