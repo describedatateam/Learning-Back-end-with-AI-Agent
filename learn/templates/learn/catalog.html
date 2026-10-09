@@ -5,9 +5,12 @@
 
 {% block content %}
 <main>
-  <header class="page-head">
-    <h1>{% translate "Paths" %}</h1>
-    <p class="muted">{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</p>
+  <header class="page-head with-action">
+    <div>
+      <h1>{% translate "Paths" %}</h1>
+      <p class="muted">{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</p>
+    </div>
+    <a class="btn primary" href="{% url 'learn:generate' %}">{% icon 'sparkles' %}{% translate "Generate a skill path" %}</a>
   </header>
 
   {% if not jobs %}
@@ -56,6 +59,35 @@
     </a>
     {% endfor %}
   </div>
+
+  <h2>{% translate "Your generated paths" %}</h2>
+  {% if generated %}
+  <div class="card-grid three">
+    {% for skill in generated %}
+    <a class="card path-card" href="{% url 'learn:path' skill.path.slug %}">
+      <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% include "learn/_ai_tag.html" %}</div>
+      <h3><bdi>{{ skill.path.title }}</bdi></h3>
+      <div class="promise">
+        <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=skill.path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+        <span>{% icon 'target' %}{% include "learn/_level.html" with level=skill.path.level %}</span>
+      </div>
+      <p class="meta">{% blocktranslate trimmed count n=skill.total %}{{ n }} chapter{% plural %}{{ n }} chapters{% endblocktranslate %}</p>
+      {% if skill.done %}
+      <div class="progress-row">
+        <div class="progress{% if skill.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ skill.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Skill path progress' %}"><div style="width: {{ skill.percent }}%"></div></div>
+        <span class="meta num">{{ skill.percent }}%</span>
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <a class="card generate-cta" href="{% url 'learn:generate' %}">
+    <span class="metric-icon xp">{% icon 'sparkles' css='icon-lg' %}</span>
+    <div><strong>{% translate "Want to learn something that isn't here?" %}</strong>
+      <p class="meta">{% translate "Pick a skill, your level and your hours a week, and AI builds a skill path with lessons, slides and quizzes." %}</p></div>
+  </a>
+  {% endif %}
 
   <p class="meta all-exercises"><a href="{% url 'learn:dashboard' %}">{% icon 'list-checks' %}{% translate "All back-end exercises, XP and badges" %}</a></p>
 </main>

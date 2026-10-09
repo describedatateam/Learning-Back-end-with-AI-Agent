@@ -336,3 +336,64 @@ a.card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); tex
 .milestones summary { cursor: pointer; color: var(--accent); font-weight: 500; min-height: 40px; display: flex; align-items: center; }
 .milestones ol { margin: 0; padding-inline-start: var(--space-5); display: grid; gap: 4px; color: var(--muted); }
 @media (max-width: 639px) { .hero-icon { display: none; } }
+
+/* Day 4: placement tests, generated paths and their chapters */
+.icon-flip-back { transform: scaleX(-1); }
+[dir="rtl"] .icon-flip-back { transform: none; }
+.page-head.with-action { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+.tag.ai { display: inline-flex; align-items: center; gap: 4px; }
+.tag .icon { width: 13px; height: 13px; vertical-align: -2px; }
+.generate-cta { flex-direction: row; align-items: center; gap: var(--space-4); color: var(--text); }
+.generate-cta:hover { text-decoration: none; border-color: var(--accent); }
+.generate-cta p { margin-block-start: 2px !important; }
+.skip-form .btn.secondary { min-height: 36px; font-size: 14px; }
+.ai-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); padding-block-start: var(--space-3); border-block-start: 1px solid var(--border); }
+.ai-note form { margin: 0; }
+.chapter-kit { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.chapter-title a { color: var(--text); }
+
+.gen-form { gap: var(--space-4); }
+.field { display: grid; gap: var(--space-1); flex: 1; min-width: 0; }
+.field label { font-weight: 600; font-size: 14px; }
+.field input, .field select, .code-input {
+  width: 100%; min-width: 0; box-sizing: border-box; font: inherit; min-height: 44px; padding: 0 var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+}
+.field input:focus, .field select:focus, .code-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.field-row .field { flex: 1 1 180px; }
+.gen-form .actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.plain-list { list-style: none; margin: 0; padding: var(--space-2) var(--space-4); gap: 0; }
+.plain-list li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding-block: var(--space-2); border-block-end: 1px solid var(--border); }
+.plain-list li:last-child { border-block-end: 0; }
+
+.placement { display: flex; flex-direction: column; gap: var(--space-3); }
+.placement h2 { margin-block: var(--space-4) 0; }
+.question { margin: 0; gap: var(--space-2); }
+.question legend { padding: 0; float: inline-start; width: 100%; margin-block-end: var(--space-1); }
+.q-text { font-weight: 600; margin: 0; }
+.option { display: flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
+.option:hover { background: var(--surface-2); }
+.option input { margin: 0; accent-color: var(--accent); }
+.option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.code-input { min-height: 220px; padding: var(--space-3); font-family: var(--mono); font-size: 14px; line-height: 1.5; tab-size: 4; resize: vertical; text-align: left; }
+.feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); margin: 0; font-weight: 600; }
+.feedback.ok { color: var(--ok); }
+.feedback.bad { color: var(--bad); }
+.feedback .meta { flex-basis: 100%; font-weight: 400; }
+.placement .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.result { gap: var(--space-2); margin-block-end: var(--space-4); }
+.result.is-pass { border-color: var(--ok); background: var(--ok-soft); }
+.result.is-pass .icon-lg { color: var(--ok); }
+.result ul { margin: 0; }
+
+.lesson { gap: var(--space-3); line-height: 1.65; }
+.lesson h1, .lesson h2, .lesson h3 { font-size: 18px; margin: var(--space-2) 0 0; }
+.lesson p, .lesson ul, .lesson ol, .lesson pre { margin: 0; }
+.lesson pre { text-align: left; }
+.lesson .try { display: flex; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-sm); background: var(--accent-soft); }
+.slides { gap: var(--space-3); min-height: 200px; }
+.slide h3 { font-size: 20px; margin: var(--space-1) 0 var(--space-2) !important; }
+.slide ul { margin: 0; padding-inline-start: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: 16px; }
+.slides .actions { display: flex; justify-content: space-between; }
+.pager { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-start: var(--space-5); }

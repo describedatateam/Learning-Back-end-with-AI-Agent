@@ -1,0 +1,95 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{{ chapter.title }} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow chapter-page">
+  <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} <a href="{% url 'learn:path' path.slug %}"><bdi>{{ path.title }}</bdi></a> {% icon 'chevron-right' css='icon-flip' %} {% blocktranslate with n=number total=count %}Chapter {{ n }} of {{ total }}{% endblocktranslate %}</p>
+
+  <header class="page-head">
+    <div class="card-head">{% if path.ai_generated %}{% include "learn/_ai_tag.html" %}{% endif %}{% if progress.done %}<span class="badge done">{% icon 'circle-check' %}{% translate "Completed" %}</span>{% endif %}</div>
+    <h1><bdi>{{ chapter.title }}</bdi></h1>
+    {% if chapter.learning_goal %}<p class="muted" dir="auto">{{ chapter.learning_goal|capfirst }}</p>{% endif %}
+  </header>
+
+  <article class="card lesson" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
+    {{ lesson|safe }}
+    {% if chapter.exercise_idea %}<p class="try">{% icon 'hammer' %}<span><strong>{% translate "Try it" %}:</strong> {{ chapter.exercise_idea }}</span></p>{% endif %}
+  </article>
+
+  {% if slides %}
+  <h2>{% translate "Slides" %}</h2>
+  <section class="card slides" data-slides dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
+    {% for slide in slides %}
+    <div class="slide"{% if not forloop.first %} hidden{% endif %}>
+      <p class="meta num">{{ forloop.counter }} / {{ slides|length }}</p>
+      <h3>{{ slide.title }}</h3>
+      <ul>{% for point in slide.points %}<li>{{ point }}</li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
+    <div class="actions">
+      <button class="btn" type="button" data-step="-1">{% icon 'chevron-right' css='icon-flip-back' %}{% translate "Previous" %}</button>
+      <button class="btn" type="button" data-step="1">{% translate "Next" %}{% icon 'chevron-right' css='icon-flip' %}</button>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if quiz %}
+  <h2>{% translate "Quiz" %}</h2>
+  {% if checked %}
+  <div class="notice {% if progress.done %}success{% else %}info{% endif %}" role="status">{% icon 'circle-help' %}<span>
+    {% blocktranslate trimmed with correct=correct total=quiz|length %}{{ correct }} of {{ total }} right.{% endblocktranslate %}
+    {% if progress.done %}{% translate "Chapter completed." %}{% else %}{% blocktranslate trimmed with needed=pass_needed %}Get {{ needed }} right to finish the chapter. Try again.{% endblocktranslate %}{% endif %}
+  </span></div>
+  {% else %}
+  <p class="meta">{% blocktranslate trimmed with needed=pass_needed total=quiz|length %}Get {{ needed }} of {{ total }} right to finish this chapter.{% endblocktranslate %}</p>
+  {% endif %}
+  <form method="post" class="placement" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="seconds" value="">
+    {% for q in quiz %}
+    <fieldset class="card question">
+      <legend class="meta">{% blocktranslate with n=forloop.counter %}Question {{ n }}{% endblocktranslate %}</legend>
+      <p class="q-text">{{ q.question }}</p>
+      {% for option in q.options %}
+      <label class="option"><input type="radio" name="q{{ forloop.parentloop.counter0 }}" value="{{ forloop.counter0 }}" required{% if q.result and q.result.chosen == forloop.counter0 %} checked{% endif %}> <span>{{ option }}</span></label>
+      {% endfor %}
+      {% if q.result %}
+      <p class="feedback {% if q.result.right %}ok{% else %}bad{% endif %}">{% if q.result.right %}{% icon 'circle-check' %}{% translate "Right" %}{% else %}{% icon 'circle-x' %}{% translate "Not quite" %}{% endif %}{% if q.result.right or progress.done %}<span class="meta">{{ q.explanation }}</span>{% endif %}</p>
+      {% endif %}
+    </fieldset>
+    {% endfor %}
+    <div class="actions">
+      {% if user.is_authenticated %}<button class="btn primary" type="submit">{% icon 'check' %}{% translate "Check my answers" %}</button>
+      {% else %}<a class="btn primary" href="{% url 'login' %}?next={{ request.path }}">{% translate "Sign in to take the quiz" %}</a>{% endif %}
+    </div>
+  </form>
+  {% endif %}
+
+  <nav class="pager">
+    {% if previous %}<a class="btn quiet" href="{% url 'learn:chapter' path.slug previous.slug %}">{% icon 'chevron-right' css='icon-flip-back' %}<bdi>{{ previous.title }}</bdi></a>{% endif %}
+    {% if next %}<a class="btn secondary push" href="{% url 'learn:chapter' path.slug next.slug %}"><bdi>{{ next.title }}</bdi>{% icon 'chevron-right' css='icon-flip' %}</a>
+    {% else %}<a class="btn secondary push" href="{% url 'learn:path' path.slug %}">{% translate "Back to the path" %}{% icon 'arrow-right' css='icon-flip' %}</a>{% endif %}
+  </nav>
+</main>
+<script>
+(() => {
+  const box = document.querySelector('[data-slides]');
+  if (box) {
+    const slides = [...box.querySelectorAll('.slide')];
+    let at = 0;
+    box.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => {
+      slides[at].hidden = true;
+      at = (at + Number(b.dataset.step) + slides.length) % slides.length;
+      slides[at].hidden = false;
+    }));
+  }
+  // Time on the page goes with the quiz answers into the activity log.
+  const started = Date.now();
+  document.querySelectorAll('input[name=seconds]').forEach((input) => input.form.addEventListener('submit', () => {
+    input.value = Math.round((Date.now() - started) / 1000);
+  }));
+})();
+</script>
+{% endblock %}

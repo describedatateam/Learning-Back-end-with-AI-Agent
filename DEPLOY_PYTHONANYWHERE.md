@@ -161,11 +161,14 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py load_catalog
 python manage.py collectstatic --noinput
+touch /var/www/*_wsgi.py
 ```
 
 `load_catalog` refreshes the paths, courses and chapters from `learn/catalog.json`; it is safe to run every time.
+The last line restarts the site (the same as **Reload** on the Web tab, but it can't go to the wrong account).
 
-Then click **Reload** on the Web tab.
+**Generate a skill path** uses the same `GEMINI_API_KEY` as the tutor. On a free account, if Gemini can't be
+reached, the page says so and nothing is saved; placement tests work without any AI.
 
 ## If something goes wrong
 

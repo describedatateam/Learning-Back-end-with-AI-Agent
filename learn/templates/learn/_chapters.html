@@ -8,8 +8,9 @@
     <li class="chapter is-{{ ch.status }}{% if ch.current %} current{% endif %}"{% if ch.current %} id="here"{% endif %}>
       <span class="chapter-icon">{% if ch.status == 'done' or ch.status == 'skipped' %}{% icon 'circle-check' %}{% elif ch.status == 'progress' %}{% icon 'circle-dot' %}{% elif ch.status == 'soon' %}{% icon 'lock' %}{% else %}{% icon 'circle' %}{% endif %}</span>
       <div class="chapter-body">
-        <div class="chapter-title"><bdi>{{ ch.chapter.title }}</bdi>{% if ch.current %} <span class="badge wip here">{% icon 'map-pin' %}{% translate "You are here" %}</span>{% endif %}</div>
-        {% if ch.chapter.learning_goal %}<p class="meta" dir="ltr">{{ ch.chapter.learning_goal|capfirst }}.</p>{% endif %}
+        <div class="chapter-title">{% if ch.chapter.content %}<a href="{% url 'learn:chapter' skill.path.slug ch.chapter.slug %}"><bdi>{{ ch.chapter.title }}</bdi></a>{% else %}<bdi>{{ ch.chapter.title }}</bdi>{% endif %}{% if ch.current %} <span class="badge wip here">{% icon 'map-pin' %}{% translate "You are here" %}</span>{% endif %}</div>
+        {% if ch.chapter.learning_goal %}<p class="meta" dir="{% if skill.path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">{{ ch.chapter.learning_goal|capfirst }}{% if skill.path.request.language != 'ar' %}.{% endif %}</p>{% endif %}
+        {% if ch.chapter.content %}<p class="meta chapter-kit">{% icon 'book-open' %}{% translate "Lesson" %} · {% icon 'presentation' %}{% translate "Slides" %} · {% icon 'circle-help' %}{% translate "Quiz" %}</p>{% endif %}
         {% if ch.exercises %}
         <ul class="chapter-exercises">
           {% for exercise, state in ch.exercises %}

@@ -1,0 +1,80 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Placement test" %} · {{ path.title }} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} <a href="{% url 'learn:path' path.slug %}"><bdi>{{ path.title }}</bdi></a> {% icon 'chevron-right' css='icon-flip' %} {% translate "Placement test" %}</p>
+  <header class="page-head">
+    <h1>{% translate "Placement test" %}: <bdi>{{ path.title }}</bdi></h1>
+    <p class="muted">{% if tasks %}{% blocktranslate trimmed with mark=pass_mark total=questions|length %}Get {{ mark }} of {{ total }} questions right and pass every coding task to skip the whole path.{% endblocktranslate %}{% else %}{% blocktranslate trimmed with mark=pass_mark total=questions|length %}Get {{ mark }} of {{ total }} questions right to skip the whole path.{% endblocktranslate %}{% endif %}
+      {% translate "Otherwise you skip only the chapters you got right." %}</p>
+  </header>
+
+  {% if outcome %}
+  <section class="card result {% if outcome.passed %}is-pass{% else %}is-fail{% endif %}" aria-live="polite">
+    <div class="card-head">{% if outcome.passed %}{% icon 'trophy' css='icon-lg' %}<h2>{% translate "You passed" %}</h2>{% else %}{% icon 'target' css='icon-lg' %}<h2>{% translate "Not this time" %}</h2>{% endif %}</div>
+    <p class="num">{% blocktranslate trimmed with correct=outcome.correct total=outcome.total %}{{ correct }} of {{ total }} questions right{% endblocktranslate %}{% if outcome.tasks_total %} · {% blocktranslate trimmed with passed=outcome.tasks_passed total=outcome.tasks_total %}{{ passed }} of {{ total }} coding tasks passing{% endblocktranslate %}{% endif %}</p>
+    {% if outcome.passed %}
+    <p>{% translate "This path is marked as done, so you can move straight on." %}</p>
+    {% elif skipped_titles %}
+    <p>{% translate "You skip these chapters because you got them right:" %}</p>
+    <ul dir="ltr">{% for title in skipped_titles %}<li>{{ title }}</li>{% endfor %}</ul>
+    {% else %}
+    <p>{% translate "Work through the path, then try the test again whenever you like." %}</p>
+    {% endif %}
+    <div class="actions">
+      <a class="btn primary" href="{% url 'learn:path' path.slug %}">{% translate "Back to the path" %}{% icon 'arrow-right' css='icon-flip' %}</a>
+      <a class="btn quiet" href="{% url 'home' %}">{% translate "Home" %}</a>
+    </div>
+  </section>
+  {% endif %}
+
+  <form method="post" class="placement">
+    {% csrf_token %}
+    <h2>{% translate "Questions" %}</h2>
+    {% for q in questions %}
+    <fieldset class="card question">
+      <legend class="meta">{% blocktranslate with n=forloop.counter %}Question {{ n }}{% endblocktranslate %} · <bdi>{{ q.chapter }}</bdi></legend>
+      <p class="q-text" dir="ltr">{{ q.question }}</p>
+      {% for option in q.options %}
+      <label class="option" dir="ltr"><input type="radio" name="q{{ q.id }}" value="{{ option }}" required{% if q.result.chosen == option %} checked{% endif %}> <span>{{ option }}</span></label>
+      {% endfor %}
+      {% with r=q.result %}{% if r %}
+      <p class="feedback {% if r.right %}ok{% else %}bad{% endif %}">{% if r.right %}{% icon 'circle-check' %}{% translate "Right" %}{% else %}{% icon 'circle-x' %}{% translate "Not quite. The answer is" %} <code dir="ltr">{{ r.answer }}</code>{% endif %}<span class="meta" dir="ltr">{{ r.explanation }}</span></p>
+      {% endif %}{% endwith %}
+    </fieldset>
+    {% endfor %}
+
+    {% if tasks %}
+    <h2>{% translate "Coding tasks" %}</h2>
+    {% for item in tasks %}{% with task=item.task r=item.result %}
+    <section class="card question">
+      <p class="meta">{% blocktranslate with n=forloop.counter %}Task {{ n }}{% endblocktranslate %} · <bdi>{{ task.chapter }}</bdi></p>
+      <p class="q-text" dir="ltr">{{ task.prompt }}</p>
+      <label class="meta" for="task{{ task.id }}">{% translate "Your code (Python)" %}</label>
+      <textarea class="code-input" id="task{{ task.id }}" name="task{{ task.id }}" rows="12" spellcheck="false" dir="ltr">{{ item.code }}</textarea>
+      <details class="meta"><summary>{% translate "What the tests check" %}</summary><ul dir="ltr">{% for t in task.tests %}<li>{{ t.description }}</li>{% endfor %}</ul></details>
+      {% if r %}
+      <p class="feedback {% if r.all_passed %}ok{% else %}bad{% endif %}">{% if r.all_passed %}{% icon 'circle-check' %}{% translate "All tests pass" %}{% else %}{% icon 'circle-x' %}{% blocktranslate trimmed with passed=r.passed total=r.total %}{{ passed }} of {{ total }} tests pass{% endblocktranslate %}{% endif %}{% if r.error %}<code class="meta" dir="ltr">{{ r.error|truncatechars:300 }}</code>{% endif %}</p>
+      {% endif %}
+    </section>
+    {% endwith %}{% endfor %}
+    {% endif %}
+
+    <div class="actions">
+      <button class="btn primary" type="submit">{% icon 'check' %}{% if outcome %}{% translate "Check again" %}{% else %}{% translate "Check my answers" %}{% endif %}</button>
+      <a class="btn quiet" href="{% url 'learn:path' path.slug %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</main>
+<script>
+// Tab in the code boxes inserts four spaces instead of leaving the box.
+document.querySelectorAll('.code-input').forEach((box) => box.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab' || e.shiftKey) return;
+  e.preventDefault();
+  box.setRangeText('    ', box.selectionStart, box.selectionEnd, 'end');
+}));
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Generate a skill path" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} {% translate "Generate" %}</p>
+  <header class="page-head">
+    <h1>{% translate "Generate a skill path" %}</h1>
+    <p class="muted">{% translate "For a skill that isn't in the catalog. AI writes the courses, chapters, lessons, slides and quizzes, and the app checks them before saving." %}</p>
+  </header>
+
+  {% if not ai_available %}
+  <div class="notice warning">{% icon 'triangle-alert' %}<span>{% translate "AI generation is not set up on this server yet. Add GEMINI_API_KEY to the .env file." %}</span></div>
+  {% endif %}
+  {% if error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ error }}</span></div>{% endif %}
+  {% if match %}
+  <div class="notice info">{% icon 'compass' %}<span>
+    {% blocktranslate trimmed with title=match.title %}The catalog already has <bdi>{{ title }}</bdi>, with a reviewed course map.{% endblocktranslate %}
+    <a href="{% url 'learn:path' match.slug %}">{% translate "Open it" %}</a>
+  </span></div>
+  {% endif %}
+
+  <form class="card gen-form" method="post" data-busy>
+    {% csrf_token %}
+    <div class="field">
+      <label for="skill">{% translate "Skill" %}</label>
+      <input id="skill" name="skill" value="{{ form.skill }}" maxlength="80" required placeholder="{% translate 'For example: Tailwind basics' %}" dir="auto">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="level">{% translate "Your level" %}</label>
+        <select id="level" name="level">
+          {% for level in levels %}<option value="{{ level }}"{% if level == form.level %} selected{% endif %}>{% include "learn/_level.html" %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="hours">{% translate "Hours per week" %}</label>
+        <input id="hours" name="hours" type="number" min="1" max="40" value="{{ form.hours }}" required>
+      </div>
+    </div>
+    {% if match %}<input type="hidden" name="anyway" value="1">{% endif %}
+    <div class="actions">
+      <button class="btn primary" type="submit"{% if not ai_available or not left_today %} disabled{% endif %}>{% icon 'sparkles' %}{% if match %}{% translate "Generate anyway" %}{% else %}{% translate "Generate path" %}{% endif %}</button>
+      <span class="meta busy-note" hidden>{% translate "Writing your path. This can take a minute, so keep this page open." %}</span>
+      <span class="meta push">{% blocktranslate trimmed count n=left_today %}{{ n }} generation left today{% plural %}{{ n }} generations left today{% endblocktranslate %}</span>
+    </div>
+  </form>
+
+  {% if mine %}
+  <h2>{% translate "Your generated paths" %}</h2>
+  <ul class="card plain-list">
+    {% for p in mine %}
+    <li><a href="{% url 'learn:path' p.slug %}"><bdi>{{ p.title }}</bdi></a> {% include "learn/_ai_tag.html" %}<span class="meta push">{{ p.created_at|date:"M j" }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</main>
+<script>
+document.querySelectorAll('form[data-busy]').forEach((form) => form.addEventListener('submit', () => {
+  form.querySelector('button[type=submit]').disabled = true;
+  const note = form.querySelector('.busy-note');
+  if (note) note.hidden = false;
+}));
+</script>
+{% endblock %}
