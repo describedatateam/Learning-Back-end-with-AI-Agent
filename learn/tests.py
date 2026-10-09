@@ -284,7 +284,7 @@ class TutorTests(TestCase):
         self.ask()
         self.client.post(f'/learn/tutor/{self.exercise.slug}/clear/')
         self.assertFalse(TutorMessage.objects.exists())
-        self.assertContains(self.client.get(f'/learn/{self.exercise.slug}/'), 'Tutor ✨')
+        self.assertContains(self.client.get(f'/learn/{self.exercise.slug}/'), 'data-tab="tutor">Tutor<')
 
 
 class FakeProcess:
@@ -430,8 +430,22 @@ class DeploymentTests(TestCase):
 
 
 class SiteNavigationTests(TestCase):
-    def test_home_opens_backend_lab(self):
-        self.assertRedirects(self.client.get('/'), '/learn/', fetch_redirect_response=False)
+    def test_home_shows_next_step(self):
+        response = self.client.get('/')
+        self.assertContains(response, '<html lang="en" dir="ltr">')
+        self.assertContains(response, 'Start learning')
+        self.assertContains(response, f'/learn/{load_exercises()[0].slug}/')
+
+    def test_arabic_is_right_to_left(self):
+        self.client.cookies['django_language'] = 'ar'
+        response = self.client.get('/')
+        self.assertContains(response, '<html lang="ar" dir="rtl">')
+        self.assertContains(response, 'استكشف المسارات')
+
+    def test_language_switch(self):
+        response = self.client.post('/i18n/setlang/', {'language': 'ar', 'next': '/learn/'})
+        self.assertRedirects(response, '/learn/', fetch_redirect_response=False)
+        self.assertEqual(response.cookies['django_language'].value, 'ar')
 
     def test_slides_pdf(self):
         exercise = get_exercise('http-requests')
@@ -439,7 +453,7 @@ class SiteNavigationTests(TestCase):
         response = self.client.get(f'/learn/{exercise.slug}/slides/')
         if pdf.exists():
             self.assertEqual(response['Content-Type'], 'application/pdf')
-            self.assertContains(self.client.get(f'/learn/{exercise.slug}/'), '📑 Slides')
+            self.assertContains(self.client.get(f'/learn/{exercise.slug}/'), 'Slides</a>')
         else:
             self.assertEqual(response.status_code, 404)
         self.assertEqual(self.client.get('/learn/no-such-exercise/slides/').status_code, 404)

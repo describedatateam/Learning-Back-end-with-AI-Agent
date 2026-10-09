@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -69,6 +70,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'django.template.context_processors.i18n',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -112,7 +114,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+
+# English and Arabic; the header switch stores the choice in a cookie.
+LANGUAGES = [
+    ('en', 'English'),
+    ('ar', 'العربية'),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 
 TIME_ZONE = 'UTC'
 
@@ -128,7 +137,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # `collectstatic` copies the admin's CSS/JS here
 
 # Deployment (e.g. PythonAnywhere). All off by default for local use.
-# Require a staff login for the whole site: Backend Lab runs submitted code.
+# Require a staff login for the whole site: Describe runs submitted code.
 LEARN_REQUIRE_LOGIN = os.environ.get('LEARN_REQUIRE_LOGIN', 'False') == 'True'
 LOGIN_URL = '/admin/login/'
 # The https:// address of the site, so form posts pass Django's CSRF origin check.

@@ -1,6 +1,7 @@
 {% extends "learn/base.html" %}
+{% load ui %}
 
-{% block title %}{{ exercise.title }} · Backend Lab{% endblock %}
+{% block title %}{{ exercise.title }} · Describe{% endblock %}
 
 {% block style %}
   .crumbs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; }
@@ -20,8 +21,8 @@
   .lesson h2 { font-size: 17px; }
   .lesson h3 { font-size: 15px; }
   .lesson table { border-collapse: collapse; font-size: 14px; }
-  .lesson th, .lesson td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
-  .lesson blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+  .lesson th, .lesson td { border: 1px solid var(--border); padding: 5px 9px; text-align: start; }
+  .lesson blockquote { margin: 12px 0; padding: 8px 14px; border-inline-start: 3px solid var(--accent); background: var(--accent-soft); border-start-end-radius: 8px; border-end-end-radius: 8px; }
   .lesson blockquote p { margin: 4px 0; }
   details.hint { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 12px; }
   details.hint summary { cursor: pointer; font-weight: 600; }
@@ -33,7 +34,7 @@
   .q .why { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
 
   .editor-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .editor-head .file { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-right: auto; }
+  .editor-head .file { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-inline-end: auto; }
   .editor { background: #1e1e1e; height: 440px; resize: vertical; overflow: hidden; }
   .editor .CodeMirror { height: 100%; font: 13.5px/1.6 var(--mono); }
   .editor .CodeMirror-scroll { padding-top: 8px; }
@@ -77,7 +78,7 @@
   dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); width: min(820px, 92vw); padding: 0; }
   dialog::backdrop { background: rgba(0,0,0,.45); }
   dialog header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  dialog header strong { margin-right: auto; }
+  dialog header strong { margin-inline-end: auto; }
   dialog pre { margin: 0; border-radius: 0; max-height: 65vh; }
   .rewards { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
   .chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--xp-soft); color: var(--xp); }
@@ -98,7 +99,7 @@
       {% else %}<span class="badge new">Not started</span>{% endif %}
     </span>
     <span class="spacer"></span>
-    {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">📑 Slides</a>{% endif %}
+    {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">{% icon 'presentation' %}Slides</a>{% endif %}
     {% if previous %}<a class="btn" href="{% url 'learn:exercise' previous.slug %}">← {{ previous.title }}</a>{% endif %}
     {% if next %}<a class="btn" href="{% url 'learn:exercise' next.slug %}">{{ next.title }} →</a>{% endif %}
   </div>
@@ -109,11 +110,11 @@
         <button class="active" data-tab="lesson">Lesson</button>
         <button data-tab="hints">Hints ({{ exercise.hints|length }})</button>
         <button data-tab="quiz">Quiz ({{ quiz|length }})</button>
-        <button data-tab="tutor">Tutor ✨</button>
+        <button data-tab="tutor">Tutor</button>
       </div>
       <div class="tab-body lesson" id="tab-lesson">
         <div class="rewards" title="XP you can earn in this exercise">
-          <span class="chip">★ {{ rewards.pass }} XP to complete</span>
+          <span class="chip">{% icon 'zap' %} {{ rewards.pass }} XP to complete</span>
           <span class="chip">+5 XP per test</span>
           <span class="chip {% if progress.solution_viewed and not progress.passed %}gone{% endif %}" id="chip-nopeek">+{{ rewards.no_peek }} no-peek</span>
           <span class="chip {% if progress.attempts and not progress.passed %}gone{% endif %}">+{{ rewards.first_try }} first try</span>
@@ -315,7 +316,7 @@
   }
 
   const tutorButton = (label, question) =>
-    `<button class="btn ask-tutor" type="button" data-question="${esc(question)}">✨ ${label}</button>`;
+    `<button class="btn ask-tutor" type="button" data-question="${esc(question)}">${label}</button>`;
 
   function loadErrorBanner(data) {
     return `<div class="alert bad"><strong>Your code didn't load.</strong><pre>${esc(data.error)}</pre></div>`;

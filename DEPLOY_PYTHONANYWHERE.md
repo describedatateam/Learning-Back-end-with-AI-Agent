@@ -1,14 +1,14 @@
-# Put Backend Lab online with PythonAnywhere
+# Put Describe online with PythonAnywhere
 
-This gets Backend Lab running at `https://yourname.pythonanywhere.com`, so you can
+This gets Describe running at `https://yourname.pythonanywhere.com`, so you can
 use it from any computer or phone. It takes about 20 minutes. Everywhere below,
 replace **`yourname`** with your PythonAnywhere username.
 
-> **Why there's a login:** Backend Lab runs the Python code you type. On the open
+> **Why there's a login:** Describe runs the Python code you type. On the open
 > internet, anyone could use that to run code on your account, so the online copy
 > only works for you after you log in.
 
-> **Before you start:** this guide needs the "Prepare Backend Lab for PythonAnywhere"
+> **Before you start:** this guide needs the "Prepare Describe for PythonAnywhere"
 > pull request merged into `master` on GitHub (and "Add Google Gemini as a backup
 > tutor" if you want the free tutor). Without the first one, the online copy has no
 > login, so don't put it online until it's merged.
@@ -29,7 +29,7 @@ Your username becomes your web address.
 
 ## Already tried before? Start here
 
-If you set up a PythonAnywhere web app before Backend Lab was on GitHub, it showed
+If you set up a PythonAnywhere web app before Describe was on GitHub, it showed
 only the old project. Reuse your account and web app, but start the code fresh:
 
 1. Open **Consoles → Bash** and move the old copy out of the way (nothing in it is

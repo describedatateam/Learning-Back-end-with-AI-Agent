@@ -1,0 +1,92 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Home" %} · Describe{% endblock %}
+
+{% block style %}
+  .home-hero { margin-block-end: var(--space-5); }
+  .home-hero p { margin: 0; color: var(--muted); }
+  .next-step { padding: var(--space-5); gap: var(--space-3); border-color: var(--accent); }
+  .next-step .eyebrow { display: flex; align-items: center; gap: var(--space-2); color: var(--accent); font-weight: 600; font-size: 14px; }
+  .next-step h2 { margin: 0; font-size: 22px; }
+  .next-step .progress-row { max-width: 420px; }
+  .next-step .btn { align-self: flex-start; }
+  .next-step p { margin: 0; }
+  .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-block-start: var(--space-4); }
+  @media (max-width: 640px) { .home-grid { grid-template-columns: 1fr; } }
+  .home-grid .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card-head { display: flex; align-items: center; gap: var(--space-2); }
+  .card-head .icon { color: var(--muted); }
+  .card-head .tag { margin-inline-start: auto; }
+  .how { margin-block-start: var(--space-6); }
+  .how summary { cursor: pointer; font-size: 20px; font-weight: 650; min-height: 44px; display: flex; align-items: center; }
+  .how ol { margin: var(--space-2) 0 0; padding-inline-start: var(--space-5); display: grid; gap: var(--space-2); }
+  .how li strong { display: block; }
+  .how li span { color: var(--muted); font-size: 14px; }
+{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <section class="home-hero">
+    <h1>{% if has_started %}{% translate "Welcome back" %}{% else %}{% translate "Welcome to Describe" %}{% endif %}</h1>
+    <p>{% translate "Pick a path or make your own, then learn by building." %}</p>
+  </section>
+
+  <section class="card next-step" aria-labelledby="next-title">
+    {% if next_exercise %}
+      <div class="eyebrow">{% icon 'play' %}{% if next_started %}{% translate "Continue learning" %}{% else %}{% translate "Start learning" %}{% endif %}</div>
+      <h2 id="next-title"><bdi>{{ next_exercise.title }}</bdi></h2>
+      <p class="meta">{% translate "Backend Developer (Python, Django)" %} · <bdi>{{ next_exercise.concept }}</bdi></p>
+      <div class="progress-row">
+        <div class="progress{% if percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Path progress' %}"><div style="width: {{ percent }}%"></div></div>
+        <span class="meta">{% blocktranslate %}{{ done }} of {{ total }} exercises{% endblocktranslate %}</span>
+      </div>
+      <a class="btn primary" href="{% url 'learn:exercise' next_exercise.slug %}">
+        {% if next_started %}{% translate "Resume" %}{% else %}{% translate "Start" %}{% endif %}{% icon 'arrow-right' css='icon-flip' %}
+      </a>
+    {% else %}
+      <div class="eyebrow">{% icon 'circle-check' %}{% translate "Path complete" %}</div>
+      <h2 id="next-title">{% translate "You finished every exercise in this path." %}</h2>
+      <a class="btn primary" href="{% url 'learn:dashboard' %}">{% translate "Explore paths" %}{% icon 'arrow-right' css='icon-flip' %}</a>
+    {% endif %}
+  </section>
+
+  <div class="home-grid">
+    <a class="card job" href="{% url 'learn:dashboard' %}">
+      <div class="card-head">{% icon 'compass' %}<h3>{% translate "Explore paths" %}</h3><span class="tag job">{% translate "Job path" %}</span></div>
+      <p>{% translate "Backend Developer (Python, Django): from your first view to a real, tested API." %}</p>
+      <div class="promise">
+        <span>{% icon 'clock' %}{% translate "30 days" %}</span>
+        <span>{% icon 'hammer' %}{% translate "A REST API" %}</span>
+        <span>{% icon 'target' %}<bdi>Django, DRF, SQL</bdi></span>
+      </div>
+    </a>
+
+    <section class="card">
+      <div class="card-head">{% icon 'sparkles' %}<h3>{% translate "Generate a path" %}</h3><span class="tag">{% translate "Coming soon" %}</span></div>
+      <p>{% translate "Tell us a skill, your level and your time each week, and AI builds a path of courses, quizzes and slides for you." %}</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">{% icon 'file-text' %}<h3>{% translate "My project" %}</h3><span class="tag">{% translate "Coming soon" %}</span></div>
+      <p>{% translate "Working on something? Describe it or upload its SRS (requirements), and we'll walk you through it." %}</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">{% icon 'briefcase' %}<h3>{% translate "My portfolio" %}</h3><span class="tag">{% translate "Coming soon" %}</span></div>
+      <p>{% translate "Your finished projects will live here. Finish your first path to add one." %}</p>
+    </section>
+  </div>
+
+  <details class="how" id="how"{% if not has_started %} open{% endif %}>
+    <summary>{% translate "How this works" %}</summary>
+    <ol>
+      <li><strong>{% translate "Pick a path or make your own." %}</strong><span>{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</span></li>
+      <li><strong>{% translate "Learn by building." %}</strong><span>{% translate "Each chapter ends in real code that is checked automatically." %}</span></li>
+      <li><strong>{% translate "Remember it." %}</strong><span>{% translate "Short flashcards come back right before you'd forget them." %}</span></li>
+      <li><strong>{% translate "Bring your own project." %}</strong><span>{% translate "Upload or write its requirements (SRS), and get a step-by-step walkthrough." %}</span></li>
+      <li><strong>{% translate "Leave with proof." %}</strong><span>{% translate "Every finished path adds a project to your public portfolio." %}</span></li>
+    </ol>
+  </details>
+</main>
+{% endblock %}

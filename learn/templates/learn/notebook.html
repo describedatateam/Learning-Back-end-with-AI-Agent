@@ -1,6 +1,6 @@
 {% extends "learn/base.html" %}
 
-{% block title %}My notebook · Backend Lab{% endblock %}
+{% block title %}My notebook · Describe{% endblock %}
 
 {% block style %}
   .nb-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -26,10 +26,10 @@
   .tool pre { margin: 6px 0 0; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .tool pre.out { background: #111418; color: #e5e5e5; }
   .usecase { background: var(--ok-soft); border-radius: 8px; padding: 10px 14px; font-size: 14.5px; }
-  .difficulty { border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 10px; font-size: 14.5px; }
+  .difficulty { border-inline-start: 3px solid var(--warn); background: var(--warn-soft); border-start-end-radius: 8px; border-end-end-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 14.5px; }
   .difficulty strong { display: block; margin-bottom: 4px; }
   .difficulty .solved { margin-top: 6px; color: var(--ok); }
-  .page ul { margin: 0; padding-left: 20px; }
+  .page ul { margin: 0; padding-inline-start: 20px; }
   .page li { margin: 4px 0; }
   .next { font-size: 14.5px; }
   details.code summary { cursor: pointer; font-weight: 600; font-size: 14px; }
@@ -37,14 +37,14 @@
   .gen-status { font-size: 13px; color: var(--muted); }
   .gen-error { color: var(--bad); font-size: 14px; }
   .empty-page { color: var(--muted); font-size: 14.5px; margin: 0; }
-  .empty-page .tool-list code { margin-right: 4px; }
+  .empty-page .tool-list code { margin-inline-end: 4px; }
 {% endblock %}
 
 {% block content %}
 <main>
   <section class="nb-head">
     <div class="intro">
-      <h1>My notebook 📓</h1>
+      <h1>My notebook</h1>
       <p class="muted">One page for every exercise you've passed: the tools you learned (with examples), where they're used in real backends,
         what you found hard and how you solved it, and your final code. Pages are written by AI from your tutor chats and test history.</p>
     </div>
@@ -110,7 +110,7 @@
       body = `<p class="empty-page">You passed this exercise. Write its notebook page from your tutor chats and test history (takes about a minute).</p>`;
     }
     const button = page.passed && canRun
-      ? `<button class="btn ${data ? '' : 'primary'}" data-generate>${data ? 'Rewrite page' : '✨ Write my page'}</button>` : '';
+      ? `<button class="btn ${data ? '' : 'primary'}" data-generate>${data ? 'Rewrite page' : 'Write my page'}</button>` : '';
     el.innerHTML = `
       <header><span class="num">#${String(page.number).padStart(2, '0')}</span><h2>${esc(page.title)}</h2>
         <span class="badge ${page.passed ? 'done' : 'new'}">${page.passed ? 'Passed' : 'Locked'}</span>

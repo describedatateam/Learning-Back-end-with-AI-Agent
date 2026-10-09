@@ -1,0 +1,211 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-07 10:59+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+#: learn/templates/learn/base.html:23
+msgid "Main"
+msgstr "القائمة الرئيسية"
+
+#: learn/templates/learn/base.html:24 learn/templates/learn/home.html:4
+msgid "Home"
+msgstr "الرئيسية"
+
+#: learn/templates/learn/base.html:25
+msgid "Paths"
+msgstr "المسارات"
+
+#: learn/templates/learn/base.html:26
+msgid "Tutor"
+msgstr "المعلّم"
+
+#: learn/templates/learn/base.html:27
+msgid "Notebook"
+msgstr "الدفتر"
+
+#: learn/templates/learn/base.html:31
+msgid "Your level and XP"
+msgstr "مستواك ونقاط الخبرة (XP)"
+
+#: learn/templates/learn/base.html:36
+msgid "Daily streak"
+msgstr "أيام التعلّم المتتالية"
+
+#: learn/templates/learn/base.html:50 learn/templates/learn/home.html:81
+msgid "How this works"
+msgstr "كيف تعمل المنصة"
+
+#: learn/templates/learn/base.html:51
+msgid "Admin"
+msgstr "الإدارة"
+
+#: learn/templates/learn/base.html:52
+msgid "API health"
+msgstr "حالة الواجهة البرمجية (API)"
+
+#: learn/templates/learn/home.html:30
+msgid "Welcome back"
+msgstr "مرحبًا بعودتك"
+
+#: learn/templates/learn/home.html:30
+msgid "Welcome to Describe"
+msgstr "مرحبًا بك في Describe"
+
+#: learn/templates/learn/home.html:31
+msgid "Pick a path or make your own, then learn by building."
+msgstr "اختر مسارًا أو أنشئ مسارك الخاص، ثم تعلّم بالبناء."
+
+#: learn/templates/learn/home.html:36
+msgid "Continue learning"
+msgstr "تابع التعلّم"
+
+#: learn/templates/learn/home.html:36
+msgid "Start learning"
+msgstr "ابدأ التعلّم"
+
+#: learn/templates/learn/home.html:38
+msgid "Backend Developer (Python, Django)"
+msgstr "مطوّر الواجهات الخلفية (بايثون وجانغو)"
+
+#: learn/templates/learn/home.html:40
+msgid "Path progress"
+msgstr "التقدّم في المسار"
+
+#: learn/templates/learn/home.html:41
+#, python-format
+msgid "%(done)s of %(total)s exercises"
+msgstr "%(done)s من %(total)s تمارين"
+
+#: learn/templates/learn/home.html:44
+msgid "Resume"
+msgstr "تابِع"
+
+#: learn/templates/learn/home.html:44
+msgid "Start"
+msgstr "ابدأ"
+
+#: learn/templates/learn/home.html:47
+msgid "Path complete"
+msgstr "أكملت المسار"
+
+#: learn/templates/learn/home.html:48
+msgid "You finished every exercise in this path."
+msgstr "أنهيت جميع تمارين هذا المسار."
+
+#: learn/templates/learn/home.html:49 learn/templates/learn/home.html:55
+msgid "Explore paths"
+msgstr "استكشف المسارات"
+
+#: learn/templates/learn/home.html:55
+msgid "Job path"
+msgstr "مسار وظيفي"
+
+#: learn/templates/learn/home.html:56
+msgid ""
+"Backend Developer (Python, Django): from your first view to a real, tested "
+"API."
+msgstr ""
+"مطوّر الواجهات الخلفية (بايثون وجانغو): من أول view تكتبه إلى واجهة API "
+"حقيقية ومختبَرة."
+
+#: learn/templates/learn/home.html:58
+msgid "30 days"
+msgstr "30 يومًا"
+
+#: learn/templates/learn/home.html:59
+msgid "A REST API"
+msgstr "واجهة REST API"
+
+#: learn/templates/learn/home.html:65
+msgid "Generate a path"
+msgstr "أنشئ مسارًا"
+
+#: learn/templates/learn/home.html:65 learn/templates/learn/home.html:70
+#: learn/templates/learn/home.html:75
+msgid "Coming soon"
+msgstr "قريبًا"
+
+#: learn/templates/learn/home.html:66
+msgid ""
+"Tell us a skill, your level and your time each week, and AI builds a path of"
+" courses, quizzes and slides for you."
+msgstr ""
+"أخبرنا بالمهارة ومستواك ووقتك المتاح كل أسبوع، وسيبني لك الذكاء الاصطناعي "
+"مسارًا من الدورات والاختبارات القصيرة والشرائح."
+
+#: learn/templates/learn/home.html:70
+msgid "My project"
+msgstr "مشروعي"
+
+#: learn/templates/learn/home.html:71
+msgid ""
+"Working on something? Describe it or upload its SRS (requirements), and "
+"we'll walk you through it."
+msgstr ""
+"تعمل على مشروع؟ صِفه أو ارفع وثيقة متطلباته (SRS)، وسنرشدك خطوة بخطوة."
+
+#: learn/templates/learn/home.html:75
+msgid "My portfolio"
+msgstr "معرض أعمالي"
+
+#: learn/templates/learn/home.html:76
+msgid ""
+"Your finished projects will live here. Finish your first path to add one."
+msgstr "ستظهر مشاريعك المكتملة هنا. أكمل مسارك الأول لتضيف أول مشروع."
+
+#: learn/templates/learn/home.html:83
+msgid "Pick a path or make your own."
+msgstr "اختر مسارًا أو أنشئ مسارك الخاص."
+
+#: learn/templates/learn/home.html:83
+msgid "Job paths take you toward a role. Skill paths teach one thing well."
+msgstr ""
+"المسارات الوظيفية تقودك نحو وظيفة، ومسارات المهارات تعلّمك شيئًا واحدًا "
+"بإتقان."
+
+#: learn/templates/learn/home.html:84
+msgid "Learn by building."
+msgstr "تعلّم بالبناء."
+
+#: learn/templates/learn/home.html:84
+msgid "Each chapter ends in real code that is checked automatically."
+msgstr "ينتهي كل فصل بكود حقيقي يُفحص تلقائيًا."
+
+#: learn/templates/learn/home.html:85
+msgid "Remember it."
+msgstr "ثبّت ما تعلّمته."
+
+#: learn/templates/learn/home.html:85
+msgid "Short flashcards come back right before you'd forget them."
+msgstr "بطاقات مراجعة قصيرة تعود إليك قبل أن تنساها بقليل."
+
+#: learn/templates/learn/home.html:86
+msgid "Bring your own project."
+msgstr "أحضر مشروعك الخاص."
+
+#: learn/templates/learn/home.html:86
+msgid ""
+"Upload or write its requirements (SRS), and get a step-by-step walkthrough."
+msgstr "ارفع متطلباته (SRS) أو اكتبها، واحصل على دليل خطوة بخطوة."
+
+#: learn/templates/learn/home.html:87
+msgid "Leave with proof."
+msgstr "اخرج بدليل على ما تعلّمته."
+
+#: learn/templates/learn/home.html:87
+msgid "Every finished path adds a project to your public portfolio."
+msgstr "كل مسار تكمله يضيف مشروعًا إلى معرض أعمالك العام."
