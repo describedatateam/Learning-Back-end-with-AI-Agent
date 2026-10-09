@@ -949,3 +949,231 @@ class CatalogTests(SignedInTestCase):
         self.client.cookies['django_language'] = 'ar'
         response = self.client.get('/learn/paths/')
         self.assertContains(response, 'dir="rtl"')
+
+
+PYTHON_TASK_SOLUTIONS = {
+    '1': 'def filter_products(products, max_price):\n    return [p["name"] for p in products if p["price"] <= max_price]\n',
+    '2': ('class BankAccount:\n    def __init__(self, owner, balance=0.0):\n        self.owner = owner\n'
+          '        self.balance = balance\n\n    def deposit(self, amount):\n        self.balance += amount\n\n'
+          '    def withdraw(self, amount):\n        if amount > self.balance:\n'
+          '            raise ValueError("Insufficient funds")\n        self.balance -= amount\n'),
+}
+
+
+class PlacementTests(SignedInTestCase):
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        from .models import Path
+        load_catalog()
+        self.path = Path.objects.get(slug='python-basics')
+        self.questions = self.path.placement_test['multiple_choice_questions']
+
+    def answers(self, wrong=()):
+        """Form data with every question right except the ids in `wrong`."""
+        data = {}
+        for q in self.questions:
+            options = [o for o in q['options'] if o != q['correct_option']]
+            data[f'q{q["id"]}'] = options[0] if q['id'] in wrong else q['correct_option']
+        return data
+
+    def test_page_hides_answers(self):
+        response = self.client.get('/learn/paths/python-basics/placement/')
+        self.assertContains(response, self.questions[0]['question'])
+        self.assertContains(response, 'filter_products')
+        self.assertNotContains(response, self.questions[0]['explanation'])
+        self.assertContains(self.client.get('/learn/paths/backend-developer/'), '/learn/paths/python-basics/placement/')
+
+    def test_task_tests_pass_with_solutions_and_fail_with_starters(self):
+        from .placement import tasks
+        for task in tasks(self.path):
+            with self.subTest(task=task.id):
+                self.assertTrue(run_tests(task, PYTHON_TASK_SOLUTIONS[str(task.id)])['all_passed'])
+                self.assertFalse(run_tests(task, task.starter)['all_passed'])
+
+    def test_passing_marks_the_path_done(self):
+        from .catalog import job_view
+        from .models import Path, PlacementAttempt
+        data = self.answers(wrong={1, 2})  # 8 of 10 is the pass mark
+        data.update({f'task{k}': v for k, v in PYTHON_TASK_SOLUTIONS.items()})
+        response = self.client.post('/learn/paths/python-basics/placement/', data)
+        self.assertContains(response, 'You passed')
+        attempt = PlacementAttempt.objects.get(user=self.user)
+        self.assertEqual((attempt.correct, attempt.tasks_passed, attempt.passed), (8, 2, True))
+        job = job_view(Path.objects.get(slug='backend-developer'), self.user)
+        self.assertTrue(job.prerequisites[0].skipped)
+        self.assertEqual(job.prerequisites[0].percent, 100)
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.PLACEMENT,
+                                                     data__passed=True).exists())
+
+    def test_failing_skips_only_the_chapters_answered_right(self):
+        from .catalog import SKIPPED, TODO, SOON, job_view
+        from .models import Path
+        # Question 1 (variables) wrong, coding tasks left as the starter code.
+        response = self.client.post('/learn/paths/python-basics/placement/', self.answers(wrong={1}))
+        self.assertContains(response, 'Not this time')
+        job = job_view(Path.objects.get(slug='backend-developer'), self.user)
+        python = job.prerequisites[0]
+        self.assertFalse(python.skipped)
+        statuses = {ch.chapter.slug: ch.status for ch in python.chapters}
+        self.assertNotEqual(statuses['variables-and-primitive-types'], SKIPPED)
+        self.assertEqual(statuses['strings-and-string-formatting'], SKIPPED)
+        self.assertEqual(statuses['lists-and-dictionaries'], SKIPPED)  # both of its questions right
+        self.assertIn(statuses['functions-and-parameters'], (TODO, SOON))  # its coding task failed
+        self.assertIn(statuses['first-look-at-classes'], (TODO, SOON))
+        skipped_events = LearningEvent.objects.filter(user=self.user, kind=LearningEvent.CHAPTER_SKIPPED)
+        self.assertEqual(skipped_events.count(), 6)
+        # Shown on the path page too.
+        self.assertContains(self.client.get('/learn/paths/python-basics/'), 'chapters you already know are skipped')
+
+    def test_javascript_test_is_questions_only(self):
+        response = self.client.get('/learn/paths/javascript-fundamentals/placement/')
+        self.assertContains(response, 'typeof null')
+        self.assertNotContains(response, 'Coding tasks')
+        from .models import Path
+        js = Path.objects.get(slug='javascript-fundamentals')
+        for q in js.placement_test['multiple_choice_questions']:
+            self.assertIn(q['correct_option'], q['options'])
+        response = self.client.post('/learn/paths/javascript-fundamentals/placement/', {
+            f'q{q["id"]}': q['correct_option'] for q in js.placement_test['multiple_choice_questions']})
+        self.assertContains(response, 'You passed')
+
+    def test_paths_without_a_test(self):
+        self.assertEqual(self.client.get('/learn/paths/sql-basics/placement/').status_code, 404)
+
+
+def sample_generated_path(title='Tailwind basics'):
+    chapter = lambda n: {
+        'title': f'Chapter {n}', 'learning_goal': 'you can style a card with utility classes',
+        'exercise_idea': 'Style a profile card.',
+        'lesson': 'Tailwind gives you small classes. ' * 10 + '\n\n```html\n<div class="p-4">Hi</div>\n```\n<script>x()</script>',
+        'slides': [{'title': 'Utilities', 'points': ['One class, one job']}, {'title': 'Spacing', 'points': ['p-4']}],
+        'quiz': [{'question': f'Q{i}?', 'options': ['a', 'b', 'c', 'd'], 'answer': 1, 'explanation': 'Because b.'}
+                 for i in range(3)],
+    }
+    return {
+        'title': title, 'summary': 'Style pages with utility classes.', 'level': 'beginner', 'hours': 9,
+        'project': {'title': 'A landing page', 'brief': 'Build one.', 'skills_used': ['Tailwind']},
+        'courses': [{'title': 'Getting started', 'hours': 4, 'language': 'css', 'chapters': [chapter(1), chapter(2)]},
+                    {'title': 'Layout', 'hours': 5, 'language': 'css', 'chapters': [chapter(3)]}],
+    }
+
+
+class GeneratorTests(SignedInTestCase):
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        load_catalog()
+        patcher = mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def generate(self, replies, **data):
+        replies = list(replies)
+        with mock.patch('learn.generator._ask_gemini', side_effect=lambda system, messages: replies.pop(0)) as ask:
+            response = self.client.post('/learn/paths/generate/', {'skill': 'Tailwind basics', 'level': 'beginner',
+                                                                   'hours': 3, **data})
+        return response, ask
+
+    def test_clean_path_accepts_good_json_and_lists_problems(self):
+        from .generator import clean_path
+        cleaned, errors = clean_path(sample_generated_path())
+        self.assertEqual(errors, [])
+        bad = sample_generated_path()
+        bad['level'] = 'expert'
+        bad['courses'][0]['chapters'][0]['quiz'][0]['answer'] = 7
+        del bad['courses'][1]['chapters'][0]['slides']
+        _, errors = clean_path(bad)
+        self.assertEqual(len(errors), 3, errors)
+        self.assertEqual(clean_path([])[1], ['The reply must be one JSON object.'])
+
+    def test_generates_a_clickable_ai_path(self):
+        from .models import Path
+        response, ask = self.generate([json.dumps(sample_generated_path())])
+        path = Path.objects.get(owner=self.user)
+        self.assertRedirects(response, f'/learn/paths/{path.slug}/')
+        self.assertTrue(path.ai_generated)
+        self.assertEqual(path.request['hours_per_week'], 3)
+        self.assertIn('Hours per week: 3', ask.call_args[0][1][0]['content'])
+        page = self.client.get(f'/learn/paths/{path.slug}/')
+        self.assertContains(page, 'AI-generated')
+        chapter = path.courses.first().chapters.first()
+        self.assertContains(page, f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
+        self.assertContains(self.client.get('/learn/paths/'), 'Tailwind basics')
+        lesson = self.client.get(f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
+        self.assertContains(lesson, 'Tailwind gives you small classes')
+        self.assertContains(lesson, '&lt;script&gt;')  # raw HTML from the AI shows as text
+        self.assertNotContains(lesson, '<script>x()')
+        self.assertNotContains(lesson, 'Because b.')  # explanations wait until the quiz is answered
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.PATH_GENERATED).exists())
+
+    def test_quiz_finishes_a_generated_chapter(self):
+        from .catalog import DONE, skill_view, chapter_marks
+        from .models import ChapterProgress, Path
+        self.generate([json.dumps(sample_generated_path())])
+        path = Path.objects.get(owner=self.user)
+        chapter = path.courses.first().chapters.first()
+        url = f'/learn/paths/{path.slug}/chapters/{chapter.slug}/'
+        response = self.client.post(url, {'q0': '1', 'q1': '0', 'q2': '0'})
+        self.assertContains(response, '1 of 3 right')
+        self.assertFalse(ChapterProgress.objects.get(user=self.user, chapter=chapter).done)
+        response = self.client.post(url, {'q0': '1', 'q1': '1', 'q2': '0'})
+        self.assertContains(response, 'Chapter completed')
+        view = skill_view(path, {}, set(), marks=chapter_marks(self.user))
+        self.assertEqual(view.chapters[0].status, DONE)
+        self.assertEqual(view.done, 1)
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.LESSON_FINISHED).exists())
+
+    def test_bad_reply_is_retried_once_then_refused(self):
+        from .models import Path
+        good = json.dumps(sample_generated_path())
+        response, ask = self.generate(['not json', good])
+        self.assertEqual(ask.call_count, 2)
+        self.assertIn('problems', ask.call_args[0][1][-1]['content'])
+        self.assertEqual(Path.objects.filter(owner=self.user).count(), 1)
+        response, ask = self.generate(['{"title": 1}', '{"title": 2}'])
+        self.assertContains(response, 'nothing was saved')
+        self.assertEqual(Path.objects.filter(owner=self.user).count(), 1)
+
+    def test_blocked_network_fails_gracefully(self):
+        class ConnectError(Exception):
+            pass
+        from .models import Path
+        with mock.patch('learn.generator._ask_gemini', side_effect=ConnectError('proxy said no')):
+            response = self.client.post('/learn/paths/generate/', {'skill': 'Tailwind basics', 'level': 'beginner', 'hours': 3})
+        self.assertContains(response, 'Could not reach the AI service')
+        self.assertFalse(Path.objects.filter(owner=self.user).exists())
+
+    def test_no_ai_configured(self):
+        with mock.patch.dict('os.environ', {'GEMINI_API_KEY': '', 'GOOGLE_API_KEY': '', 'ANTHROPIC_API_KEY': '',
+                                            'LEARN_TUTOR_BACKEND': 'api'}):
+            response = self.client.get('/learn/paths/generate/')
+        self.assertContains(response, 'not set up on this server')
+
+    def test_catalog_topics_point_to_the_catalog(self):
+        response, ask = self.generate([], skill='SQL')
+        self.assertContains(response, 'The catalog already has')
+        self.assertEqual(ask.call_count, 0)
+        response, ask = self.generate([json.dumps(sample_generated_path('SQL tricks'))], skill='SQL', anyway='1')
+        self.assertEqual(ask.call_count, 1)
+
+    def test_generated_paths_are_private_and_deletable(self):
+        from .models import Path
+        self.generate([json.dumps(sample_generated_path())])
+        path = Path.objects.get(owner=self.user)
+        other = User.objects.create_user('other', password='pw')
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(f'/learn/paths/{path.slug}/').status_code, 404)
+        self.assertNotContains(self.client.get('/learn/paths/'), 'Tailwind basics')
+        self.assertEqual(self.client.post(f'/learn/paths/{path.slug}/delete/').status_code, 404)
+        self.client.force_login(self.user)
+        self.assertRedirects(self.client.post(f'/learn/paths/{path.slug}/delete/'), '/learn/paths/generate/')
+        self.assertFalse(Path.objects.filter(pk=path.pk).exists())
+
+    def test_daily_limit(self):
+        from . import generator
+        with mock.patch.object(generator, 'DAILY_LIMIT', 1):
+            self.generate([json.dumps(sample_generated_path())])
+            response, ask = self.generate([json.dumps(sample_generated_path())])
+        self.assertContains(response, 'most paths allowed today')
+        self.assertEqual(ask.call_count, 0)

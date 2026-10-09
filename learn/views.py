@@ -1,21 +1,28 @@
 import json
+import math
+import re
 from itertools import groupby
 from pathlib import Path as FilePath
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import FileResponse, Http404, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import get_language, gettext
 from django.views.decorators.http import require_POST
 
-from . import catalog, gamification, notebook, tutor
+import markdown
+
+from . import catalog, gamification, generator, notebook, placement, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
 from .models import (
-    ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath, TutorMessage, XPEvent,
+    Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
+    TutorMessage, XPEvent,
 )
 
 MAX_SECONDS_SPENT = 6 * 60 * 60  # ignore page timers left open overnight
@@ -81,14 +88,17 @@ def dashboard(request):
 
 
 ACTIVITY_KINDS = [LearningEvent.PASSED, LearningEvent.RUN, LearningEvent.QUIZ, LearningEvent.HINT,
-                  LearningEvent.SOLUTION_VIEWED, LearningEvent.PATH_SKIPPED, LearningEvent.PATH_CHOSEN]
+                  LearningEvent.SOLUTION_VIEWED, LearningEvent.PATH_SKIPPED, LearningEvent.PATH_CHOSEN,
+                  LearningEvent.PLACEMENT, LearningEvent.PATH_GENERATED]
 
 
 def _recent_activity(user, limit=5):
     events = list(LearningEvent.objects.filter(user=user, kind__in=ACTIVITY_KINDS)[:limit])
     passed_xp = {x.slug: x.amount for x in XPEvent.objects.filter(
         user=user, key__in=[f'pass:{e.slug}' for e in events if e.kind == LearningEvent.PASSED])}
-    paths = {p.slug: p.title for p in Path.objects.filter(slug__in=[e.slug for e in events])}
+    slugs = [e.slug for e in events]
+    paths = {p.slug: p.title for p in Path.objects.filter(slug__in=slugs)}
+    paths.update({c.slug: c.title for c in Chapter.objects.filter(slug__in=slugs)})
     for event in events:
         exercise = get_exercise(event.slug)
         event.topic = exercise.title if exercise else paths.get(event.slug, event.slug)
@@ -116,23 +126,35 @@ def home(request):
     return render(request, 'learn/home.html', context)
 
 
+def _visible_paths(user):
+    """Catalog paths, plus the learner's own generated ones."""
+    if user.is_authenticated:
+        return Path.objects.filter(Q(owner__isnull=True) | Q(owner=user))
+    return Path.objects.filter(owner__isnull=True)
+
+
 def path_catalog(request):
     current = catalog.current_job_path(request.user)  # also loads the catalog into an empty database
     states = catalog.exercise_states(request.user)
     chosen = request.user.is_authenticated and PathChoice.objects.filter(user=request.user).exists()
     jobs = [catalog.job_view(p, request.user, states) for p in Path.objects.filter(kind=Path.JOB)]
     skipped = catalog.skipped_ids(request.user)
+    marks = catalog.chapter_marks(request.user)
     prerequisite_ids = set(Path.objects.filter(in_jobs__prerequisite=True).values_list('id', flat=True))
-    skills = [catalog.skill_view(p, states, skipped, p.id in prerequisite_ids)
-              for p in Path.objects.filter(kind=Path.SKILL).prefetch_related('courses__chapters')]
+    skills = [catalog.skill_view(p, states, skipped, p.id in prerequisite_ids, marks)
+              for p in Path.objects.filter(kind=Path.SKILL, owner__isnull=True).prefetch_related('courses__chapters')]
+    generated = []
+    if request.user.is_authenticated:
+        generated = [catalog.skill_view(p, states, skipped, False, marks) for p in
+                     Path.objects.filter(owner=request.user).order_by('-created_at').prefetch_related('courses__chapters')]
     return render(request, 'learn/catalog.html', {
-        'jobs': jobs, 'skills': skills, 'current': current if chosen else None,
+        'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None,
         'player': gamification.player_state(request.user),
     })
 
 
 def path_detail(request, slug):
-    path = get_object_or_404(Path, slug=slug)
+    path = get_object_or_404(_visible_paths(request.user), slug=slug)
     context = {'path': path, 'player': gamification.player_state(request.user)}
     if path.kind == Path.JOB:
         context['job'] = catalog.job_view(path, request.user)
@@ -141,8 +163,10 @@ def path_detail(request, slug):
     else:
         prerequisite = path.in_jobs.filter(prerequisite=True).exists()
         context['skill'] = catalog.skill_view(path, catalog.exercise_states(request.user),
-                                              catalog.skipped_ids(request.user), prerequisite)
+                                              catalog.skipped_ids(request.user), prerequisite,
+                                              catalog.chapter_marks(request.user))
         context['jobs'] = Path.objects.filter(steps__skill=path).distinct()
+        context['attempt'] = placement.latest_attempt(request.user, path)
     return render(request, 'learn/path.html', context)
 
 
@@ -170,6 +194,144 @@ def skip_path(request, slug):
     if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return redirect(next_url)
     return redirect('learn:path', path.slug)
+
+
+@login_required
+def placement_test(request, slug):
+    """A prerequisite's placement test: questions plus coding tasks. Passing marks the path as known."""
+    path = get_object_or_404(Path, slug=slug, owner__isnull=True)
+    if not placement.has_test(path):
+        raise Http404('This path has no placement test')
+    questions, tasks = placement.questions(path), placement.tasks(path)
+    context = {'path': path, 'questions': questions, 'pass_mark': placement.pass_mark(path),
+               'tasks': [{'task': t, 'code': t.starter, 'result': None} for t in tasks],
+               'player': gamification.player_state(request.user)}
+    if request.method == 'POST':
+        answers = {str(q['id']): request.POST.get(f'q{q["id"]}') for q in questions}
+        code = {str(t.id): request.POST.get(f'task{t.id}', '') for t in tasks}
+        before = placement.latest_attempt(request.user, path)
+        outcome = placement.grade(path, answers, code)
+        placement.save_attempt(request.user, path, outcome, answers, code)
+        log_event(request, LearningEvent.PLACEMENT, path.slug, correct=outcome['correct'], total=outcome['total'],
+                  tasks_passed=outcome['tasks_passed'], tasks_total=outcome['tasks_total'], passed=outcome['passed'])
+        for chapter in set(outcome['skipped_chapters']) - set(before.skipped_chapters if before else []):
+            log_event(request, LearningEvent.CHAPTER_SKIPPED, chapter, reason='placement')
+        by_id = {r['id']: r for r in outcome['questions']}
+        for q in questions:
+            q['result'] = by_id.get(q['id'])
+        by_task = {r['task'].id: r for r in outcome['tasks']}
+        context['tasks'] = [{'task': t, 'code': code[str(t.id)], 'result': by_task.get(t.id)} for t in tasks]
+        context.update(outcome=outcome,
+                       skipped_titles=list(Chapter.objects.filter(slug__in=outcome['skipped_chapters'])
+                                           .order_by('course__order', 'order').values_list('title', flat=True)))
+    return render(request, 'learn/placement.html', context)
+
+
+@login_required
+def generate_path(request):
+    """Generate a skill path with AI for a topic outside the course map."""
+    form = {'skill': '', 'level': 'beginner', 'hours': 5}
+    context = {'levels': generator.LEVELS, 'ai_available': generator.ai_available(),
+               'left_today': max(0, generator.DAILY_LIMIT - generator.generated_today(request.user)),
+               'mine': Path.objects.filter(owner=request.user).order_by('-created_at'),
+               'player': gamification.player_state(request.user)}
+    if request.method == 'POST':
+        form['skill'] = ' '.join(request.POST.get('skill', '').split())[:generator.MAX_SKILL_CHARS]
+        form['level'] = request.POST.get('level', '')
+        try:
+            form['hours'] = max(1, min(40, int(request.POST.get('hours', 5))))
+        except (TypeError, ValueError):
+            form['hours'] = 5
+        match = None if request.POST.get('anyway') else generator.catalog_match(form['skill'])
+        if not form['skill']:
+            context['error'] = gettext('Write the skill you want to learn.')
+        elif form['level'] not in generator.LEVELS:
+            context['error'] = gettext('Pick a level.')
+        elif not context['ai_available']:
+            context['error'] = gettext('AI generation is not set up on this server yet. Add GEMINI_API_KEY to the .env file.')
+        elif not context['left_today']:
+            context['error'] = gettext('You have generated the most paths allowed today. Try again tomorrow.')
+        elif match:
+            context['match'] = match
+        else:
+            request_data = {'skill': form['skill'], 'level': form['level'], 'hours_per_week': form['hours'],
+                            'language': 'ar' if get_language() == 'ar' else 'en'}
+            try:
+                data = generator.generate(form['skill'], form['level'], form['hours'], request_data['language'])
+            except Exception as exc:  # unreachable AI, a blocked network or an unusable reply: say so, save nothing
+                context['error'] = generator.friendly_error(exc)
+            else:
+                path = generator.save_path(request.user, data, request_data)
+                log_event(request, LearningEvent.PATH_GENERATED, path.slug, skill=form['skill'],
+                          level=form['level'], hours_per_week=form['hours'])
+                return redirect('learn:path', path.slug)
+    context['form'] = form
+    return render(request, 'learn/generate.html', context)
+
+
+@login_required
+@require_POST
+def delete_path(request, slug):
+    get_object_or_404(Path, slug=slug, owner=request.user).delete()
+    return redirect('learn:generate')
+
+
+def lesson_html(text):
+    """Markdown from the AI as HTML, with raw HTML shown as text and only web links kept."""
+    md = markdown.Markdown(extensions=['fenced_code', 'tables', 'sane_lists'])
+    md.preprocessors.deregister('html_block')
+    for pattern in ('html', 'image_link', 'image_reference'):
+        md.inlinePatterns.deregister(pattern)
+    html = md.convert(text)
+    return re.sub(r'href="(?!https?://)[^"]*"', 'href="#"', html)
+
+
+QUIZ_PASS_SHARE = 2 / 3  # a generated chapter is finished with two thirds of its quiz right
+
+
+def chapter_detail(request, slug, chapter):
+    """A generated chapter: lesson, slides and quiz. Passing the quiz finishes the chapter."""
+    path = get_object_or_404(_visible_paths(request.user), slug=slug)
+    chapter = get_object_or_404(Chapter, course__path=path, slug=chapter)
+    if not chapter.content:
+        raise Http404('This chapter has no lesson yet')
+    quiz = chapter.content.get('quiz', [])
+    chapters = list(Chapter.objects.filter(course__path=path).order_by('course__order', 'order'))
+    index = chapters.index(chapter)
+    progress = None
+    if request.user.is_authenticated:
+        progress = ChapterProgress.objects.filter(user=request.user, chapter=chapter).first()
+    context = {
+        'path': path, 'chapter': chapter, 'lesson': lesson_html(chapter.content.get('lesson', '')),
+        'slides': chapter.content.get('slides', []), 'quiz': quiz, 'progress': progress,
+        'previous': chapters[index - 1] if index > 0 else None,
+        'next': chapters[index + 1] if index + 1 < len(chapters) else None,
+        'number': index + 1, 'count': len(chapters), 'pass_needed': math.ceil(QUIZ_PASS_SHARE * len(quiz)),
+        'player': gamification.player_state(request.user),
+    }
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect(f'{reverse("login")}?next={request.path}')
+        results = []
+        for i, question in enumerate(quiz):
+            try:
+                chosen = int(request.POST.get(f'q{i}', ''))
+            except ValueError:
+                chosen = None
+            results.append({'chosen': chosen, 'right': chosen == question['answer']})
+        correct = sum(r['right'] for r in results)
+        progress, _created = ChapterProgress.objects.get_or_create(user=request.user, chapter=chapter)
+        finished_before = progress.done
+        progress.quiz_correct = max(progress.quiz_correct, correct)
+        progress.quiz_total = len(quiz)
+        progress.done = progress.done or correct >= context['pass_needed']
+        progress.save()
+        log_event(request, LearningEvent.QUIZ, chapter.slug, _seconds_spent(request.POST), correct=correct, total=len(quiz))
+        if progress.done and not finished_before:
+            log_event(request, LearningEvent.LESSON_FINISHED, chapter.slug)
+        context.update(progress=progress, correct=correct,
+                       quiz=[dict(q, result=r) for q, r in zip(quiz, results)], checked=True)
+    return render(request, 'learn/chapter.html', context)
 
 
 def coming_soon(request, section):

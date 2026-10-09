@@ -121,6 +121,8 @@ class LearningEvent(models.Model):
     CHAPTER_SKIPPED = 'chapter_skipped'
     PATH_SKIPPED = 'path_skipped'  # ticked "I already know this" on a prerequisite (data: skipped)
     PATH_CHOSEN = 'path_chosen'
+    PLACEMENT = 'placement'           # took a placement test (data: correct, total, tasks_passed, tasks_total, passed)
+    PATH_GENERATED = 'path_generated'  # generated a skill path with AI (data: skill, level, hours_per_week)
     KIND_CHOICES = [
         (RUN, 'Ran the tests'),
         (TEST_RUN, 'Ran one test'),
@@ -133,6 +135,8 @@ class LearningEvent(models.Model):
         (CHAPTER_SKIPPED, 'Skipped a chapter'),
         (PATH_SKIPPED, 'Skipped a prerequisite'),
         (PATH_CHOSEN, 'Chose a job path'),
+        (PLACEMENT, 'Took a placement test'),
+        (PATH_GENERATED, 'Generated a skill path'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_events')
@@ -167,7 +171,13 @@ class Path(models.Model):
     order = models.PositiveSmallIntegerField(default=0)
     project = models.JSONField(default=dict, blank=True)         # skill path project: title, brief, skills_used
     capstone = models.JSONField(default=dict, blank=True)        # job path capstone: title, brief, milestones, exercises
-    placement_test = models.JSONField(default=dict, blank=True)  # prerequisites only; used from Day 4
+    placement_test = models.JSONField(default=dict, blank=True)  # prerequisites only
+    # Skill paths a learner generated with AI belong to them; catalog paths have no owner.
+    ai_generated = models.BooleanField(default=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True,
+                              related_name='generated_paths')
+    request = models.JSONField(default=dict, blank=True)  # what the learner asked for: skill, level, hours_per_week
+    created_at = models.DateTimeField(null=True, blank=True, auto_now_add=True)
 
     class Meta:
         ordering = ['kind', 'order', 'id']
@@ -213,6 +223,8 @@ class Chapter(models.Model):
     learning_goal = models.TextField(blank=True)
     exercise_idea = models.TextField(blank=True)
     exercises = models.JSONField(default=list, blank=True)  # slugs of exercises in learn/content/
+    # Generated chapters carry their own lesson (Markdown), quiz and slides instead of exercises.
+    content = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['order']
@@ -241,3 +253,38 @@ class SkippedPath(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user', 'path'], name='unique_skip_per_user')]
+
+
+class ChapterProgress(models.Model):
+    """A learner's quiz result on a generated chapter. Passing the quiz finishes the chapter."""
+
+    user = _owner()
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='+')
+    quiz_correct = models.PositiveIntegerField(default=0)
+    quiz_total = models.PositiveIntegerField(default=0)
+    done = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'chapter'], name='unique_chapter_progress_per_user')]
+
+
+class PlacementAttempt(models.Model):
+    """One go at a prerequisite's placement test. The latest attempt decides which chapters are skipped."""
+
+    user = _owner()
+    path = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='+')
+    correct = models.PositiveIntegerField()        # multiple-choice questions answered right
+    total = models.PositiveIntegerField()
+    tasks_passed = models.PositiveIntegerField(default=0)  # coding tasks whose tests all pass
+    tasks_total = models.PositiveIntegerField(default=0)
+    passed = models.BooleanField(default=False)
+    skipped_chapters = models.JSONField(default=list, blank=True)  # chapter slugs proven known
+    answers = models.JSONField(default=dict, blank=True)           # {"mcq": {...}, "code": {...}}
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.user} {self.path} {self.correct}/{self.total}'

@@ -390,7 +390,9 @@
       "prompt": "Define a `BankAccount` class with an `__init__` constructor accepting `owner` (str) and an optional initial `balance` (float, default 0.0). Add a `deposit(amount)` method that adds to balance, and a `withdraw(amount)` method that subtracts from balance or raises a `ValueError('Insufficient funds')` if `amount > balance`.",
       "test_case_idea": "Instantiate `account = BankAccount('Alice', 100.0)`, call `account.deposit(50.0)` (balance 150.0), and verify that `account.withdraw(200.0)` raises `ValueError`."
      }
-    ]
+    ],
+    "pass_correct": 8,
+    "coding_tasks_required": true
    }
   },
   {
@@ -460,6 +462,147 @@
      "Objects",
      "JSON"
     ]
+   },
+   "placement_test": {
+    "title": "JavaScript Fundamentals Placement Test",
+    "summary": "Check readiness for Dynamic JavaScript and the Full stack path by testing core JavaScript knowledge across all 6 prerequisite chapters.",
+    "pass_mark": "8 out of 10 multiple-choice questions correct. Coding tasks are added when the browser code runner arrives.",
+    "pass_correct": 8,
+    "coding_tasks_required": true,
+    "draft_note": "Drafted by Claude on 2026-10-09 in the Python test's format; replace with the Gem's version if you prefer.",
+    "multiple_choice_questions": [
+     {
+      "id": 1,
+      "chapter_tagged": "Variables, data types, and operators",
+      "question": "What does `typeof null` return in JavaScript?",
+      "options": [
+       "\"null\"",
+       "\"undefined\"",
+       "\"object\"",
+       "\"number\""
+      ],
+      "correct_option": "\"object\"",
+      "explanation": "A long-standing quirk of the language: `typeof null` is \"object\", even though null is a primitive."
+     },
+     {
+      "id": 2,
+      "chapter_tagged": "Variables, data types, and operators",
+      "question": "What is the result of `'5' + 3`?",
+      "options": [
+       "8",
+       "\"53\"",
+       "\"8\"",
+       "NaN"
+      ],
+      "correct_option": "\"53\"",
+      "explanation": "When one side of `+` is a string, JavaScript joins the values as text."
+     },
+     {
+      "id": 3,
+      "chapter_tagged": "Variables, data types, and operators",
+      "question": "Which declaration can NOT be given a new value later?",
+      "options": [
+       "var",
+       "let",
+       "const",
+       "All of them can"
+      ],
+      "correct_option": "const",
+      "explanation": "`const` creates a binding that cannot be reassigned (an object it points to can still change)."
+     },
+     {
+      "id": 4,
+      "chapter_tagged": "Control flow and loops",
+      "question": "What does `5 === '5'` evaluate to?",
+      "options": [
+       "true",
+       "false",
+       "undefined",
+       "TypeError"
+      ],
+      "correct_option": "false",
+      "explanation": "`===` compares value and type without converting, and a number is not a string."
+     },
+     {
+      "id": 5,
+      "chapter_tagged": "Control flow and loops",
+      "question": "How many times does `for (let i = 0; i < 3; i++) { }` run its body?",
+      "options": [
+       "2",
+       "3",
+       "4",
+       "It never stops"
+      ],
+      "correct_option": "3",
+      "explanation": "It runs for i = 0, 1 and 2, then stops when i reaches 3."
+     },
+     {
+      "id": 6,
+      "chapter_tagged": "Functions and scope",
+      "question": "What does `const double = n => n * 2; double(4)` return?",
+      "options": [
+       "4",
+       "8",
+       "\"44\"",
+       "undefined"
+      ],
+      "correct_option": "8",
+      "explanation": "An arrow function with one expression returns that expression's value."
+     },
+     {
+      "id": 7,
+      "chapter_tagged": "Functions and scope",
+      "question": "A variable declared with `let` inside an `if` block is visible...",
+      "options": [
+       "everywhere in the file",
+       "inside the whole function",
+       "only inside that block",
+       "only in the next line"
+      ],
+      "correct_option": "only inside that block",
+      "explanation": "`let` and `const` are block-scoped: the curly braces limit where they exist."
+     },
+     {
+      "id": 8,
+      "chapter_tagged": "Working with arrays",
+      "question": "After `const a = [1, 2, 3]; a.push(4);`, what is `a.length`?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "TypeError, because a is const"
+      ],
+      "correct_option": "4",
+      "explanation": "`push` adds to the end of the array; `const` only stops reassigning `a`, not changing its contents."
+     },
+     {
+      "id": 9,
+      "chapter_tagged": "Higher-order array methods",
+      "question": "What does `[1, 2, 3, 4].filter(n => n % 2 === 0)` return?",
+      "options": [
+       "[1, 3]",
+       "[2, 4]",
+       "[false, true, false, true]",
+       "2"
+      ],
+      "correct_option": "[2, 4]",
+      "explanation": "`filter` keeps the items for which the function returns true: the even numbers."
+     },
+     {
+      "id": 10,
+      "chapter_tagged": "Objects and JSON",
+      "question": "What does `JSON.parse('{\"name\": \"Sam\"}').name` give?",
+      "options": [
+       "\"Sam\"",
+       "undefined",
+       "'{\"name\": \"Sam\"}'",
+       "SyntaxError"
+      ],
+      "correct_option": "\"Sam\"",
+      "explanation": "`JSON.parse` turns JSON text into a JavaScript object, so `.name` reads its property."
+     }
+    ],
+    "coding_tasks": []
    }
   },
   {

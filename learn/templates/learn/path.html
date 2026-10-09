@@ -82,9 +82,9 @@
 
   {% else %}
   <section class="card path-hero">
-    <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}</div>
+    <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}{% if path.ai_generated %}{% include "learn/_ai_tag.html" %}<span class="tag">{% include "learn/_level.html" with level=path.level %}</span>{% endif %}</div>
     <h1><bdi>{{ path.title }}</bdi></h1>
-    <p class="muted" dir="ltr">{{ path.summary }}</p>
+    <p class="muted" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">{{ path.summary }}</p>
     <div class="promise">
       <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
       {% if path.project.title %}<span>{% icon 'hammer' %}<bdi>{{ path.project.title }}</bdi></span>{% endif %}
@@ -96,6 +96,18 @@
     </div>
     {% if jobs %}<p class="meta">{% translate "Part of" %}: {% for j in jobs %}<a href="{% url 'learn:path' j.slug %}"><bdi>{{ j.title }}</bdi></a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
     {% if skill.prerequisite %}{% include "learn/_skip_form.html" %}{% endif %}
+    {% if attempt %}
+    <div class="notice {% if attempt.passed %}success{% else %}info{% endif %}">{% icon 'list-checks' %}<span>
+      {% if attempt.passed %}{% blocktranslate trimmed with correct=attempt.correct total=attempt.total %}You passed the placement test ({{ correct }} of {{ total }} questions), so this path is done.{% endblocktranslate %}
+      {% else %}{% blocktranslate trimmed with correct=attempt.correct total=attempt.total count n=attempt.skipped_chapters|length %}Placement test: {{ correct }} of {{ total }} right. {{ n }} chapter you already know is skipped.{% plural %}Placement test: {{ correct }} of {{ total }} right. {{ n }} chapters you already know are skipped.{% endblocktranslate %}
+      <a href="{% url 'learn:placement' path.slug %}">{% translate "Try again" %}</a>{% endif %}</span></div>
+    {% endif %}
+    {% if path.ai_generated %}
+    <div class="ai-note">
+      <p class="meta">{% blocktranslate trimmed with skill=path.request.skill hours=path.request.hours_per_week %}Made by AI from your request: <bdi>{{ skill }}</bdi>, {{ hours }} hours a week. Check important facts against the official docs.{% endblocktranslate %}</p>
+      <form method="post" action="{% url 'learn:delete_path' path.slug %}" onsubmit="return confirm(this.dataset.confirm)" data-confirm="{% translate 'Delete this path and your progress in it?' %}">{% csrf_token %}<button class="btn quiet" type="submit">{% icon 'x' %}{% translate "Delete path" %}</button></form>
+    </div>
+    {% endif %}
   </section>
   <div class="card step">{% include "learn/_chapters.html" %}</div>
   {% endif %}

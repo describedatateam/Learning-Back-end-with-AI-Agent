@@ -2,8 +2,10 @@
 
 Progress comes from the exercises a learner has passed. A chapter is done when
 all its exercises pass; chapters without exercises yet can't be finished, so
-they show as "coming soon". A prerequisite marked "I already know this" counts
-as done.
+they show as "coming soon". A prerequisite marked "I already know this" (or a
+passed placement test) counts as done, and chapters proven in a placement test
+are skipped. AI-generated chapters have a lesson and quiz instead of exercises:
+passing the quiz finishes them.
 """
 import json
 from dataclasses import dataclass, field
@@ -12,7 +14,9 @@ from pathlib import Path as FilePath
 from django.db import transaction
 from django.utils.text import slugify
 
-from .models import Chapter, Course, ExerciseProgress, Path, PathChoice, PathStep, SkippedPath
+from .models import (
+    Chapter, ChapterProgress, Course, ExerciseProgress, Path, PathChoice, PathStep, PlacementAttempt, SkippedPath,
+)
 
 CATALOG_FILE = FilePath(__file__).resolve().parent / 'catalog.json'
 DEFAULT_JOB_PATH = 'backend-developer'  # the existing exercises belong to it
@@ -64,6 +68,21 @@ def exercise_states(user):
     return {p.slug: 'passed' if p.passed else 'started' for p in ExerciseProgress.objects.filter(user=user)}
 
 
+def chapter_marks(user):
+    """{chapter slug: DONE | 'started' | SKIPPED} from generated-chapter quizzes and placement tests."""
+    if not user.is_authenticated:
+        return {}
+    marks = {slug: DONE if done else 'started' for slug, done in
+             ChapterProgress.objects.filter(user=user).values_list('chapter__slug', 'done')}
+    seen = set()
+    for path_id, skipped in PlacementAttempt.objects.filter(user=user).values_list('path_id', 'skipped_chapters'):
+        if path_id not in seen:  # newest first: only the latest attempt per path counts
+            seen.add(path_id)
+            for slug in skipped:
+                marks.setdefault(slug, SKIPPED)
+    return marks
+
+
 def skipped_ids(user):
     if not user.is_authenticated:
         return set()
@@ -76,6 +95,11 @@ class ChapterView:
     status: str
     exercises: list  # [(exercise, state)]
     current: bool = False
+
+    @property
+    def has_work(self):
+        """Something to do here: exercises, or a generated lesson and quiz."""
+        return bool(self.exercises or self.chapter.content)
 
     @property
     def next_exercise(self):
@@ -112,6 +136,10 @@ class SkillView:
         return sum(len(ch.exercises) for ch in self.chapters)
 
     @property
+    def has_work(self):
+        return any(ch.has_work for ch in self.chapters)
+
+    @property
     def status(self):
         if self.skipped:
             return SKIPPED
@@ -119,7 +147,7 @@ class SkillView:
             return DONE
         if any(ch.status in (DONE, PROGRESS) for ch in self.chapters):
             return PROGRESS
-        if not self.exercise_count:
+        if not self.has_work:
             return SOON
         return TODO
 
@@ -139,16 +167,18 @@ class SkillView:
             elif any(ch.status in (DONE, PROGRESS) for ch in chapters):
                 status = PROGRESS
             else:
-                status = TODO if exercises else SOON
+                status = TODO if any(ch.has_work for ch in chapters) else SOON
             rows.append({'course': course, 'done': done, 'total': len(chapters), 'exercises': exercises,
                          'percent': round(100 * done / len(chapters)) if chapters else 0, 'status': status,
                          'current': any(ch.current for ch in chapters)})
         return rows
 
 
-def _chapter_status(exercises, skipped):
-    if skipped:
+def _chapter_status(chapter, exercises, skipped, mark=None):
+    if skipped or mark == SKIPPED:
         return SKIPPED
+    if chapter.content:
+        return DONE if mark == DONE else PROGRESS if mark else TODO
     if not exercises:
         return SOON
     states = [state for _, state in exercises]
@@ -159,15 +189,17 @@ def _chapter_status(exercises, skipped):
     return TODO
 
 
-def skill_view(path, states, skipped, prerequisite=False):
+def skill_view(path, states, skipped, prerequisite=False, marks=None):
     from .exercises import get_exercise
 
+    marks = marks or {}
     courses = []
     for course in path.courses.all():
         chapters = []
         for chapter in course.chapters.all():
             exercises = [(e, states.get(e.slug)) for e in map(get_exercise, chapter.exercises) if e]
-            chapters.append(ChapterView(chapter, _chapter_status(exercises, path.id in skipped), exercises))
+            status = _chapter_status(chapter, exercises, path.id in skipped, marks.get(chapter.slug))
+            chapters.append(ChapterView(chapter, status, exercises))
         courses.append((course, chapters))
     return SkillView(path, prerequisite, path.id in skipped, courses)
 
@@ -228,9 +260,10 @@ def job_view(path, user, states=None):
 
     states = exercise_states(user) if states is None else states
     skipped = skipped_ids(user)
+    marks = chapter_marks(user)
     prerequisites, skills = [], []
     for step in path.steps.select_related('skill').prefetch_related('skill__courses__chapters'):
-        view = skill_view(step.skill, states, skipped, step.prerequisite)
+        view = skill_view(step.skill, states, skipped, step.prerequisite, marks)
         (prerequisites if step.prerequisite else skills).append(view)
     capstone = [(e, states.get(e.slug)) for e in map(get_exercise, path.capstone.get('exercises', [])) if e]
     job = JobView(path, prerequisites, skills, capstone)
