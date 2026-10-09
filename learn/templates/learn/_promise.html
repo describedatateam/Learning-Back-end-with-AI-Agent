@@ -1,8 +1,40 @@
-{% load i18n %}
-<ol class="promise-list">
-  <li><strong>{% translate "Pick a path or make your own." %}</strong><span>{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</span></li>
-  <li><strong>{% translate "Learn by building." %}</strong><span>{% translate "Each chapter ends in real code that is checked automatically." %}</span></li>
-  <li><strong>{% translate "Remember it." %}</strong><span>{% translate "Short flashcards come back right before you'd forget them." %}</span></li>
-  <li><strong>{% translate "Bring your own project." %}</strong><span>{% translate "Upload or write its requirements (SRS), and get a step-by-step walkthrough." %}</span></li>
-  <li><strong>{% translate "Leave with proof." %}</strong><span>{% translate "Every finished path adds a project to your public portfolio." %}</span></li>
+{% load i18n ui %}
+{# "How this works": five steps, each a link to where that step happens. Every step is open, so learners go in any order. Needs `job` (optional). #}
+<p class="muted how-lead">{% translate "Five steps, in any order. Jump to the one you need: skip what you know, come back to what you don't." %}</p>
+<ol class="how-steps">
+  <li><a class="how-step" href="{% url 'learn:catalog' %}">
+    <svg class="how-art" viewBox="0 0 160 80" aria-hidden="true" dir="ltr"><path class="h-path" d="M14 64c22 0 22-26 46-26s26 22 50 22 22-34 36-38"/><circle class="h-dot" cx="14" cy="64" r="5"/><circle class="h-dot" cx="60" cy="38" r="5"/><circle class="h-dot h-now" cx="110" cy="60" r="6"/><path class="h-flag" d="M146 22V6l10 5-10 5"/></svg>
+    <span class="how-head"><span class="how-icon">{% icon 'compass' %}</span><span class="how-n num">1</span></span>
+    <strong>{% translate "Pick a path or make your own." %}</strong>
+    <span class="meta">{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</span>
+    <span class="how-go">{% translate "Explore paths" %}{% icon 'arrow-right' css='icon-flip' %}</span>
+  </a></li>
+  <li><a class="how-step" href="{% if job.next_exercise %}{% url 'learn:exercise' job.next_exercise.slug %}{% else %}{% url 'learn:dashboard' %}{% endif %}">
+    <svg class="how-art" viewBox="0 0 160 80" aria-hidden="true" dir="ltr"><rect class="h-win" x="20" y="10" width="120" height="60" rx="8"/><path class="h-code" d="M44 30l-10 10 10 10M64 30l10 10-10 10"/><rect class="h-line" x="84" y="28" width="38" height="5" rx="2.5"/><rect class="h-line" x="84" y="40" width="26" height="5" rx="2.5"/><circle class="h-ok" cx="126" cy="60" r="12"/><path class="h-tick" d="M120 60l4 4 8-8"/></svg>
+    <span class="how-head"><span class="how-icon">{% icon 'code' %}</span><span class="how-n num">2</span></span>
+    <strong>{% translate "Learn by building." %}</strong>
+    <span class="meta">{% translate "Each chapter ends in real code that is checked automatically." %}</span>
+    <span class="how-go">{% if job.next_exercise %}{% translate "Continue learning" %}{% else %}{% translate "See the exercises" %}{% endif %}{% icon 'arrow-right' css='icon-flip' %}</span>
+  </a></li>
+  <li><a class="how-step" href="{% url 'learn:flashcards' %}">
+    <svg class="how-art" viewBox="0 0 160 80" aria-hidden="true" dir="ltr"><rect class="h-card3" x="52" y="14" width="64" height="44" rx="6"/><rect class="h-card2" x="46" y="20" width="64" height="44" rx="6"/><rect class="h-win" x="40" y="26" width="64" height="44" rx="6"/><rect class="h-line" x="50" y="40" width="40" height="5" rx="2.5"/><rect class="h-line" x="50" y="51" width="28" height="5" rx="2.5"/><path class="h-loop" d="M128 30a14 14 0 1 1-6-10"/><path class="h-loop" d="M118 14l4 6-7 2"/></svg>
+    <span class="how-head"><span class="how-icon">{% icon 'layers' %}</span><span class="how-n num">3</span><span class="tag">{% translate "Coming soon" %}</span></span>
+    <strong>{% translate "Remember it." %}</strong>
+    <span class="meta">{% translate "Short flashcards come back right before you'd forget them." %}</span>
+    <span class="how-go">{% translate "Open flashcards" %}{% icon 'arrow-right' css='icon-flip' %}</span>
+  </a></li>
+  <li><a class="how-step" href="{% url 'learn:project' %}">
+    <svg class="how-art" viewBox="0 0 160 80" aria-hidden="true" dir="ltr"><path class="h-win" d="M50 8h46l14 14v50H50z"/><path class="h-fold" d="M96 8v14h14"/><rect class="h-box h-boxok" x="60" y="32" width="9" height="9" rx="2"/><rect class="h-line" x="74" y="34" width="26" height="5" rx="2.5"/><rect class="h-box h-boxok" x="60" y="46" width="9" height="9" rx="2"/><rect class="h-line" x="74" y="48" width="20" height="5" rx="2.5"/><rect class="h-box" x="60" y="60" width="9" height="9" rx="2"/><rect class="h-line" x="74" y="62" width="24" height="5" rx="2.5"/></svg>
+    <span class="how-head"><span class="how-icon">{% icon 'file-text' %}</span><span class="how-n num">4</span><span class="tag">{% translate "Coming soon" %}</span></span>
+    <strong>{% translate "Bring your own project." %}</strong>
+    <span class="meta">{% translate "Upload or write its requirements (SRS), and get a step-by-step walkthrough." %}</span>
+    <span class="how-go">{% translate "Open my project" %}{% icon 'arrow-right' css='icon-flip' %}</span>
+  </a></li>
+  <li><a class="how-step" href="{% url 'learn:portfolio' %}">
+    <svg class="how-art" viewBox="0 0 160 80" aria-hidden="true" dir="ltr"><rect class="h-win" x="24" y="10" width="112" height="60" rx="8"/><circle class="h-acc" cx="46" cy="32" r="10"/><rect class="h-line" x="62" y="26" width="44" height="5" rx="2.5"/><rect class="h-line" x="62" y="36" width="30" height="5" rx="2.5"/><rect class="h-tile" x="36" y="50" width="26" height="12" rx="3"/><rect class="h-tile" x="68" y="50" width="26" height="12" rx="3"/><circle class="h-medal" cx="124" cy="58" r="11"/><path class="h-star" d="M124 52l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z"/></svg>
+    <span class="how-head"><span class="how-icon">{% icon 'briefcase' %}</span><span class="how-n num">5</span><span class="tag">{% translate "Coming soon" %}</span></span>
+    <strong>{% translate "Leave with proof." %}</strong>
+    <span class="meta">{% translate "Every finished path adds a project to your public portfolio." %}</span>
+    <span class="how-go">{% translate "Open my portfolio" %}{% icon 'arrow-right' css='icon-flip' %}</span>
+  </a></li>
 </ol>

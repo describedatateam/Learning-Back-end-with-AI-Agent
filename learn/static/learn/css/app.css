@@ -509,3 +509,43 @@ pre.diagram-src, pre:has(> code.language-mermaid) { display: none; }
 .diagram-card h2 { font-size: 15px; display: flex; align-items: center; gap: var(--space-2); }
 .slide .diagram { margin-block-start: var(--space-2); }
 @media (max-width: 639px) { .diagram.is-mindmap svg { min-width: 560px; } }
+
+/* How this works: five illustrated steps, each a link to where it happens */
+.how-lead { margin: var(--space-2) 0 var(--space-3); }
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); counter-reset: none; }
+.how-step { display: flex; flex-direction: column; gap: var(--space-2); height: 100%; box-sizing: border-box; padding: var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text);
+  transition: transform var(--ease), box-shadow var(--ease), border-color var(--ease); }
+.how-step:hover, .how-step:focus-visible { text-decoration: none; border-color: var(--accent); box-shadow: var(--shadow-hover); }
+@media (prefers-reduced-motion: no-preference) { .how-step:hover { transform: translateY(-2px); } }
+.how-art { width: 100%; height: auto; max-height: 90px; background: var(--surface-subtle); border-radius: var(--radius-control); }
+.how-head { display: flex; align-items: center; gap: var(--space-2); }
+.how-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+.how-n { font-weight: 700; color: var(--muted); }
+.how-head .tag { margin-inline-start: auto; }
+.how-go { margin-block-start: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 600; font-size: 14px; }
+.how-art .h-win { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
+.how-art .h-card2 { fill: var(--accent-soft); } .how-art .h-card3 { fill: var(--skill-soft); opacity: .6; }
+.how-art .h-line { fill: var(--border); }
+.how-art .h-path { fill: none; stroke: var(--accent-bar); stroke-width: 3; stroke-dasharray: 6 5; stroke-linecap: round; }
+.how-art .h-dot { fill: var(--surface); stroke: var(--accent-bar); stroke-width: 3; }
+.how-art .h-now { fill: var(--accent-bar); }
+.how-art .h-flag { fill: var(--job); stroke: var(--job); stroke-width: 2; stroke-linejoin: round; }
+.how-art .h-code { fill: none; stroke: var(--accent-bar); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.how-art .h-ok { fill: var(--ok-bar); }
+.how-art .h-tick { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.how-art .h-loop { fill: none; stroke: var(--xp-2); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.how-art .h-fold { fill: none; stroke: var(--border); stroke-width: 1.2; }
+.how-art .h-box { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+.how-art .h-boxok { fill: var(--ok-bar); stroke: var(--ok-bar); }
+.how-art .h-acc { fill: var(--accent-bar); }
+.how-art .h-tile { fill: var(--job-soft); }
+.how-art .h-medal { fill: var(--xp-2); }
+.how-art .h-star { fill: #fff; }
+.how + .meta, .how .how-steps + .meta { margin-block-start: var(--space-3); }
+@media (max-width: 639px) {
+  .how-steps { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .how-step { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-3); row-gap: 2px; align-items: start; }
+  .how-step .how-art { grid-row: 1 / span 4; align-self: center; }
+  .how-step .how-go { margin-block-start: var(--space-1); }
+}

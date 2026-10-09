@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-09 19:55+0000\n"
+"POT-Creation-Date: 2026-10-09 19:59+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -133,44 +133,76 @@ msgid "Reading and quizzes"
 msgstr "قراءة واختبارات"
 
 #: learn/templates/learn/_promise.html:3
+msgid "Five steps, in any order. Jump to the one you need: skip what you know, come back to what you don't."
+msgstr "خمس خطوات، بأي ترتيب تريده. انتقل إلى ما تحتاجه: تجاوز ما تعرفه، وعد إلى ما لم تتقنه بعد."
+
+#: learn/templates/learn/_promise.html:8
 msgid "Pick a path or make your own."
 msgstr "اختر مسارًا أو أنشئ مسارك الخاص."
 
-#: learn/templates/learn/_promise.html:3 learn/templates/learn/catalog.html:11
+#: learn/templates/learn/_promise.html:9 learn/templates/learn/catalog.html:11
 msgid "Job paths take you toward a role. Skill paths teach one thing well."
 msgstr "المسارات الوظيفية تقودك نحو وظيفة، ومسارات المهارات تعلّمك شيئًا واحدًا بإتقان."
 
-#: learn/templates/learn/_promise.html:4
+#: learn/templates/learn/_promise.html:10 learn/templates/learn/coming_soon.html:23
+msgid "Explore paths"
+msgstr "استكشف المسارات"
+
+#: learn/templates/learn/_promise.html:15
 msgid "Learn by building."
 msgstr "تعلّم بالبناء."
 
-#: learn/templates/learn/_promise.html:4
+#: learn/templates/learn/_promise.html:16
 msgid "Each chapter ends in real code that is checked automatically."
 msgstr "ينتهي كل فصل بكود حقيقي يُفحص تلقائيًا."
 
-#: learn/templates/learn/_promise.html:5
+#: learn/templates/learn/_promise.html:17 learn/templates/learn/home.html:45 learn/templates/learn/path.html:27 learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
+msgid "Continue learning"
+msgstr "تابع التعلّم"
+
+#: learn/templates/learn/_promise.html:17
+msgid "See the exercises"
+msgstr "اعرض التمارين"
+
+#: learn/templates/learn/_promise.html:21 learn/templates/learn/_promise.html:28 learn/templates/learn/_promise.html:35 learn/templates/learn/coming_soon.html:22
+msgid "Coming soon"
+msgstr "قريبًا"
+
+#: learn/templates/learn/_promise.html:22
 msgid "Remember it."
 msgstr "ثبّت ما تعلّمته."
 
-#: learn/templates/learn/_promise.html:5
+#: learn/templates/learn/_promise.html:23
 msgid "Short flashcards come back right before you'd forget them."
 msgstr "بطاقات مراجعة قصيرة تعود إليك قبل أن تنساها بقليل."
 
-#: learn/templates/learn/_promise.html:6
+#: learn/templates/learn/_promise.html:24
+msgid "Open flashcards"
+msgstr "افتح البطاقات التعليمية"
+
+#: learn/templates/learn/_promise.html:29
 msgid "Bring your own project."
 msgstr "أحضر مشروعك الخاص."
 
-#: learn/templates/learn/_promise.html:6
+#: learn/templates/learn/_promise.html:30
 msgid "Upload or write its requirements (SRS), and get a step-by-step walkthrough."
 msgstr "ارفع متطلباته (SRS) أو اكتبها، واحصل على دليل خطوة بخطوة."
 
-#: learn/templates/learn/_promise.html:7
+#: learn/templates/learn/_promise.html:31
+msgid "Open my project"
+msgstr "افتح مشروعي"
+
+#: learn/templates/learn/_promise.html:36
 msgid "Leave with proof."
 msgstr "اخرج بدليل على ما تعلّمته."
 
-#: learn/templates/learn/_promise.html:7
+#: learn/templates/learn/_promise.html:37
 msgid "Every finished path adds a project to your public portfolio."
 msgstr "كل مسار تكمله يضيف مشروعًا إلى معرض أعمالك العام."
+
+#: learn/templates/learn/_promise.html:38
+msgid "Open my portfolio"
+msgstr "افتح معرض أعمالي"
 
 #: learn/templates/learn/_skill_card.html:5 learn/templates/learn/path.html:8 learn/templates/learn/path.html:87
 msgid "Skill path"
@@ -569,14 +601,6 @@ msgstr "تعمل على مشروع؟ صِفه أو ارفع وثيقة متطل�
 #: learn/templates/learn/coming_soon.html:20
 msgid "Your finished projects will live here. Finish your first path to add one."
 msgstr "ستظهر مشاريعك المكتملة هنا. أكمل مسارك الأول لتضيف أول مشروع."
-
-#: learn/templates/learn/coming_soon.html:22
-msgid "Coming soon"
-msgstr "قريبًا"
-
-#: learn/templates/learn/coming_soon.html:23
-msgid "Explore paths"
-msgstr "استكشف المسارات"
 
 #: learn/templates/learn/dashboard.html:60
 msgid "Learn backend by writing it"
@@ -1043,10 +1067,6 @@ msgstr "الوقت المتبقي"
 #: learn/templates/learn/home.html:40
 msgid "Next milestone"
 msgstr "المحطة القادمة"
-
-#: learn/templates/learn/home.html:45 learn/templates/learn/path.html:27 learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
-msgid "Continue learning"
-msgstr "تابع التعلّم"
 
 #: learn/templates/learn/home.html:45 learn/templates/learn/path.html:27 learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
 msgid "Start"

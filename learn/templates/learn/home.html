@@ -143,6 +143,9 @@
 
 {% block script %}
 <script>
+  // The footer's "How this works" link opens the section even when it is folded.
+  if (location.hash === '#how') document.getElementById('how')?.setAttribute('open', '');
+  window.addEventListener('hashchange', () => { if (location.hash === '#how') document.getElementById('how')?.setAttribute('open', ''); });
   // Greet by the learner's own clock, not the server's.
   (() => {
     const el = document.getElementById('greeting');

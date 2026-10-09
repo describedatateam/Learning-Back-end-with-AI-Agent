@@ -1327,3 +1327,11 @@ class DiagramTests(SignedInTestCase):
         system, _ = build_request('Tailwind', 'beginner', 3, 'ar')
         self.assertIn('mind_map', system)
         self.assertIn('Labels are 1 to 4 words in Arabic', system)
+
+
+class HowThisWorksTests(SignedInTestCase):
+    def test_each_step_links_to_where_it_happens(self):
+        page = self.client.get('/')
+        for url in ('/learn/paths/', '/learn/flashcards/', '/learn/project/', '/learn/portfolio/'):
+            self.assertContains(page, f'class="how-step" href="{url}"')
+        self.assertContains(page, 'Five steps, in any order')
