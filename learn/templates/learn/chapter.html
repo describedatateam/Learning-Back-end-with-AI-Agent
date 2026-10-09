@@ -17,6 +17,13 @@
     </div>
   </header>
 
+  {% if mind_map %}
+  <section class="card diagram-card" data-diagram hidden>
+    <h2>{% icon 'map-pin' %}{% translate "The big picture" %}</h2>
+    <pre class="diagram-src">{{ mind_map }}</pre>
+  </section>
+  {% endif %}
+
   <article class="card lesson" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
     {{ lesson|safe }}
     {% if chapter.exercise_idea %}<p class="try">{% icon 'hammer' %}<span><strong>{% translate "Try it" %}:</strong> {{ chapter.exercise_idea }}</span></p>{% endif %}
@@ -30,7 +37,8 @@
     <div class="slide"{% if not forloop.first %} hidden{% endif %}>
       <p class="meta num">{{ forloop.counter }} / {{ slides|length }}</p>
       <h3>{{ slide.title }}</h3>
-      <ul>{% for point in slide.points %}<li>{{ point }}</li>{% endfor %}</ul>
+      {% if slide.points %}<ul>{% for point in slide.points %}<li>{{ point }}</li>{% endfor %}</ul>{% endif %}
+      {% if slide.diagram %}<pre class="diagram-src">{{ slide.diagram }}</pre>{% endif %}
     </div>
     {% endfor %}
     <div class="actions">
@@ -104,4 +112,5 @@
   }));
 })();
 </script>
+{% include "learn/_diagrams.html" %}
 {% endblock %}

@@ -14,6 +14,15 @@ If you've cleaned data before, this will feel familiar. A request arrives as one
 messy string, and you split it into tidy, labelled fields, just like turning a raw
 text column into separate columns.
 
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant S as Your backend
+    B->>S: GET /api/tasks/?status=done
+    Note right of S: parse_request(raw) splits it into method, path and query
+    S-->>B: 200 OK and the list of tasks
+```
+
 ## New words
 
 | word | meaning |

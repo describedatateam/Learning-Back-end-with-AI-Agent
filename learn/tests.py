@@ -1279,3 +1279,59 @@ class MakeInvitesTests(TestCase):
         self.assertEqual(codes.count(), 2)
         self.assertIn('/accounts/signup/', out.getvalue())
         self.assertIn(codes.first().code, out.getvalue())
+
+
+class DiagramTests(SignedInTestCase):
+    """Mind maps and diagrams the AI writes are checked before saving, and drawn on the page."""
+
+    def test_clean_diagram_keeps_safe_kinds_only(self):
+        from .diagrams import clean_diagram, clean_lesson
+        self.assertEqual(clean_diagram('```mermaid\nflowchart LR\n  A --> B\n```'), 'flowchart LR\n  A --> B')
+        self.assertTrue(clean_diagram('mindmap\n  root((Tailwind))\n    Utilities'))
+        self.assertEqual(clean_diagram('pie title Pets\n "Dogs" : 3'), '')  # not a kind we draw
+        self.assertEqual(clean_diagram('%%{init: {"theme": "dark"}}%%\nflowchart LR\n A --> B'), '')
+        self.assertEqual(clean_diagram('flowchart LR\n A --> B\n click A "https://x.test"'), '')
+        self.assertEqual(clean_diagram('flowchart LR\n A["<img src=x onerror=y>"] --> B'), '')
+        self.assertEqual(clean_diagram('flowchart LR\n' + ' A --> B\n' * 50), '')
+        self.assertEqual(clean_diagram(42), '')
+        lesson = 'Intro\n```mermaid\nflowchart LR\n A --> B\n```\nMore\n```mermaid\nnot a diagram\n```\nEnd'
+        self.assertEqual(clean_lesson(lesson), 'Intro\n```mermaid\nflowchart LR\n A --> B\n```\nMore\n\nEnd')
+
+    def test_generated_chapter_shows_mind_map_and_slide_diagram(self):
+        from .generator import clean_path, save_path
+        data = sample_generated_path()
+        chapter = data['courses'][0]['chapters'][0]
+        chapter['mind_map'] = 'mindmap\n  root((Tailwind))\n    Utilities\n    Layout'
+        chapter['slides'][0] = {'title': 'Flow', 'diagram': 'flowchart LR\n  A[Class] --> B[Style]'}
+        chapter['slides'][1]['diagram'] = 'pie\n "x" : 1'  # dropped, the slide keeps its points
+        cleaned, errors = clean_path(data)
+        self.assertEqual(errors, [])
+        saved = cleaned['courses'][0]['chapters'][0]
+        self.assertEqual(saved['slides'][0]['points'], [])
+        self.assertEqual(saved['slides'][1]['diagram'], '')
+        path = save_path(self.user, cleaned, {'skill': 'Tailwind basics', 'language': 'en'})
+        first = path.courses.first().chapters.first()
+        page = self.client.get(f'/learn/paths/{path.slug}/chapters/{first.slug}/')
+        self.assertContains(page, 'The big picture')
+        self.assertContains(page, 'root((Tailwind))')
+        self.assertContains(page, 'A[Class] --&gt; B[Style]')
+        self.assertContains(page, 'mermaid-11.4.1.min.js')
+
+    def test_backend_lessons_have_diagrams(self):
+        page = self.client.get('/learn/http-requests/')
+        self.assertContains(page, 'class="language-mermaid"')
+        self.assertContains(page, 'mermaid-11.4.1.min.js')
+
+    def test_prompt_asks_for_diagrams(self):
+        from .generator import build_request
+        system, _ = build_request('Tailwind', 'beginner', 3, 'ar')
+        self.assertIn('mind_map', system)
+        self.assertIn('Labels are 1 to 4 words in Arabic', system)
+
+
+class HowThisWorksTests(SignedInTestCase):
+    def test_each_step_links_to_where_it_happens(self):
+        page = self.client.get('/')
+        for url in ('/learn/paths/', '/learn/flashcards/', '/learn/project/', '/learn/portfolio/'):
+            self.assertContains(page, f'class="how-step" href="{url}"')
+        self.assertContains(page, 'Five steps, in any order')

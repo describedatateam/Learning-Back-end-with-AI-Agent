@@ -22,6 +22,13 @@ a **model**, and each attribute of the class becomes one column. Django reads th
 class and creates the table for you. Later, each row comes back to you as a Python
 **object** of that class, so `book.title` gives you the title of that one book.
 
+```mermaid
+flowchart LR
+    M["class Book(models.Model)"] -->|Django reads it| T[(book table)]
+    T -->|each row comes back as| O["a Book object"]
+    O -->|book.title| V["Dune"]
+```
+
 ## New words
 
 | word | meaning |
