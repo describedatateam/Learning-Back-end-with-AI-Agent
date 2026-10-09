@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load i18n ui %}
+{% load i18n static ui %}
 
 {% block title %}{% translate "Generate a skill path" %} · Describe{% endblock %}
 
@@ -26,7 +26,8 @@
     {% csrf_token %}
     <div class="field">
       <label for="skill">{% translate "Skill" %}</label>
-      <input id="skill" name="skill" value="{{ form.skill }}" maxlength="80" required placeholder="{% translate 'For example: Tailwind basics' %}" dir="auto">
+      <input id="skill" name="skill" value="{{ form.skill }}" maxlength="80" required placeholder="{% translate 'For example: Tailwind basics' %}" dir="auto" aria-describedby="lang-hint">
+      <p class="lang-hint" id="lang-hint" aria-live="polite"></p>
     </div>
     <div class="field-row">
       <div class="field">
@@ -48,6 +49,12 @@
     </div>
   </form>
 
+  <details class="card practise-panel">
+    <summary class="step-head"><span class="step-title">{% translate "What you can practise" %}</span>{% icon 'chevron-down' %}</summary>
+    {% include "learn/_lang_groups.html" %}
+    <p class="meta"><a href="{% url 'learn:languages' %}">{% translate "More about languages and badges" %}</a></p>
+  </details>
+
   {% if mine %}
   <h2>{% translate "Your generated paths" %}</h2>
   <ul class="card plain-list">
@@ -57,7 +64,55 @@
   </ul>
   {% endif %}
 </main>
+{{ lang_hint|json_script:"lang-data" }}
 <script>
+(() => {
+  // A live hint under the skill box: what the language you type can be practised with (learn/languages.py).
+  const input = document.getElementById('skill');
+  const hint = document.getElementById('lang-hint');
+  const langs = JSON.parse(document.getElementById('lang-data').textContent).languages;
+  const T = {
+    server: "{{ _('{name}: hands-on exercises are checked on the server. A generated path starts with lessons, slides and quizzes.')|escapejs }}",
+    browser: "{{ _('{name}: hands-on exercises in your browser are coming soon. For now you get lessons, slides and quizzes.')|escapejs }}",
+    reading: "{{ _('{name}: lessons, slides and quizzes. There is no code runner for it yet, so you practise in your own editor.')|escapejs }}",
+    unknown: "{{ _('You get lessons, slides and quizzes.')|escapejs }}",
+  };
+  const aliases = langs.flatMap((lang) => lang.aliases.map((alias) => [alias, lang])).sort((a, b) => b[0].length - a[0].length);
+  const word = /[\p{L}\p{N}_+#]/u;
+  const find = (text) => {
+    for (const [alias, lang] of aliases) {
+      let at = text.indexOf(alias);
+      while (at >= 0) {
+        const before = text[at - 1], after = text[at + alias.length];
+        if ((!before || !(word.test(before) || before === '.')) && (!after || !word.test(after))) return lang;
+        at = text.indexOf(alias, at + 1);
+      }
+    }
+    return null;
+  };
+  const icons = {server: 'code', browser: 'play', reading: 'book-open', unknown: 'book-open'};
+  const sprite = "{% static 'learn/icons.svg' %}";
+  const show = () => {
+    const text = input.value.trim().toLowerCase();
+    hint.replaceChildren();
+    hint.className = 'lang-hint';
+    if (!text) return;
+    const lang = find(text);
+    const mode = lang ? lang.mode : 'unknown';
+    hint.classList.add('is-' + mode);
+    hint.insertAdjacentHTML('afterbegin', `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="${sprite}#${icons[mode]}"/></svg>`);
+    const span = document.createElement('span');
+    if (lang) {  // the name is English inside an Arabic sentence, so it gets its own direction
+      const [before, after] = T[mode].split('{name}');
+      const name = document.createElement('bdi');
+      name.textContent = lang.name;
+      span.append(before, name, after);
+    } else span.textContent = T.unknown;
+    hint.appendChild(span);
+  };
+  input.addEventListener('input', show);
+  show();
+})();
 document.querySelectorAll('form[data-busy]').forEach((form) => form.addEventListener('submit', () => {
   form.querySelector('button[type=submit]').disabled = true;
   const note = form.querySelector('.busy-note');

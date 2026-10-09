@@ -170,6 +170,34 @@ The last line restarts the site (the same as **Reload** on the Web tab, but it c
 **Generate a skill path** uses the same `GEMINI_API_KEY` as the tutor. On a free account, if Gemini can't be
 reached, the page says so and nothing is saved; placement tests work without any AI.
 
+## Invite testers
+
+In the same Bash console (after the update commands above), make one code per tester:
+
+```bash
+cd ~/Learning-Back-end-with-AI-Agent
+source .venv/bin/activate
+python manage.py make_invites 3 --note "Testers"
+```
+
+It prints the sign-up link and the codes. Send each tester the link and one code (each code works once).
+You can see who used which code, or switch a code off, under **Admin > Invite codes**.
+
+Ask testers to try it on their phone too: sign up, open **Paths**, pass one exercise or chapter quiz,
+generate a skill path, and ask the tutor one question. Their activity shows up under **Admin > Learning events**.
+
+## Check the live site works
+
+After an update, open these on your phone and laptop:
+
+1. **Paths**: every card has a small picture and a badge (Hands-on, Hands-on soon, or Reading and quizzes).
+2. **Generate a skill path**: type "Tailwind" and a hint appears under the box.
+3. A generated chapter: the tutor box at the bottom answers a question.
+4. Switch to Arabic: the same pages read right-to-left.
+
+If the tutor or the generator says it can't reach the AI, the free PythonAnywhere plan is blocking Google's
+address. Everything else still works; tell Claude and we'll pick the next step (the plan's fallback is Render + Neon).
+
 ## If something goes wrong
 
 The **Web** tab links to an **error log**: the last lines usually say what broke.

@@ -98,8 +98,53 @@ def _course_context():
     )
 
 
-def build_system(exercise):
-    context = _exercise_context(exercise) if exercise else _course_context()
+CHAPTER_PREFIX = 'chapter-'
+
+
+def chapter_topic(chapter):
+    """The tutor topic for a generated chapter. Topics are slugs, and chapter slugs can be too long for one."""
+    return f'{CHAPTER_PREFIX}{chapter.id}'
+
+
+def chapter_id(topic):
+    rest = topic[len(CHAPTER_PREFIX):] if topic.startswith(CHAPTER_PREFIX) else ''
+    return int(rest) if rest.isdigit() else None
+
+
+def _chapter_context(chapter):
+    path, content = chapter.course.path, chapter.content
+    language = 'Arabic' if (path.request or {}).get('language') == 'ar' else 'English'
+    slides = '\n'.join(f'- {s.get("title", "")}: ' + '; '.join(s.get('points', [])) for s in content.get('slides', []))
+    quiz = '\n'.join(
+        f'{n}. {q["question"]} Options: ' + ' | '.join(q['options'])
+        + f' (right answer: {q["options"][q["answer"]]})'
+        for n, q in enumerate(content.get('quiz', []), 1)
+    )
+    made_by = 'an AI-generated skill path the learner made' if path.ai_generated else 'a skill path'
+    return (
+        f'<chapter path="{path.title}" course="{chapter.course.title}" title="{chapter.title}">\n'
+        f'Right now the learner is reading this chapter from {made_by}, not one of the backend exercises above. '
+        'It has a lesson, slides and a multiple-choice quiz, and no code runner or grader tests, so they '
+        'practise in their own editor. Explain the chapter\'s ideas, give extra examples, and help with the '
+        '"try it" task. Don\'t give away quiz answers before they have tried the quiz: offer a hint instead. '
+        'The lesson was written by AI, so if something in it is wrong or outdated, say so plainly. '
+        f'Reply in {language} unless the learner writes in another language; code and technical names stay in English.\n\n'
+        f'<learning_goal>{chapter.learning_goal}</learning_goal>\n'
+        f'<lesson>\n{content.get("lesson", "")}\n</lesson>\n\n'
+        f'<slides>\n{slides}\n</slides>\n\n'
+        f'<try_it>{chapter.exercise_idea}</try_it>\n'
+        f'<quiz>\n{quiz}\n</quiz>\n'
+        '</chapter>'
+    )
+
+
+def build_system(exercise, chapter=None):
+    if exercise:
+        context = _exercise_context(exercise)
+    elif chapter:
+        context = _chapter_context(chapter)
+    else:
+        context = _course_context()
     return [
         {'type': 'text', 'text': TUTOR_PROMPT},
         {'type': 'text', 'text': context},

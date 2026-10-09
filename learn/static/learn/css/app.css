@@ -397,3 +397,106 @@ a.card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); tex
 .slide ul { margin: 0; padding-inline-start: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: 16px; }
 .slides .actions { display: flex; justify-content: space-between; }
 .pager { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-start: var(--space-5); }
+
+/* Day 5: capstone pictures on path cards, practice badges, light motion */
+.art { border-radius: var(--radius-control); background: var(--surface-subtle); overflow: hidden; margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) var(--space-1); }
+.art svg { display: block; width: 100%; height: auto; max-height: 112px; }
+.path-hero .art { margin: 0 0 var(--space-2); }
+.path-hero .art svg { max-height: 150px; }
+.art .a-win, .art .a-server, .art .a-screen { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
+.art .a-card, .art .a-comp { fill: var(--surface-subtle); stroke: var(--border); }
+.art .a-compac { fill: var(--accent-soft); stroke: var(--accent-bar); }
+.art .a-ink { fill: var(--text); opacity: .75; }
+.art .a-soft, .art .a-dot, .art .a-progtrack { fill: var(--border); }
+.art .a-acc, .art .a-bar.a-acc { fill: var(--accent-bar); }
+.art .a-bar { fill: var(--accent-soft); }
+.art .a-ok, .art .a-okbar { fill: var(--ok-bar); }
+.art .a-okink { fill: var(--ok); opacity: .55; }
+.art .a-pick { fill: var(--ok-soft); stroke: var(--ok-bar); }
+.art .a-line { stroke: var(--border); stroke-width: 1.2; }
+.art .a-wire { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.art .a-tip { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.art .a-tick { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.art .a-tick-ok { stroke: var(--ok); }
+.art .a-db { fill: var(--job-soft); stroke: var(--job); stroke-width: 1.2; }
+.art .a-mono { font-family: var(--mono); font-size: 9px; fill: var(--text); }
+.art .a-chip { font-family: var(--mono); font-size: 8px; font-weight: 700; fill: #fff; text-anchor: middle; }
+.art .a-chip2 { font-size: 8px; }
+.art .a-dim { fill: var(--muted); }
+.art .a-good { fill: var(--ok); font-weight: 700; }
+.art .a-key { fill: var(--accent); }
+.art .a-str { fill: var(--job); }
+.art .a-big { font-size: 22px; font-weight: 700; fill: var(--text); }
+.art .a-term { fill: var(--code-bg); }
+.art .a-tdot { fill: #334155; }
+.art .a-tline { fill: #e2e8f0; }
+.art .a-tdim { fill: #94a3b8; }
+.art .a-tgood { fill: #34d399; }
+.art .a-cursor { fill: #e2e8f0; }
+.art .a-c1 { fill: #818cf8; } .art .a-c2 { fill: #34d399; opacity: .8; } .art .a-c3 { fill: #94a3b8; opacity: .7; }
+.art .a-branch { fill: none; stroke: var(--muted); stroke-width: 3; stroke-linecap: round; }
+.art .a-feat { stroke: var(--accent-bar); }
+.art .a-commit { fill: var(--surface); stroke: var(--muted); stroke-width: 3; }
+.art .a-fc { stroke: var(--accent-bar); }
+.art .a-merge { fill: var(--ok-bar); stroke: var(--ok-bar); }
+.art .a-fcol { fill: var(--accent); }
+.art .a-head { fill: var(--accent-soft); }
+.art .a-hd { font-weight: 700; fill: var(--accent); }
+.art .a-hl { fill: var(--xp-soft); }
+.art .a-sun { fill: var(--xp-2); }
+.art .a-box { fill: var(--surface); stroke: var(--muted); stroke-width: 1.4; }
+.art .a-boxdone { fill: var(--ok-bar); stroke: var(--ok-bar); }
+.art .a-done { fill: var(--border); }
+.art .a-tick-w { stroke: #fff; }
+.art .a-sw1 { fill: var(--accent-bar); } .art .a-sw2 { fill: var(--job); } .art .a-sw3 { fill: var(--xp-2); }
+.art .a-boxm { fill: var(--xp-soft); stroke: var(--xp-2); stroke-dasharray: 3 2; }
+.art .a-boxp { fill: var(--ok-soft); }
+.art .a-phone { fill: var(--nav-bg); }
+.art .a-shield { fill: var(--job); }
+
+.tag.practice { display: inline-flex; align-items: center; gap: 4px; }
+.tag.practice.hands-on { background: var(--ok-soft); color: var(--ok); }
+.tag.practice.soon { background: var(--accent-soft); color: var(--accent); }
+
+/* Motion: it explains a change (progress filling in, a pass), and the reduced-motion rule above turns it all off. */
+@media (prefers-reduced-motion: no-preference) {
+  .progress > div { animation: bar-fill .8s ease-out both; }
+  .ring-fill { animation: ring-fill .9s ease-out both; }
+  a.card.path-card { transition: transform var(--ease), box-shadow var(--ease), border-color var(--ease); }
+  a.card.path-card:hover { transform: translateY(-2px); }
+  .art .a-move { transform-box: fill-box; transform-origin: center; transition: transform .3s ease-out; }
+  a.card:hover .art .a-move { transform: scale(1.12); }
+  .art .a-cursor { animation: cursor-blink 1.1s steps(1) infinite; }
+  .celebrate { animation: celebrate .6s ease-out both; }
+  .celebrate .icon { animation: celebrate-icon .7s ease-out .1s both; }
+}
+@keyframes bar-fill { from { width: 0; } }
+@keyframes ring-fill { from { stroke-dasharray: 0 126; } }
+@keyframes cursor-blink { 50% { opacity: 0; } }
+@keyframes celebrate { 0% { transform: scale(.96); box-shadow: 0 0 0 0 rgb(16 185 129 / .45); } 60% { transform: scale(1.01); } 100% { transform: none; box-shadow: 0 0 0 14px rgb(16 185 129 / 0); } }
+@keyframes celebrate-icon { 0% { transform: scale(.4) rotate(-20deg); } 70% { transform: scale(1.25); } 100% { transform: none; } }
+
+/* Skill path page: courses as a journey ending in the project */
+.journey-step.is-soon .node { border-style: dashed; }
+.course-card .course { margin: 0; }
+.course-card .course h4 { margin-block-start: 0; }
+
+/* Supported languages: Generate page panel and hint, and the page */
+.lang-hint { display: flex; gap: var(--space-2); align-items: flex-start; margin: var(--space-1) 0 0; font-size: 13px; color: var(--muted); min-height: 20px; }
+.lang-hint .icon { width: 16px; height: 16px; margin-block-start: 1px; flex: none; }
+.lang-hint.is-server, .lang-hint.is-ready { color: var(--ok); }
+.lang-hint.is-browser { color: var(--accent); }
+.lang-groups { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.lang-group h3 { font-size: 15px; display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.lang-group p { margin: 0 0 var(--space-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.chips li { padding: 3px 10px; border-radius: var(--radius-pill); background: var(--surface-subtle); border: 1px solid var(--border); font-size: 13px; }
+.chips li.ready { border-color: var(--ok-bar); background: var(--ok-soft); color: var(--ok); }
+
+/* Generated chapters: path progress and the tutor */
+.chapter-progress { margin-block-start: var(--space-2); }
+.tutor-box { height: 480px; padding: var(--space-3) var(--space-4); }
+@media (max-width: 639px) { .tutor-box { height: 70vh; } }
+.practise-panel { margin-block-start: var(--space-4); }
+.practise-panel[open] summary .icon { transform: rotate(180deg); }
+.practise-panel summary + .lang-groups { margin-block-start: var(--space-2); }

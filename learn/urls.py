@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('paths/', views.path_catalog, name='catalog'),
     path('paths/generate/', views.generate_path, name='generate'),
+    path('languages/', views.supported_languages, name='languages'),
     path('paths/<slug:slug>/', views.path_detail, name='path'),
     path('paths/<slug:slug>/placement/', views.placement_test, name='placement'),
     path('paths/<slug:slug>/delete/', views.delete_path, name='delete_path'),

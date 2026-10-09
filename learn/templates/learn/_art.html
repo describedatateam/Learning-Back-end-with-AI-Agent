@@ -1,0 +1,114 @@
+{# A small mock-up of what a path builds. Needs `art` (a key from languages.ARTS). Decorative, so hidden from screen readers. Mock-ups show code, so they stay left-to-right. #}
+<div class="art art-{{ art }}" aria-hidden="true" dir="ltr">
+<svg viewBox="0 0 240 112" focusable="false">
+{% if art == 'api' %}
+  <rect class="a-win" x="40" y="10" width="160" height="92" rx="8"/>
+  <rect class="a-ok" x="52" y="22" width="30" height="13" rx="4"/><text class="a-chip" x="67" y="31.5">GET</text>
+  <text class="a-mono" x="88" y="32">/api/tasks/</text><text class="a-mono a-good" x="178" y="32" text-anchor="end">200</text>
+  <text class="a-mono a-dim" x="52" y="52">{</text>
+  <text class="a-mono" x="62" y="64"><tspan class="a-key">"title"</tspan>: <tspan class="a-str">"Ship v1"</tspan>,</text>
+  <text class="a-mono" x="62" y="76"><tspan class="a-key">"done"</tspan>: <tspan class="a-str">true</tspan>,</text>
+  <text class="a-mono" x="62" y="88"><tspan class="a-key">"owner"</tspan>: <tspan class="a-str">2</tspan></text>
+  <text class="a-mono a-dim" x="52" y="98">}</text>
+  <g class="a-move"><circle class="a-acc" cx="196" cy="58" r="11"/><path class="a-tick" d="M191 58l3.5 3.5 6.5-7"/></g>
+{% elif art == 'page' %}
+  <rect class="a-win" x="30" y="8" width="180" height="96" rx="8"/>
+  <circle class="a-dot" cx="42" cy="18" r="2.5"/><circle class="a-dot" cx="50" cy="18" r="2.5"/><circle class="a-dot" cx="58" cy="18" r="2.5"/>
+  <line class="a-line" x1="30" y1="27" x2="210" y2="27"/>
+  <circle class="a-acc" cx="56" cy="46" r="11"/>
+  <rect class="a-ink" x="74" y="38" width="70" height="7" rx="3"/><rect class="a-soft" x="74" y="50" width="96" height="5" rx="2.5"/>
+  <g class="a-move"><rect class="a-card" x="42" y="66" width="48" height="28" rx="5"/><rect class="a-card" x="96" y="66" width="48" height="28" rx="5"/><rect class="a-card" x="150" y="66" width="48" height="28" rx="5"/>
+  <rect class="a-acc" x="48" y="72" width="20" height="5" rx="2.5"/><rect class="a-acc" x="102" y="72" width="20" height="5" rx="2.5"/><rect class="a-acc" x="156" y="72" width="20" height="5" rx="2.5"/></g>
+{% elif art == 'app' %}
+  <rect class="a-win" x="14" y="14" width="112" height="84" rx="8"/>
+  <circle class="a-dot" cx="25" cy="23" r="2.2"/><circle class="a-dot" cx="32" cy="23" r="2.2"/><circle class="a-dot" cx="39" cy="23" r="2.2"/>
+  <line class="a-line" x1="14" y1="31" x2="126" y2="31"/>
+  <rect class="a-soft" x="24" y="40" width="54" height="6" rx="3"/>
+  <rect class="a-card" x="24" y="52" width="92" height="12" rx="3"/><rect class="a-card" x="24" y="68" width="92" height="12" rx="3"/>
+  <rect class="a-acc" x="24" y="85" width="34" height="7" rx="3.5"/>
+  <path class="a-wire" d="M130 50h34M164 62h-34"/><path class="a-tip" d="M160 46l5 4-5 4M134 58l-5 4 5 4"/>
+  <rect class="a-server" x="170" y="22" width="56" height="44" rx="6"/>
+  <rect class="a-soft" x="178" y="31" width="40" height="5" rx="2.5"/><rect class="a-soft" x="178" y="41" width="30" height="5" rx="2.5"/>
+  <circle class="a-ok a-move" cx="214" cy="56" r="3"/>
+  <ellipse class="a-db" cx="198" cy="80" rx="22" ry="6"/><path class="a-db" d="M176 80v14c0 3.3 9.8 6 22 6s22-2.7 22-6V80"/>
+{% elif art == 'terminal' %}
+  <rect class="a-term" x="30" y="10" width="180" height="92" rx="8"/>
+  <circle class="a-tdot" cx="42" cy="20" r="2.5"/><circle class="a-tdot" cx="50" cy="20" r="2.5"/><circle class="a-tdot" cx="58" cy="20" r="2.5"/>
+  <text class="a-mono a-tgood" x="42" y="42">$</text><text class="a-mono a-tline" x="52" y="42">python inventory.py</text>
+  <text class="a-mono a-tdim" x="42" y="57">Added: notebook x 3</text>
+  <text class="a-mono a-tdim" x="42" y="70">Low stock: pens (2)</text>
+  <text class="a-mono a-tgood" x="42" y="88">$</text><rect class="a-cursor" x="52" y="80" width="7" height="11"/>
+{% elif art == 'git' %}
+  <path class="a-branch" d="M30 74h180"/>
+  <path class="a-branch a-feat" d="M70 74c14 0 14-36 32-36h40c18 0 18 36 32 36"/>
+  <circle class="a-commit" cx="40" cy="74" r="7"/><circle class="a-commit" cx="70" cy="74" r="7"/>
+  <circle class="a-commit a-fc" cx="104" cy="38" r="7"/><circle class="a-commit a-fc" cx="140" cy="38" r="7"/>
+  <circle class="a-commit" cx="128" cy="74" r="7"/><circle class="a-commit a-merge a-move" cx="176" cy="74" r="9"/>
+  <text class="a-mono a-dim" x="34" y="98">main</text><text class="a-mono a-fcol" x="104" y="22">feature/login</text>
+{% elif art == 'table' %}
+  <rect class="a-win" x="34" y="12" width="172" height="88" rx="8"/>
+  <rect class="a-head" x="34" y="12" width="172" height="20" rx="8"/><rect class="a-head" x="34" y="24" width="172" height="8"/>
+  <text class="a-mono a-hd" x="46" y="26">id</text><text class="a-mono a-hd" x="78" y="26">customer</text><text class="a-mono a-hd" x="150" y="26">total</text>
+  <line class="a-line" x1="34" y1="52" x2="206" y2="52"/><line class="a-line" x1="34" y1="72" x2="206" y2="72"/>
+  <text class="a-mono" x="46" y="46">1</text><text class="a-mono" x="78" y="46">Lina</text><text class="a-mono" x="150" y="46">42.00</text>
+  <rect class="a-hl a-move" x="38" y="55" width="164" height="14" rx="3"/>
+  <text class="a-mono" x="46" y="66">2</text><text class="a-mono" x="78" y="66">Omar</text><text class="a-mono" x="150" y="66">87.50</text>
+  <text class="a-mono" x="46" y="86">3</text><text class="a-mono" x="78" y="86">Sara</text><text class="a-mono" x="150" y="86">19.90</text>
+{% elif art == 'quiz' %}
+  <rect class="a-win" x="40" y="8" width="160" height="96" rx="8"/>
+  <rect class="a-ink" x="54" y="20" width="96" height="7" rx="3"/><text class="a-mono a-dim" x="186" y="27" text-anchor="end">3/5</text>
+  <rect class="a-card" x="54" y="36" width="132" height="13" rx="4"/>
+  <rect class="a-pick a-move" x="54" y="53" width="132" height="13" rx="4"/><path class="a-tick a-tick-ok" d="M172 59.5l3 3 6-6"/>
+  <rect class="a-card" x="54" y="70" width="132" height="13" rx="4"/>
+  <rect class="a-soft" x="62" y="40" width="50" height="5" rx="2.5"/><rect class="a-okink" x="62" y="57" width="64" height="5" rx="2.5"/><rect class="a-soft" x="62" y="74" width="40" height="5" rx="2.5"/>
+  <rect class="a-progtrack" x="54" y="92" width="132" height="4" rx="2"/><rect class="a-acc" x="54" y="92" width="80" height="4" rx="2"/>
+{% elif art == 'dashboard' %}
+  <rect class="a-win" x="24" y="10" width="192" height="92" rx="8"/>
+  <circle class="a-sun a-move" cx="54" cy="40" r="12"/>
+  <text class="a-big" x="76" y="46">24°</text><text class="a-mono a-dim" x="78" y="60">Amman, sunny</text>
+  <rect class="a-bar" x="150" y="60" width="9" height="30" rx="2"/><rect class="a-bar" x="163" y="46" width="9" height="44" rx="2"/>
+  <rect class="a-bar" x="176" y="54" width="9" height="36" rx="2"/><rect class="a-bar a-acc" x="189" y="36" width="9" height="54" rx="2"/>
+  <line class="a-line" x1="36" y1="72" x2="134" y2="72"/>
+  <rect class="a-soft" x="36" y="80" width="40" height="5" rx="2.5"/><rect class="a-soft" x="84" y="80" width="40" height="5" rx="2.5"/>
+{% elif art == 'tasks' %}
+  <rect class="a-win" x="40" y="8" width="160" height="96" rx="8"/>
+  <rect class="a-ink" x="54" y="20" width="62" height="7" rx="3"/><rect class="a-acc" x="158" y="18" width="28" height="11" rx="5.5"/>
+  <rect class="a-box a-boxdone" x="54" y="40" width="11" height="11" rx="3"/><path class="a-tick a-tick-w" d="M56.5 45.5l2.5 2.5 4-4.5"/><rect class="a-done" x="72" y="43" width="80" height="5" rx="2.5"/>
+  <rect class="a-box a-boxdone" x="54" y="60" width="11" height="11" rx="3"/><path class="a-tick a-tick-w" d="M56.5 65.5l2.5 2.5 4-4.5"/><rect class="a-done" x="72" y="63" width="64" height="5" rx="2.5"/>
+  <rect class="a-box a-move" x="54" y="80" width="11" height="11" rx="3"/><rect class="a-soft" x="72" y="83" width="92" height="5" rx="2.5"/>
+{% elif art == 'style' %}
+  <rect class="a-win" x="30" y="10" width="180" height="92" rx="8"/>
+  <rect class="a-sw1" x="44" y="24" width="20" height="20" rx="5"/><rect class="a-sw2" x="70" y="24" width="20" height="20" rx="5"/><rect class="a-sw3" x="96" y="24" width="20" height="20" rx="5"/>
+  <text class="a-mono a-dim" x="44" y="62">.card {</text><text class="a-mono" x="54" y="74"><tspan class="a-key">padding</tspan>: 16px;</text><text class="a-mono" x="54" y="86"><tspan class="a-key">radius</tspan>: 14px;</text><text class="a-mono a-dim" x="44" y="96">}</text>
+  <rect class="a-boxm" x="142" y="26" width="56" height="64" rx="6"/><rect class="a-boxp" x="150" y="34" width="40" height="48" rx="4"/><rect class="a-acc a-move" x="158" y="42" width="24" height="32" rx="3"/>
+{% elif art == 'components' %}
+  <rect class="a-win" x="30" y="8" width="180" height="96" rx="8"/>
+  <rect class="a-comp" x="96" y="18" width="48" height="16" rx="4"/><text class="a-mono a-chip2" x="120" y="29.5" text-anchor="middle">&lt;App/&gt;</text>
+  <path class="a-wire" d="M120 34v10M72 44h96M72 44v8M168 44v8"/>
+  <rect class="a-comp" x="44" y="52" width="56" height="16" rx="4"/><text class="a-mono a-chip2" x="72" y="63.5" text-anchor="middle">&lt;Nav/&gt;</text>
+  <rect class="a-comp a-compac a-move" x="140" y="52" width="56" height="16" rx="4"/><text class="a-mono a-chip2" x="168" y="63.5" text-anchor="middle">&lt;List/&gt;</text>
+  <path class="a-wire" d="M168 68v8M150 76h36M150 76v6M186 76v6"/>
+  <rect class="a-card" x="138" y="82" width="24" height="12" rx="3"/><rect class="a-card" x="174" y="82" width="24" height="12" rx="3"/>
+{% elif art == 'mobile' %}
+  <rect class="a-phone" x="92" y="4" width="56" height="104" rx="10"/>
+  <rect class="a-screen" x="97" y="13" width="46" height="86" rx="4"/>
+  <rect class="a-acc" x="102" y="20" width="36" height="20" rx="4"/>
+  <rect class="a-card" x="102" y="45" width="36" height="12" rx="3"/><rect class="a-card" x="102" y="61" width="36" height="12" rx="3"/>
+  <circle class="a-acc a-move" cx="132" cy="88" r="6"/>
+  <rect class="a-soft" x="40" y="40" width="36" height="6" rx="3"/><rect class="a-soft" x="46" y="54" width="30" height="6" rx="3"/>
+  <rect class="a-soft" x="164" y="40" width="36" height="6" rx="3"/><rect class="a-soft" x="164" y="54" width="30" height="6" rx="3"/>
+{% elif art == 'shield' %}
+  <rect class="a-win" x="30" y="10" width="180" height="92" rx="8"/>
+  <path class="a-shield a-move" d="M78 22l24 9v18c0 16-10 26-24 31-14-5-24-15-24-31V31z"/><path class="a-tick a-tick-w" d="M68 50l7 7 13-14"/>
+  <text class="a-mono a-dim" x="120" y="34">queries</text><rect class="a-progtrack" x="120" y="40" width="76" height="6" rx="3"/><rect class="a-okbar" x="120" y="40" width="22" height="6" rx="3"/>
+  <text class="a-mono a-dim" x="120" y="62">cache hit</text><rect class="a-progtrack" x="120" y="68" width="76" height="6" rx="3"/><rect class="a-okbar" x="120" y="68" width="64" height="6" rx="3"/>
+  <text class="a-mono a-good" x="120" y="92">tests pass</text>
+{% else %}
+  <rect class="a-term" x="30" y="10" width="180" height="92" rx="8"/>
+  <text class="a-mono a-tdim" x="40" y="32">1</text><text class="a-mono a-tdim" x="40" y="46">2</text><text class="a-mono a-tdim" x="40" y="60">3</text><text class="a-mono a-tdim" x="40" y="74">4</text><text class="a-mono a-tdim" x="40" y="88">5</text>
+  <rect class="a-c1" x="54" y="25" width="40" height="7" rx="3"/><rect class="a-c2" x="98" y="25" width="56" height="7" rx="3"/>
+  <rect class="a-c3" x="66" y="39" width="64" height="7" rx="3"/><rect class="a-c1" x="66" y="53" width="30" height="7" rx="3"/><rect class="a-c2" x="100" y="53" width="70" height="7" rx="3"/>
+  <rect class="a-c3" x="66" y="67" width="48" height="7" rx="3"/><rect class="a-c1" x="54" y="81" width="20" height="7" rx="3"/><rect class="a-cursor" x="78" y="79" width="7" height="11"/>
+{% endif %}
+</svg>
+</div>

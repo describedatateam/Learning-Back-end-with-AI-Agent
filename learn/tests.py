@@ -1177,3 +1177,105 @@ class GeneratorTests(SignedInTestCase):
             response, ask = self.generate([json.dumps(sample_generated_path())])
         self.assertContains(response, 'most paths allowed today')
         self.assertEqual(ask.call_count, 0)
+
+
+class Day5Tests(SignedInTestCase):
+    """Capstone pictures, practice badges, the supported languages list and the tutor on generated chapters."""
+
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        load_catalog()
+        patcher = mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def generated_path(self):
+        from .models import Path
+        with mock.patch('learn.generator._ask_gemini', return_value=json.dumps(sample_generated_path())):
+            self.client.post('/learn/paths/generate/', {'skill': 'Tailwind basics', 'level': 'beginner', 'hours': 3})
+        return Path.objects.get(owner=self.user)
+
+    def test_finds_languages_by_whole_word(self):
+        from .languages import find_languages
+        keys = lambda text: [lang['key'] for lang in find_languages(text)]
+        self.assertEqual(keys('Tailwind basics'), ['css'])
+        self.assertEqual(keys('React Native apps'), ['mobile'])  # the longer name wins
+        self.assertEqual(keys('HTML then JavaScript'), ['html', 'javascript'])
+        self.assertEqual(keys('Django forms'), ['django'])  # "go" is not found inside "django"
+        self.assertEqual(keys('C# for games'), ['compiled'])
+        self.assertEqual(keys('بايثون للمبتدئين'), ['python'])
+        self.assertEqual(keys('Cooking'), [])
+
+    def test_badges_and_pictures(self):
+        from .languages import HANDS_ON, READING, SOON, art_for, practice
+        from .models import Path
+        backend, frontend = Path.objects.get(slug='backend-developer'), Path.objects.get(slug='frontend-developer')
+        self.assertEqual(art_for(backend), 'api')
+        self.assertEqual(practice(backend, 10), HANDS_ON)
+        self.assertEqual(practice(frontend, 0), SOON)
+        self.assertEqual(practice(Path.objects.get(slug='git-github'), 0), READING)
+        generated = self.generated_path()
+        self.assertEqual(art_for(generated), 'style')  # Tailwind is CSS
+        self.assertEqual(practice(generated), SOON)
+        page = self.client.get('/learn/paths/')
+        self.assertContains(page, 'art-api')
+        self.assertContains(page, 'art-style')
+        self.assertContains(page, 'Hands-on soon')
+        self.assertContains(page, 'Reading and quizzes')
+        path_page = self.client.get(f'/learn/paths/{generated.slug}/')
+        self.assertContains(path_page, 'class="journey"')
+        first = generated.courses.first().chapters.first()
+        self.assertContains(path_page, f'class="btn primary" href="/learn/paths/{generated.slug}/chapters/{first.slug}/"')
+
+    def test_languages_page_and_generate_hint(self):
+        page = self.client.get('/learn/languages/')
+        self.assertContains(page, 'What you can practise')
+        self.assertContains(page, 'Flutter')
+        generate = self.client.get('/learn/paths/generate/')
+        self.assertContains(generate, 'id="lang-data"')
+        self.assertContains(generate, 'tailwind')
+        self.assertContains(self.client.get('/'), '/learn/languages/')
+
+    def test_tutor_on_a_generated_chapter(self):
+        generated = self.generated_path()
+        chapter = generated.courses.first().chapters.first()
+        page = self.client.get(f'/learn/paths/{generated.slug}/chapters/{chapter.slug}/')
+        topic = tutor.chapter_topic(chapter)
+        self.assertContains(page, f'/learn/tutor/{topic}/ask/')
+        reply = mock.patch('learn.tutor.stream_reply', return_value=iter([
+            ('text', 'Utility classes are small.'), ('final', SimpleNamespace(stop_reason='end_turn'))]))
+        with reply as stream:
+            response = self.client.post(f'/learn/tutor/{topic}/ask/', {'question': 'What is a utility class?'},
+                                        content_type='application/json')
+            body = b''.join(response.streaming_content).decode()
+        self.assertIn('Utility classes are small.', body)
+        system = stream.call_args[0][0][1]['text']
+        self.assertIn('Tailwind gives you small classes', system)  # the lesson
+        self.assertIn('right answer', system)  # the quiz, for the tutor only
+        self.assertEqual(TutorMessage.objects.filter(user=self.user, topic=topic).count(), 2)
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.HINT, slug=chapter.slug).exists())
+        # Someone else's generated chapter stays private.
+        other = User.objects.create_user('other', password='pw')
+        self.client.force_login(other)
+        self.assertEqual(self.client.post(f'/learn/tutor/{topic}/ask/', {'question': 'Hi'},
+                                          content_type='application/json').status_code, 404)
+        self.assertEqual(self.client.post(f'/learn/tutor/{topic}/clear/').status_code, 404)
+
+    def test_finishing_a_chapter_celebrates_once(self):
+        generated = self.generated_path()
+        chapter = generated.courses.first().chapters.first()
+        url = f'/learn/paths/{generated.slug}/chapters/{chapter.slug}/'
+        self.assertContains(self.client.post(url, {'q0': '1', 'q1': '1', 'q2': '0'}), 'celebrate')
+        self.assertNotContains(self.client.post(url, {'q0': '1', 'q1': '1', 'q2': '0'}), 'success celebrate')
+
+
+class MakeInvitesTests(TestCase):
+    def test_prints_working_codes(self):
+        from django.core.management import call_command
+        out = io.StringIO()
+        call_command('make_invites', '2', '--note', 'Testers', stdout=out)
+        codes = InviteCode.objects.filter(note='Testers')
+        self.assertEqual(codes.count(), 2)
+        self.assertIn('/accounts/signup/', out.getvalue())
+        self.assertIn(codes.first().code, out.getvalue())

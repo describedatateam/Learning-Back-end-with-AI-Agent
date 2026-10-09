@@ -136,6 +136,7 @@
   <details class="card how" id="how"{% if not job.started %} open{% endif %}>
     <summary>{% translate "How this works" %}</summary>
     {% include "learn/_promise.html" %}
+    <p class="meta"><a href="{% url 'learn:languages' %}">{% icon 'languages' %}{% translate "What you can practise in each language" %}</a></p>
   </details>
 </main>
 {% endblock %}

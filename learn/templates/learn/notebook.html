@@ -88,7 +88,7 @@
     written: "{{ _('Written %(when)s')|escapejs }}",
     open: "{{ _('Open exercise →')|escapejs }}",
     writing: "{{ _('Writing… (about a minute)')|escapejs }}",
-    failed: "{{ _('Request failed (%(status)s)')|escapejs }}",
+    failed: "{{ _('Request failed ({status})')|escapejs }}",
     justNow: "{{ _('just now')|escapejs }}",
     tryAgain: "{{ _('Try again')|escapejs }}",
   };
@@ -156,7 +156,7 @@
     try {
       const res = await fetch(page.generate_url, {method: 'POST', headers: {'X-CSRFToken': csrf}});
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || T.failed.replace('%(status)s', res.status));
+      if (!res.ok) throw new Error(data.error || T.failed.replace('{status}', res.status));
       page.data = data.page;
       page.updated = T.justNow;
       render(page);
