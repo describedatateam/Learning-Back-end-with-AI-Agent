@@ -7,12 +7,23 @@ from unittest import mock
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from datetime import timedelta
+
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from django.utils.html import escape
 
 from . import gamification, notebook, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
-from .models import ExerciseProgress, NotebookEntry, TutorMessage, XPEvent
+from .models import ExerciseProgress, InviteCode, LearningEvent, NotebookEntry, TutorMessage, XPEvent
+
+
+class SignedInTestCase(TestCase):
+    """Progress belongs to an account, so most tests run signed in."""
+
+    def setUp(self):
+        self.user = User.objects.create_user('learner', password='pw')
+        self.client.force_login(self.user)
 
 
 class ExerciseContentTests(TestCase):
@@ -47,7 +58,7 @@ class ExerciseContentTests(TestCase):
                     self.assertLess(question['answer'], len(question['options']))
 
 
-class LearnViewTests(TestCase):
+class LearnViewTests(SignedInTestCase):
     def test_dashboard_lists_exercises(self):
         response = self.client.get('/learn/')
         self.assertEqual(response.status_code, 200)
@@ -70,12 +81,13 @@ class LearnViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['all_passed'])
-        progress = ExerciseProgress.objects.get(slug=exercise.slug)
+        progress = ExerciseProgress.objects.get(user=self.user, slug=exercise.slug)
         self.assertTrue(progress.passed)
         self.assertEqual(progress.attempts, 1)
 
-    def test_run_blocked_for_remote_clients(self):
+    def test_run_blocked_when_signed_out(self):
         exercise = load_exercises()[0]
+        self.client.logout()
         response = self.client.post(
             f'/learn/{exercise.slug}/run/', {'code': ''}, content_type='application/json', REMOTE_ADDR='203.0.113.5',
         )
@@ -86,11 +98,12 @@ class LearnViewTests(TestCase):
         answers = [q['answer'] for q in exercise.quiz]
         response = self.client.post(f'/learn/{exercise.slug}/quiz/', {'answers': answers}, content_type='application/json')
         self.assertEqual(response.json()['correct'], len(answers))
-        self.assertEqual(ExerciseProgress.objects.get(slug=exercise.slug).quiz_correct, len(answers))
+        self.assertEqual(ExerciseProgress.objects.get(user=self.user, slug=exercise.slug).quiz_correct, len(answers))
 
 
-class GamificationTests(TestCase):
+class GamificationTests(SignedInTestCase):
     def setUp(self):
+        super().setUp()
         self.exercise = load_exercises()[0]  # week 1
         self.url = f'/learn/{self.exercise.slug}'
 
@@ -192,8 +205,9 @@ class FakeClient:
         return FakeStream(self.chunks, self.stop_reason)
 
 
-class TutorTests(TestCase):
+class TutorTests(SignedInTestCase):
     def setUp(self):
+        super().setUp()
         self.exercise = load_exercises()[0]
         self.client_fake = FakeClient()
         for patcher in [
@@ -276,7 +290,8 @@ class TutorTests(TestCase):
         self.assertEqual(response.status_code, 400)
         response, _ = self.ask(topic='no-such-exercise')
         self.assertEqual(response.status_code, 404)
-        response, _ = self.ask(remote_addr='203.0.113.5')
+        self.client.logout()
+        response, _ = self.ask()
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.client_fake.calls, [])
 
@@ -384,17 +399,18 @@ class ClaudeCodeBackendTests(TestCase):
 
 
 class DeploymentTests(TestCase):
-    """A public deployment (LEARN_REQUIRE_LOGIN=True) is locked to staff logins."""
+    """A public deployment (LEARN_REQUIRE_LOGIN=True) is locked to signed-in accounts."""
 
     def setUp(self):
         self.exercise = get_exercise('http-requests')
-        self.staff = User.objects.create_user('owner', password='pw', is_staff=True)
+        self.learner = User.objects.create_user('learner', password='pw')
 
     @override_settings(LEARN_REQUIRE_LOGIN=True)
     def test_pages_need_login(self):
         response = self.client.get('/learn/')
-        self.assertRedirects(response, '/admin/login/?next=%2Flearn%2F', fetch_redirect_response=False)
-        self.assertEqual(self.client.get('/admin/login/').status_code, 200)
+        self.assertRedirects(response, '/accounts/login/?next=%2Flearn%2F', fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/accounts/login/').status_code, 200)
+        self.assertEqual(self.client.get('/accounts/signup/').status_code, 200)
 
     @override_settings(LEARN_REQUIRE_LOGIN=True)
     def test_running_code_needs_login_even_from_localhost(self):
@@ -404,18 +420,13 @@ class DeploymentTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
     @override_settings(LEARN_REQUIRE_LOGIN=True)
-    def test_staff_can_use_everything(self):
-        self.client.force_login(self.staff)
+    def test_signed_in_learners_can_use_everything(self):
+        self.client.force_login(self.learner)
         self.assertEqual(self.client.get('/learn/').status_code, 200)
         url = f'/learn/{self.exercise.slug}/run-selection/'
         body = {'code': '', 'selection': '1 + 1', 'start_line': 1, 'end_line': 1}
         response = self.client.post(url, body, content_type='application/json', REMOTE_ADDR='203.0.113.5')
         self.assertEqual(response.json()['output'], '2\n')
-
-    @override_settings(LEARN_REQUIRE_LOGIN=True)
-    def test_non_staff_users_are_kept_out(self):
-        self.client.force_login(User.objects.create_user('visitor', password='pw'))
-        self.assertEqual(self.client.get('/learn/').status_code, 302)
 
     def test_python_executable_under_a_web_server(self):
         from learn.exercises import python_executable
@@ -429,7 +440,7 @@ class DeploymentTests(TestCase):
                 self.assertEqual(python_executable(), str(python))
 
 
-class SiteNavigationTests(TestCase):
+class SiteNavigationTests(SignedInTestCase):
     def test_home_shows_next_step(self):
         response = self.client.get('/')
         self.assertContains(response, '<html lang="en" dir="ltr">')
@@ -459,7 +470,7 @@ class SiteNavigationTests(TestCase):
         self.assertEqual(self.client.get('/learn/no-such-exercise/slides/').status_code, 404)
 
 
-class NotebookTests(TestCase):
+class NotebookTests(SignedInTestCase):
     PAGE = {
         'summary': 'You parsed a raw HTTP request.',
         'tools': [{'name': 'str.partition', 'what_it_does': 'Splits once.', 'example': 'print("a:b".partition(":"))',
@@ -472,6 +483,7 @@ class NotebookTests(TestCase):
     }
 
     def setUp(self):
+        super().setUp()
         self.exercise = get_exercise('http-requests')
         self.url = f'/learn/notebook/{self.exercise.slug}/generate/'
 
@@ -486,10 +498,10 @@ class NotebookTests(TestCase):
         self.assertIn('text.partition(separator)', tools)
 
     def test_evidence_includes_chat_timeline_and_code(self):
-        ExerciseProgress.objects.create(slug=self.exercise.slug, passed=True, attempts=7, code='def parse_request(raw): ...')
-        TutorMessage.objects.create(topic=self.exercise.slug, role='user', content='x', display='where is raw?')
-        XPEvent.objects.create(key=f'tests:{self.exercise.slug}:1', slug=self.exercise.slug, label='Tests passing', amount=5)
-        evidence = notebook.build_evidence(self.exercise)
+        ExerciseProgress.objects.create(user=self.user, slug=self.exercise.slug, passed=True, attempts=7, code='def parse_request(raw): ...')
+        TutorMessage.objects.create(user=self.user, topic=self.exercise.slug, role='user', content='x', display='where is raw?')
+        XPEvent.objects.create(user=self.user, key=f'tests:{self.exercise.slug}:1', slug=self.exercise.slug, label='Tests passing', amount=5)
+        evidence = notebook.build_evidence(self.user, self.exercise)
         self.assertIn('Test runs before passing: 7', evidence)
         self.assertIn('where is raw?', evidence)
         self.assertIn('Tests passing', evidence)
@@ -500,7 +512,7 @@ class NotebookTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_generate_saves_page(self):
-        ExerciseProgress.objects.create(slug=self.exercise.slug, passed=True)
+        ExerciseProgress.objects.create(user=self.user, slug=self.exercise.slug, passed=True)
         with self.fake_reply('Here you go:\n```json\n' + json.dumps(self.PAGE) + '\n```'):
             response = self.client.post(self.url)
         self.assertEqual(response.status_code, 200, response.content)
@@ -509,7 +521,7 @@ class NotebookTests(TestCase):
         self.assertContains(page, 'You parsed a raw HTTP request.')
 
     def test_bad_reply_is_reported(self):
-        ExerciseProgress.objects.create(slug=self.exercise.slug, passed=True)
+        ExerciseProgress.objects.create(user=self.user, slug=self.exercise.slug, passed=True)
         with self.fake_reply('Sorry, no JSON here'):
             response = self.client.post(self.url)
         self.assertEqual(response.status_code, 502)
@@ -521,10 +533,11 @@ class NotebookTests(TestCase):
         self.assertContains(response, 'Kill the N+1 query')
 
 
-class RunSelectionTests(TestCase):
+class RunSelectionTests(SignedInTestCase):
     """Running highlighted code: the rest of the file loads, then the selection runs."""
 
     def setUp(self):
+        super().setUp()
         self.exercise = get_exercise('http-requests')
         self.code = self.exercise.solution + '\nprint("context line")\nRAW = "GET /a/?x=1 HTTP/1.1\\r\\nHost: h\\r\\n\\r\\n"\n'
         self.lines = self.code.splitlines()
@@ -588,12 +601,13 @@ class RunSelectionTests(TestCase):
         response = self.client.post(url, body, content_type='application/json')
         self.assertTrue(response.json()['output'].endswith('1024\n'))
         self.assertEqual(self.client.post(url, {**body, 'selection': '  '}, content_type='application/json').status_code, 400)
-        remote = self.client.post(url, body, content_type='application/json', REMOTE_ADDR='203.0.113.5')
-        self.assertEqual(remote.status_code, 403)
+        self.client.logout()
+        self.assertEqual(self.client.post(url, body, content_type='application/json').status_code, 403)
 
 
-class SingleTestRunTests(TestCase):
+class SingleTestRunTests(SignedInTestCase):
     def setUp(self):
+        super().setUp()
         self.exercise = get_exercise('http-requests')
         self.url = f'/learn/{self.exercise.slug}/run/'
 
@@ -642,8 +656,9 @@ class FakeGemini:
             yield SimpleNamespace(text=text, candidates=[SimpleNamespace(finish_reason=reason)])
 
 
-class GeminiTests(TestCase):
+class GeminiTests(SignedInTestCase):
     def setUp(self):
+        super().setUp()
         self.fake = FakeGemini()
         for patcher in [
             mock.patch('google.genai.Client', return_value=self.fake),
@@ -717,3 +732,139 @@ class GeminiTests(TestCase):
             events = [json.loads(line) for line in b''.join(response.streaming_content).decode().splitlines() if line]
         self.assertEqual([e['type'] for e in events], ['notice', 'text', 'text', 'done'])
         self.assertEqual(TutorMessage.objects.get(role='assistant').content, 'Gemini says hi')
+
+
+class SignUpTests(TestCase):
+    def setUp(self):
+        self.invite = InviteCode.objects.create(code='COHORT1', max_uses=2)
+
+    def sign_up(self, username='sara', code='COHORT1'):
+        return self.client.post('/accounts/signup/', {
+            'username': username, 'password1': 'a-long-passphrase-1', 'password2': 'a-long-passphrase-1',
+            'invite_code': code,
+        })
+
+    def test_invite_code_creates_account_and_signs_in(self):
+        response = self.sign_up(code='cohort1')  # not case sensitive
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+        self.assertTrue(User.objects.filter(username='sara').exists())
+        self.assertEqual(InviteCode.objects.get().uses, 1)
+        self.assertContains(self.client.get('/'), 'Sign out')
+
+    def test_wrong_code_is_refused(self):
+        response = self.sign_up(code='NOPE')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This invite code is not valid')
+        self.assertFalse(User.objects.filter(username='sara').exists())
+
+    def test_used_up_inactive_and_expired_codes_are_refused(self):
+        for name in ('one', 'two'):
+            self.sign_up(name)
+            self.client.logout()
+        self.assertContains(self.sign_up('three'), 'This invite code is not valid')
+        InviteCode.objects.create(code='OFF', active=False)
+        self.assertContains(self.sign_up('four', 'OFF'), 'This invite code is not valid')
+        InviteCode.objects.create(code='OLD', expires_at=timezone.now() - timedelta(days=1))
+        self.assertContains(self.sign_up('five', 'OLD'), 'This invite code is not valid')
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_sign_in_and_out(self):
+        User.objects.create_user('sara', password='pw')
+        response = self.client.post('/accounts/login/', {'username': 'sara', 'password': 'pw'})
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+        self.client.post('/accounts/logout/')
+        self.assertRedirects(self.client.get('/learn/'), '/accounts/login/?next=/learn/', fetch_redirect_response=False)
+
+    def test_new_invite_codes_get_a_random_code(self):
+        self.assertRegex(InviteCode.objects.create().code, r'^[0-9A-F]{8}$')
+
+
+class SeparateProgressTests(TestCase):
+    """Two accounts on one site keep their own progress, XP and tutor chats."""
+
+    def test_two_learners_see_separate_progress(self):
+        exercise = load_exercises()[0]
+        sara, omar = User.objects.create_user('sara'), User.objects.create_user('omar')
+        self.client.force_login(sara)
+        self.client.post(f'/learn/{exercise.slug}/run/', {'code': exercise.solution}, content_type='application/json')
+        self.assertContains(self.client.get('/learn/'), 'id="hud-xp">0 XP', count=0)
+
+        self.client.force_login(omar)
+        self.assertContains(self.client.get('/learn/'), 'id="hud-xp">0 XP')
+        page = self.client.get(f'/learn/{exercise.slug}/')
+        self.assertEqual(page.context['progress'], None)
+        self.assertEqual(page.context['code'], exercise.starter)
+        self.client.post(f'/learn/{exercise.slug}/run/', {'code': exercise.starter}, content_type='application/json')
+
+        self.assertTrue(ExerciseProgress.objects.get(user=sara, slug=exercise.slug).passed)
+        self.assertFalse(ExerciseProgress.objects.get(user=omar, slug=exercise.slug).passed)
+        self.assertGreater(gamification.total_xp(sara), gamification.total_xp(omar))
+
+
+class ActivityLogTests(SignedInTestCase):
+    def setUp(self):
+        super().setUp()
+        self.exercise = get_exercise('http-requests')
+        self.url = f'/learn/{self.exercise.slug}'
+
+    def post(self, path, body):
+        return self.client.post(f'{self.url}/{path}/', body, content_type='application/json')
+
+    def test_running_an_exercise_adds_rows(self):
+        self.post('run', {'code': self.exercise.starter, 'seconds': 42})
+        self.post('run', {'code': self.exercise.solution, 'seconds': 90})
+        self.post('run', {'code': self.exercise.solution, 'seconds': 95})
+        kinds = list(LearningEvent.objects.filter(user=self.user).order_by('id').values_list('kind', flat=True))
+        self.assertEqual(kinds, ['run', 'run', 'passed', 'run'])  # "passed" only the first time
+        first = LearningEvent.objects.filter(user=self.user).order_by('id').first()
+        self.assertEqual((first.slug, first.seconds_spent, first.data['all_passed']), (self.exercise.slug, 42, False))
+
+    def test_hints_quiz_solution_and_single_tests_are_logged(self):
+        self.post('run', {'code': self.exercise.solution, 'test': list_tests(self.exercise)[0]['id']})
+        self.post('quiz', {'answers': [q['answer'] for q in self.exercise.quiz]})
+        self.post('solution', {})
+        with mock.patch('learn.tutor.stream_reply', return_value=iter([])):
+            b''.join(self.client.post(f'/learn/tutor/{self.exercise.slug}/ask/', {'question': 'Why?'},
+                                      content_type='application/json').streaming_content)
+        kinds = set(LearningEvent.objects.values_list('kind', flat=True))
+        self.assertEqual(kinds, {'test_run', 'quiz', 'solution_viewed', 'hint'})
+
+    def test_silly_timers_are_ignored(self):
+        self.post('run', {'code': '', 'seconds': 10 ** 9})
+        self.post('run', {'code': '', 'seconds': 'soon'})
+        self.assertEqual(set(LearningEvent.objects.values_list('seconds_spent', flat=True)), {None})
+
+
+class RunnerSafetyTests(TestCase):
+    """Learner code can't see the site's secrets or files, or start programs."""
+
+    def setUp(self):
+        self.exercise = get_exercise('http-requests')
+
+    def run_sel(self, text):
+        return run_selection(self.exercise, self.exercise.solution, text, 1, 1)
+
+    def test_secrets_are_not_passed_to_learner_code(self):
+        with mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'secret-key', 'DJANGO_SECRET_KEY': 'secret'}):
+            result = self.run_sel('import os\nsorted(k for k in os.environ if "KEY" in k)')
+        self.assertEqual(result['output'], '[]\n', result)
+
+    def test_project_files_cannot_be_read(self):
+        for path in [settings.BASE_DIR / 'manage.py', self.exercise.path / 'solution.py']:
+            result = self.run_sel(f'open({str(path)!r}).read()')
+            self.assertEqual(result['status'], 'error')
+            self.assertIn('PermissionError', result['error'])
+
+    def test_programs_cannot_be_started(self):
+        result = self.run_sel('import subprocess\nsubprocess.run(["ls"])')
+        self.assertIn('PermissionError', result['error'])
+        result = self.run_sel('import os\nos.system("ls")')
+        self.assertIn('PermissionError', result['error'])
+
+    def test_memory_is_capped(self):
+        result = self.run_sel('x = bytearray(2 * 1024 ** 3)')
+        self.assertIn('MemoryError', result['error'])
+
+    def test_own_folder_still_works(self):
+        result = self.run_sel('open("notes.txt", "w").write("hi")\nopen("notes.txt").read()')
+        self.assertEqual(result['output'], "'hi'\n", result)

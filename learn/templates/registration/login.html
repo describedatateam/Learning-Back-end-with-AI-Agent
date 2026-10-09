@@ -1,0 +1,19 @@
+{% extends "learn/base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Sign in" %} · Describe{% endblock %}
+{% block style %}{% include "learn/_auth_style.html" %}{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <section class="card auth" aria-labelledby="auth-title">
+    <h1 id="auth-title">{% translate "Sign in" %}</h1>
+    <form method="post" action="{% url 'login' %}">
+      {% include "learn/_auth_form.html" %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn primary" type="submit">{% translate "Sign in" %}</button>
+    </form>
+    <p class="switch">{% translate "New here and have an invite code?" %} <a href="{% url 'signup' %}">{% translate "Create an account" %}</a></p>
+  </section>
+</main>
+{% endblock %}

@@ -49,20 +49,20 @@ def lesson_tools(exercise):
     return [h.strip().replace('`', '') for h in re.findall(r'^### (.+)$', section.group(1), re.M)]
 
 
-def build_evidence(exercise):
-    progress = ExerciseProgress.objects.filter(slug=exercise.slug).first()
+def build_evidence(user, exercise):
+    progress = ExerciseProgress.objects.filter(user=user, slug=exercise.slug).first()
     lines = [f'Exercise: #{exercise.number:02d} {exercise.title} (week {exercise.week}, file {exercise.file})']
     if progress:
         lines.append(f'Test runs before passing: {progress.attempts}. '
                      f'Opened the reference solution: {"yes" if progress.solution_viewed else "no"}.')
 
-    events = XPEvent.objects.filter(slug=exercise.slug).order_by('created_at')
+    events = XPEvent.objects.filter(user=user, slug=exercise.slug).order_by('created_at')
     timeline = [f'{e.created_at:%H:%M} {e.label}' for e in events if not e.key.startswith(('daily:', 'badge:'))]
     if timeline:
         lines.append('Timeline (when each reward was first earned):\n' + '\n'.join(timeline))
 
     chat = []
-    for message in TutorMessage.objects.filter(topic=exercise.slug).order_by('created_at', 'id')[:MAX_CHAT_MESSAGES]:
+    for message in TutorMessage.objects.filter(user=user, topic=exercise.slug).order_by('created_at', 'id')[:MAX_CHAT_MESSAGES]:
         text = message.display if message.role == 'user' else message.display[:MAX_REPLY_CHARS]
         who = 'learner' if message.role == 'user' else 'tutor'
         chat.append(f'<{who} time="{message.created_at:%H:%M}">\n{text}\n</{who}>')
@@ -72,14 +72,14 @@ def build_evidence(exercise):
     return '\n\n'.join(lines)
 
 
-def build_prompt(exercise):
+def build_prompt(user, exercise):
     lesson = (exercise.path / 'instructions.md').read_text(encoding='utf-8')
     tools = ', '.join(lesson_tools(exercise)) or '(see the lesson)'
     system = [
         {'type': 'text', 'text': NOTEBOOK_PROMPT},
         {'type': 'text', 'text': f'<lesson>\n{lesson}\n</lesson>\n\nTools the lesson teaches: {tools}'},
     ]
-    return system, build_evidence(exercise)
+    return system, build_evidence(user, exercise)
 
 
 def parse_page(text):
@@ -95,8 +95,8 @@ def parse_page(text):
     return page
 
 
-def generate_page(exercise):
-    system, evidence = build_prompt(exercise)
+def generate_page(user, exercise):
+    system, evidence = build_prompt(user, exercise)
     chunks, final = [], None
     for kind, value in tutor.stream_reply(system, [{'role': 'user', 'content': evidence}]):
         if kind == 'text':

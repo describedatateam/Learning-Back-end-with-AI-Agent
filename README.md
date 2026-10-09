@@ -26,10 +26,17 @@ authenticated user.
 ## Describe: interactive exercises
 
 After `migrate` and `runserver`, open <http://127.0.0.1:8000/> (it goes straight to
-Describe at `/learn/`). You don't need a login. `/admin/` is Django's database
-admin, and it has no default account: create one with `python manage.py createsuperuser`
-if you want it. Your progress, XP, tutor chats and notebook live in the local
-`db.sqlite3`, which isn't in git, so each computer starts fresh.
+Describe at `/learn/`). Learning needs an account, so first create yours with
+`python manage.py createsuperuser` and sign in. Other learners sign up at
+`/accounts/signup/` with an invite code: make codes in `/admin/` under **Invite codes**
+(each has a number of uses and an optional expiry date). Every account has its own
+progress, XP, tutor chats and notebook, stored in the local `db.sqlite3` (not in git).
+Each action (a test run, pass, quiz, tutor question, opened solution) also adds a
+row to the **Learning events** log in the admin, with the time spent on the page.
+
+The code runner gets none of the site's secrets, can't open files outside its own
+temporary folder, start programs or use the network, and is capped at 20 seconds of
+CPU and 512 MB of memory. It's a safety net for people you invite, not a full sandbox.
 
 **Use it from anywhere:** [DEPLOY_PYTHONANYWHERE.md](DEPLOY_PYTHONANYWHERE.md) puts it online
 behind a login, step by step.
@@ -92,7 +99,7 @@ The **Notebook 📓** tab has one page per passed exercise. Each page covers the
 you learned (with examples), where they're used, what you found difficult and how
 you solved it, and your final code. Pages are written by the tutor's AI from your
 chats and test history: click **✨ Write my page** after passing. `python manage.py
-export_notebook` saves all pages as one HTML file (`materials/out/notes/00-my-learning-journal.html`).
+export_notebook USERNAME` saves that learner's pages as one HTML file (`materials/out/notes/00-my-learning-journal.html`).
 
 ## Study materials (slides, notes, further reading)
 

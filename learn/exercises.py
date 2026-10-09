@@ -26,6 +26,7 @@ from .runner import RESULT_MARKER
 CONTENT_DIR = Path(__file__).resolve().parent / 'content'
 RUNNER = Path(__file__).resolve().parent / 'runner.py'
 TIMEOUT_SECONDS = 20
+RUNNER_ENV = {'PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SYSTEMROOT', 'WINDIR', 'TZ'}  # copied into the grader's environment
 
 
 @dataclass
@@ -113,8 +114,9 @@ def _run_runner(exercise, code, extra_args=(), extra_files=None):
         for name, content in (extra_files or {}).items():
             (workdir / name).write_text(content, encoding='utf-8')
 
-        env = {k: v for k, v in os.environ.items() if k != 'DJANGO_SETTINGS_MODULE'}
-        env['PYTHONIOENCODING'] = 'utf-8'
+        # Only what Python needs: the site's secrets (API keys, SECRET_KEY) stay out.
+        env = {k: v for k, v in os.environ.items() if k in RUNNER_ENV}
+        env.update(PYTHONIOENCODING='utf-8', PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(workdir))
         try:
             proc = subprocess.run(
                 [python_executable(), str(RUNNER), str(workdir), exercise.file, *extra_args],

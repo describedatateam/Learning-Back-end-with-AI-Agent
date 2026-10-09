@@ -137,9 +137,11 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # `collectstatic` copies the admin's CSS/JS here
 
 # Deployment (e.g. PythonAnywhere). All off by default for local use.
-# Require a staff login for the whole site: Describe runs submitted code.
+# Require sign-in for the whole site: Describe runs submitted code.
+# Learners make accounts with an invite code (admin > Invite codes).
 LEARN_REQUIRE_LOGIN = os.environ.get('LEARN_REQUIRE_LOGIN', 'False') == 'True'
-LOGIN_URL = '/admin/login/'
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = LOGOUT_REDIRECT_URL = 'home'
 # The https:// address of the site, so form posts pass Django's CSRF origin check.
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 # HTTPS is handled by the host's proxy, which says so in this header.

@@ -24,6 +24,15 @@ import types
 import unittest
 
 RESULT_MARKER = '@@LEARN_RESULT@@'
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+CPU_SECONDS = 20                 # the web app also stops the run after 20 seconds of wall time
+MEMORY_BYTES = 512 * 1024 ** 2   # Django and the tests need about 60 MB
+FILE_BYTES = 10 * 1024 ** 2      # largest file the code may write
+BLOCKED_EVENTS = {
+    # Starting programs, loading C libraries and opening network connections.
+    'os.system', 'os.exec', 'os.posix_spawn', 'os.spawn', 'os.fork', 'os.forkpty', 'subprocess.Popen',
+    'ctypes.dlopen', 'ctypes.dlsym', 'ctypes.call_function', 'socket.connect', 'socket.bind', 'socket.getaddrinfo',
+}
 SELECTION = '<selection>'
 DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
@@ -114,6 +123,58 @@ def configure_django():
     django.setup()
 
 
+def limit_resources():
+    """Cap CPU time, memory and file size, so one run can't slow the server down (Linux and macOS)."""
+    try:
+        import resource
+    except ImportError:  # Windows: only the web app's timeout applies
+        return
+    for limit, value in ((resource.RLIMIT_CPU, CPU_SECONDS), (resource.RLIMIT_AS, MEMORY_BYTES),
+                         (resource.RLIMIT_FSIZE, FILE_BYTES)):
+        try:
+            soft, hard = resource.getrlimit(limit)
+            capped = value if hard == resource.RLIM_INFINITY else min(value, hard)
+            resource.setrlimit(limit, (capped, hard))
+        except (ValueError, OSError):
+            pass  # some hosts don't allow a limit (e.g. RLIMIT_AS on macOS)
+
+
+def install_guard(workdir):
+    """Stop learner code from reading the site's files, starting programs or using the network.
+
+    An audit hook can't be removed once added. Files are allowed in the run's own
+    folder and in Python's installation (so imports work); anything else inside
+    the project (the .env secrets, the database, the reference solutions) or the
+    home folder is refused. This is a safety net for invited learners, not a full
+    sandbox: see the plan's "real code sandbox" item.
+    """
+    allowed = [os.path.realpath(p) for p in {workdir, sys.prefix, sys.base_prefix, sys.exec_prefix} if p]
+    try:
+        import site
+        allowed.append(os.path.realpath(site.getusersitepackages()))
+    except Exception:
+        pass
+    try:
+        import pwd
+        home = pwd.getpwuid(os.getuid()).pw_dir  # HOME isn't passed to the runner
+    except ImportError:  # Windows
+        home = os.path.expanduser('~')
+    protected = [PROJECT_DIR] + ([os.path.realpath(home)] if os.path.isabs(home) else [])
+
+    def inside(path, folders):
+        return any(path == f or path.startswith(f + os.sep) for f in folders)
+
+    def hook(event, args):
+        if event in BLOCKED_EVENTS:
+            raise PermissionError(f'Exercises cannot do this ({event}).')
+        if event == 'open' and isinstance(args[0], (str, bytes, os.PathLike)):
+            path = os.path.realpath(os.fsdecode(args[0]))
+            if inside(path, protected) and not inside(path, allowed):
+                raise PermissionError(f'Exercises can only open files in their own folder, not {os.fsdecode(args[0])}.')
+
+    sys.addaudithook(hook)
+
+
 def prepare(workdir):
     workdir = os.path.abspath(workdir)
     sys.path.insert(0, workdir)
@@ -124,6 +185,8 @@ def prepare(workdir):
     if not os.path.exists(init):
         with open(init, 'w') as fh:
             fh.write('urlpatterns = []\n')
+    limit_resources()
+    install_guard(workdir)
     return workdir
 
 
