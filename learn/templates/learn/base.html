@@ -44,6 +44,15 @@
       <span class="sep" aria-hidden="true">|</span>
       <button type="submit" name="language" value="ar" lang="ar" aria-pressed="{% if LANG == 'ar' %}true{% else %}false{% endif %}">العربية</button>
     </form>
+    {% if user.is_authenticated %}
+    <form class="account" action="{% url 'logout' %}" method="post">
+      {% csrf_token %}
+      <span class="who">{% icon 'user' %}<bdi>{{ user.get_username }}</bdi></span>
+      <button class="btn quiet" type="submit">{% icon 'log-out' %}{% translate 'Sign out' %}</button>
+    </form>
+    {% else %}
+    <a class="btn quiet account" href="{% url 'login' %}">{% icon 'log-in' %}{% translate 'Sign in' %}</a>
+    {% endif %}
   </header>
   {% block content %}{% endblock %}
   <footer class="bottom">

@@ -3,6 +3,7 @@ from itertools import groupby
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -12,9 +13,9 @@ from django.views.decorators.http import require_POST
 
 from . import gamification, notebook, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
-from .models import ExerciseProgress, NotebookEntry, TutorMessage, XPEvent
+from .models import ExerciseProgress, LearningEvent, NotebookEntry, TutorMessage, XPEvent
 
-LOCAL_ADDRESSES = {'127.0.0.1', '::1', 'localhost'}
+MAX_SECONDS_SPENT = 6 * 60 * 60  # ignore page timers left open overnight
 WEEK_TITLES = {
     1: 'Python, HTTP & Django basics',
     2: 'Building REST APIs',
@@ -32,17 +33,28 @@ def _exercise_or_404(slug):
 
 def _can_run(request):
     # The runner executes submitted Python (and the tutor spends AI credit), so
-    # only allow it from this machine or for a logged-in staff account, which is
-    # how the site owner uses it on a public server.
-    if request.META.get('REMOTE_ADDR') in LOCAL_ADDRESSES and not settings.LEARN_REQUIRE_LOGIN:
-        return True
-    return bool(request.user.is_authenticated and request.user.is_staff)
+    # only signed-in learners can use it. Accounts need an invite code.
+    return request.user.is_authenticated
 
 
+def _seconds_spent(data):
+    """Seconds the learner had the page open before this action, as the browser reports it."""
+    try:
+        seconds = int(data.get('seconds'))
+    except (TypeError, ValueError):
+        return None
+    return seconds if 0 <= seconds <= MAX_SECONDS_SPENT else None
+
+
+def log_event(request, kind, slug='', seconds_spent=None, **data):
+    LearningEvent.objects.create(user=request.user, kind=kind, slug=slug, seconds_spent=seconds_spent, data=data)
+
+
+@login_required
 def dashboard(request):
     exercises = load_exercises()
-    progress = {p.slug: p for p in ExerciseProgress.objects.all()}
-    earned = gamification.xp_by_exercise()
+    progress = {p.slug: p for p in ExerciseProgress.objects.filter(user=request.user)}
+    earned = gamification.xp_by_exercise(request.user)
     for exercise in exercises:
         exercise.progress = progress.get(exercise.slug)
         exercise.xp_earned = earned.get(exercise.slug, 0)
@@ -52,22 +64,23 @@ def dashboard(request):
         for week, items in groupby(exercises, key=lambda e: e.week)
     ]
     done = sum(1 for p in progress.values() if p.passed)
-    earned_badges = gamification.earned_badge_ids()
+    earned_badges = gamification.earned_badge_ids(request.user)
     return render(request, 'learn/dashboard.html', {
         'weeks': weeks,
         'done': done,
         'total': len(exercises),
         'percent': round(100 * done / len(exercises)) if exercises else 0,
-        'player': gamification.player_state(),
+        'player': gamification.player_state(request.user),
         'badges': [{'badge': b, 'earned': b.id in earned_badges} for b in gamification.BADGES],
         'badges_earned': len(earned_badges),
-        'recent_xp': XPEvent.objects.filter(amount__gt=0)[:8],
+        'recent_xp': XPEvent.objects.filter(user=request.user, amount__gt=0)[:8],
     })
 
 
 def home(request):
     exercises = load_exercises()
-    progress = {p.slug: p for p in ExerciseProgress.objects.all()}
+    mine = ExerciseProgress.objects.filter(user=request.user) if request.user.is_authenticated else []
+    progress = {p.slug: p for p in mine}
     done = sum(1 for e in exercises if progress.get(e.slug) and progress[e.slug].passed)
     # The next step: the first exercise you started but haven't passed, else the first untouched one.
     unfinished = [e for e in exercises if not (progress.get(e.slug) and progress[e.slug].passed)]
@@ -80,15 +93,16 @@ def home(request):
         'total': len(exercises),
         'percent': round(100 * done / len(exercises)) if exercises else 0,
         'has_started': bool(progress),
-        'player': gamification.player_state(),
+        'player': gamification.player_state(request.user),
     })
 
 
+@login_required
 def exercise_detail(request, slug):
     exercise = _exercise_or_404(slug)
     exercises = load_exercises()
     index = exercises.index(exercise)
-    progress = ExerciseProgress.objects.filter(slug=slug).first()
+    progress = ExerciseProgress.objects.filter(user=request.user, slug=slug).first()
     public_quiz = [{'question': q['question'], 'options': q['options']} for q in exercise.quiz]
     return render(request, 'learn/exercise.html', {
         'exercise': exercise,
@@ -99,10 +113,10 @@ def exercise_detail(request, slug):
         'previous': exercises[index - 1] if index > 0 else None,
         'next': exercises[index + 1] if index + 1 < len(exercises) else None,
         'can_run': _can_run(request),
-        'player': gamification.player_state(),
+        'player': gamification.player_state(request.user),
         'rewards': gamification.exercise_rewards(exercise),
-        'quiz_taken': XPEvent.objects.filter(key=f'quiz:{slug}').exists(),
-        'tutor_history': _chat_history(slug),
+        'quiz_taken': XPEvent.objects.filter(user=request.user, key=f'quiz:{slug}').exists(),
+        'tutor_history': _chat_history(request.user, slug),
         'tutor_backend': tutor.backend_label(),
         'tests': list_tests(exercise),
         'has_slides': _slides_path(exercise).exists(),
@@ -120,21 +134,29 @@ def run(request, slug):
     if test_id and test_id not in {t['id'] for t in list_tests(exercise)}:
         return JsonResponse({'error': 'Unknown test.'}, status=400)
     result = run_tests(exercise, code, test_id)
+    seconds = _seconds_spent(data)
 
-    progress, _ = ExerciseProgress.objects.get_or_create(slug=slug)
+    progress, _ = ExerciseProgress.objects.get_or_create(user=request.user, slug=slug)
     progress.code = code
     progress.attempts += 1  # single-test runs count too, so the first-try bonus stays honest
     if test_id:
         # Running one test is for checking your work: it saves the code but
         # doesn't complete the exercise or pay XP. A full run does that.
         progress.save()
+        log_event(request, LearningEvent.TEST_RUN, slug, seconds, test=test_id, passed=result['all_passed'])
         result['single'] = True
         return JsonResponse(result)
+    passed_before = progress.passed
     progress.tests_passed = result['passed']
     progress.tests_total = result['total']
     progress.passed = progress.passed or result['all_passed']
     progress.save()
-    result['xp'] = gamification.reward_run(exercise, progress, result)
+    log_event(request, LearningEvent.RUN, slug, seconds, status=result['status'],
+              passed=result['passed'], total=result['total'], all_passed=result['all_passed'], attempt=progress.attempts)
+    if progress.passed and not passed_before:
+        log_event(request, LearningEvent.PASSED, slug, seconds, attempts=progress.attempts,
+                  solution_viewed=progress.solution_viewed)
+    result['xp'] = gamification.reward_run(request.user, exercise, progress, result)
     return JsonResponse(result)
 
 
@@ -152,6 +174,7 @@ def run_code_selection(request, slug):
     except (TypeError, ValueError):
         return JsonResponse({'error': 'Invalid line numbers.'}, status=400)
     result = run_selection(exercise, str(data.get('code', '')), text, start_line, end_line)
+    log_event(request, LearningEvent.SELECTION_RUN, slug, _seconds_spent(data), status=result['status'])
     return JsonResponse(result)
 
 
@@ -159,6 +182,7 @@ def _slides_path(exercise):
     return Path(settings.BASE_DIR) / 'materials' / 'out' / 'pdf' / f'{exercise.path.name}.pdf'
 
 
+@login_required
 def slides(request, slug):
     """The exercise's slide deck as a PDF (built by materials/export_pdfs.py)."""
     path = _slides_path(_exercise_or_404(slug))
@@ -167,10 +191,12 @@ def slides(request, slug):
     return FileResponse(path.open('rb'), content_type='application/pdf', filename=path.name)
 
 
+@login_required
 @require_POST
 def quiz(request, slug):
     exercise = _exercise_or_404(slug)
-    answers = json.loads(request.body or '{}').get('answers', [])
+    data = json.loads(request.body or '{}')
+    answers = data.get('answers', [])
     results = []
     for i, question in enumerate(exercise.quiz):
         chosen = answers[i] if i < len(answers) else None
@@ -180,27 +206,34 @@ def quiz(request, slug):
             'explanation': question.get('explanation', ''),
         })
     correct = sum(r['correct'] for r in results)
-    progress, _ = ExerciseProgress.objects.get_or_create(slug=slug)
+    progress, _ = ExerciseProgress.objects.get_or_create(user=request.user, slug=slug)
     progress.quiz_correct = max(correct, progress.quiz_correct or 0)
     progress.quiz_total = len(results)
     progress.save()
-    xp = gamification.reward_quiz(exercise, correct, len(results))
+    log_event(request, LearningEvent.QUIZ, slug, _seconds_spent(data), correct=correct, total=len(results))
+    xp = gamification.reward_quiz(request.user, exercise, correct, len(results))
     return JsonResponse({'results': results, 'correct': correct, 'total': len(results), 'xp': xp})
 
 
+@login_required
 @require_POST
 def solution(request, slug):
     exercise = _exercise_or_404(slug)
-    progress, _ = ExerciseProgress.objects.get_or_create(slug=slug)
+    progress, _ = ExerciseProgress.objects.get_or_create(user=request.user, slug=slug)
     if not progress.passed and not progress.solution_viewed:
         # Peeking before passing forfeits this exercise's no-peek bonus.
         progress.solution_viewed = True
         progress.save(update_fields=['solution_viewed', 'updated_at'])
+    try:
+        data = json.loads(request.body or '{}')
+    except ValueError:
+        data = {}
+    log_event(request, LearningEvent.SOLUTION_VIEWED, slug, _seconds_spent(data), passed=progress.passed)
     return JsonResponse({'solution': exercise.solution})
 
 
-def _chat_history(topic):
-    return [{'role': m.role, 'text': m.display} for m in TutorMessage.objects.filter(topic=topic)]
+def _chat_history(user, topic):
+    return [{'role': m.role, 'text': m.display} for m in TutorMessage.objects.filter(user=user, topic=topic)]
 
 
 def _topic_exercise(topic):
@@ -208,10 +241,11 @@ def _topic_exercise(topic):
     return None if topic == tutor.GENERAL_TOPIC else _exercise_or_404(topic)
 
 
+@login_required
 def tutor_page(request):
     return render(request, 'learn/tutor.html', {
-        'player': gamification.player_state(),
-        'tutor_history': _chat_history(tutor.GENERAL_TOPIC),
+        'player': gamification.player_state(request.user),
+        'tutor_history': _chat_history(request.user, tutor.GENERAL_TOPIC),
         'tutor_backend': tutor.backend_label(),
         'can_run': _can_run(request),
     })
@@ -227,16 +261,19 @@ def tutor_ask(request, topic):
     if not question:
         return JsonResponse({'error': 'Ask a question first.'}, status=400)
 
-    progress = ExerciseProgress.objects.filter(slug=topic).first() if exercise else None
+    progress = ExerciseProgress.objects.filter(user=request.user, slug=topic).first() if exercise else None
     turn = tutor.build_learner_turn(
         question, exercise=exercise, code=data.get('code'), result=data.get('result'), progress=progress,
     )
-    history = list(TutorMessage.objects.filter(topic=topic).order_by('-created_at', '-id')[:tutor.MAX_HISTORY])[::-1]
+    history = list(TutorMessage.objects.filter(user=request.user, topic=topic).order_by('-created_at', '-id')[:tutor.MAX_HISTORY])[::-1]
     while history and history[0].role != 'user':  # the conversation must start with the learner
         history.pop(0)
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
     system = tutor.build_system(exercise)
+    user = request.user
+    if exercise:
+        log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))
 
     def events():
         # One JSON object per line: {"type": "text" | "done" | "error", ...}
@@ -264,8 +301,8 @@ def tutor_ask(request, topic):
         answer = ''.join(chunks)
         if final.stop_reason == 'max_tokens':
             answer += '\n\n*(The answer was cut off because it got too long. Ask me to continue.)*'
-        TutorMessage.objects.create(topic=topic, role='user', content=turn, display=question)
-        TutorMessage.objects.create(topic=topic, role='assistant', content=answer, display=answer)
+        TutorMessage.objects.create(user=user, topic=topic, role='user', content=turn, display=question)
+        TutorMessage.objects.create(user=user, topic=topic, role='assistant', content=answer, display=answer)
         yield json.dumps({'type': 'done', 'text': answer}) + '\n'
 
     response = StreamingHttpResponse(events(), content_type='application/x-ndjson')
@@ -273,16 +310,18 @@ def tutor_ask(request, topic):
     return response
 
 
+@login_required
 @require_POST
 def tutor_clear(request, topic):
     _topic_exercise(topic)
-    TutorMessage.objects.filter(topic=topic).delete()
+    TutorMessage.objects.filter(user=request.user, topic=topic).delete()
     return JsonResponse({'cleared': True})
 
 
+@login_required
 def notebook_page(request):
-    progress = {p.slug: p for p in ExerciseProgress.objects.all()}
-    entries = {e.slug: e for e in NotebookEntry.objects.all()}
+    progress = {p.slug: p for p in ExerciseProgress.objects.filter(user=request.user)}
+    entries = {e.slug: e for e in NotebookEntry.objects.filter(user=request.user)}
     pages, data = [], []
     for exercise in load_exercises():
         p = progress.get(exercise.slug)
@@ -305,7 +344,7 @@ def notebook_page(request):
         'pages': pages,
         'notebook_data': data,
         'passed_count': sum(1 for page in pages if page['passed']),
-        'player': gamification.player_state(),
+        'player': gamification.player_state(request.user),
         'can_run': _can_run(request),
     })
 
@@ -315,11 +354,11 @@ def notebook_generate(request, slug):
     exercise = _exercise_or_404(slug)
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to use the notebook.'}, status=403)
-    if not ExerciseProgress.objects.filter(slug=slug, passed=True).exists():
+    if not ExerciseProgress.objects.filter(user=request.user, slug=slug, passed=True).exists():
         return JsonResponse({'error': 'Pass this exercise first, then it can go in your notebook.'}, status=400)
     try:
-        page = notebook.generate_page(exercise)
+        page = notebook.generate_page(request.user, exercise)
     except Exception as exc:  # SDK, CLI or JSON problems all become a readable message
         return JsonResponse({'error': tutor.friendly_error(exc)}, status=502)
-    entry, _ = NotebookEntry.objects.update_or_create(slug=slug, defaults={'data': page})
+    entry, _ = NotebookEntry.objects.update_or_create(user=request.user, slug=slug, defaults={'data': page})
     return JsonResponse({'page': entry.data})

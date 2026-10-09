@@ -1,13 +1,14 @@
 """Export the notebook pages as one HTML file (uploads to Google Drive as a Google Doc).
 
-    python manage.py export_notebook [--output materials/out/notes/00-my-learning-journal.html]
+    python manage.py export_notebook USERNAME [--output materials/out/notes/00-my-learning-journal.html]
 """
 import html
 import re
 from pathlib import Path
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand, CommandError
 
 from learn.exercises import load_exercises
 from learn.models import ExerciseProgress, NotebookEntry
@@ -29,11 +30,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         default = Path(settings.BASE_DIR) / 'materials' / 'out' / 'notes' / '00-my-learning-journal.html'
+        parser.add_argument('username', help="Whose notebook to export.")
         parser.add_argument('--output', default=str(default))
 
     def handle(self, *args, **options):
-        entries = {e.slug: e for e in NotebookEntry.objects.all()}
-        progress = {p.slug: p for p in ExerciseProgress.objects.all()}
+        user = get_user_model().objects.filter(username=options['username']).first()
+        if user is None:
+            raise CommandError(f"No account called {options['username']}.")
+        entries = {e.slug: e for e in NotebookEntry.objects.filter(user=user)}
+        progress = {p.slug: p for p in ExerciseProgress.objects.filter(user=user)}
         sections = []
         for exercise in load_exercises():
             entry = entries.get(exercise.slug)

@@ -1,0 +1,10 @@
+{% load i18n %}{% csrf_token %}
+{% if form.non_field_errors %}<div class="notice error" role="alert">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+{% for field in form %}
+  <div class="auth-field">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}<p class="auth-error" id="{{ field.id_for_label }}-error">{{ field.errors|join:" " }}</p>{% endif %}
+    {% if field.help_text and show_help %}<div class="auth-help">{{ field.help_text|safe }}</div>{% endif %}
+  </div>
+{% endfor %}
