@@ -100,7 +100,8 @@ python manage.py collectstatic --noinput
 ```
 
 `createsuperuser` asks for a username, email (optional) and password. **This is the
-login you'll use for the site.**
+login you'll use for the site.** To let classmates in, open `/admin/`, add an
+**Invite code** and send it to them; they sign up at `/accounts/signup/`.
 
 ## 5. Create the web app
 

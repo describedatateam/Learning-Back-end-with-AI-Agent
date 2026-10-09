@@ -208,8 +208,10 @@
   const $ = (sel) => document.querySelector(sel);
   const results = $('#results'), consoleBox = $('#console');
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  // `seconds` (time on this page) goes in the activity log with each action.
   const post = (url, body) => fetch(url, {
-    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf}, body: JSON.stringify(body),
+    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+    body: JSON.stringify({...body, seconds: Math.round(performance.now() / 1000)}),
   }).then((r) => r.json());
   const canRun = {{ can_run|yesno:"true,false" }};
 

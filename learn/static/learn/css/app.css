@@ -52,6 +52,9 @@ header.top nav a[aria-current="page"] { color: var(--accent); background: var(--
 .lang-switch button:hover { background: var(--surface-2); }
 .lang-switch .sep { color: var(--border); }
 .push { margin-inline-start: auto; }
+.account { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: 14px; }
+.account .who { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.account .who .icon { width: 16px; height: 16px; vertical-align: 0; }
 
 main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
 main.narrow { max-width: 1080px; }
@@ -129,7 +132,7 @@ a.card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); tex
 .hud .streak { display: inline-flex; align-items: center; gap: 3px; color: var(--warn); }
 .hud .streak .icon { width: 16px; height: 16px; vertical-align: 0; }
 .hud .streak.cold { color: var(--muted); opacity: .7; }
-@media (max-width: 720px) { .hud .title, .hud .xpbar { display: none; } }
+@media (max-width: 720px) { .hud .title, .hud .xpbar, .account .who { display: none; } }
 
 /* XP toasts */
 .toasts { position: fixed; inset-inline-end: 18px; inset-block-end: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 50; align-items: flex-end; }

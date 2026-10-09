@@ -107,7 +107,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
       const res = await fetch(askUrl, {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
-        body: JSON.stringify({question, ...context}),
+        body: JSON.stringify({question, ...context, seconds: Math.round(performance.now() / 1000)}),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

@@ -68,8 +68,8 @@ def exercise_rewards(exercise):
     }
 
 
-def total_xp():
-    return XPEvent.objects.aggregate(total=Sum('amount'))['total'] or 0
+def total_xp(user):
+    return XPEvent.objects.filter(user=user).aggregate(total=Sum('amount'))['total'] or 0
 
 
 def level_for(xp):
@@ -86,8 +86,8 @@ def level_for(xp):
     }
 
 
-def active_days():
-    keys = XPEvent.objects.filter(key__startswith='daily:').values_list('key', flat=True)
+def active_days(user):
+    keys = XPEvent.objects.filter(user=user, key__startswith='daily:').values_list('key', flat=True)
     return sorted(date.fromisoformat(key.split(':', 1)[1]) for key in keys)
 
 
@@ -108,33 +108,36 @@ def streaks(days, today=None):
     return current, best
 
 
-def player_state(xp=None):
-    xp = total_xp() if xp is None else xp
-    current, best = streaks(active_days())
+def player_state(user, xp=None):
+    if not user.is_authenticated:
+        return None
+    xp = total_xp(user) if xp is None else xp
+    current, best = streaks(active_days(user))
     return {'xp': xp, 'level': level_for(xp), 'streak': current, 'best_streak': best}
 
 
-def earned_badge_ids():
-    keys = XPEvent.objects.filter(key__startswith='badge:').values_list('key', flat=True)
+def earned_badge_ids(user):
+    keys = XPEvent.objects.filter(user=user, key__startswith='badge:').values_list('key', flat=True)
     return {key.split(':', 1)[1] for key in keys}
 
 
-def xp_by_exercise():
-    rows = XPEvent.objects.exclude(slug='').values('slug').annotate(total=Sum('amount'))
+def xp_by_exercise(user):
+    rows = XPEvent.objects.filter(user=user).exclude(slug='').values('slug').annotate(total=Sum('amount'))
     return {row['slug']: row['total'] for row in rows}
 
 
 class Rewards:
     """Collects the XP earned during one request and reports it to the UI."""
 
-    def __init__(self):
-        self.xp_before = total_xp()
+    def __init__(self, user):
+        self.user = user
+        self.xp_before = total_xp(user)
         self.gained = []
         self.badges = []
 
     def award(self, key, amount, label, slug=''):
         _, created = XPEvent.objects.get_or_create(
-            key=key, defaults={'amount': amount, 'label': label, 'slug': slug},
+            user=self.user, key=key, defaults={'amount': amount, 'label': label, 'slug': slug},
         )
         if created and amount:
             self.gained.append({'label': label, 'amount': amount})
@@ -144,11 +147,11 @@ class Rewards:
         self.award(f'daily:{timezone.localdate().isoformat()}', DAILY_XP, 'Daily practice')
 
     def _check_badges(self):
-        earned = earned_badge_ids()
-        keys = set(XPEvent.objects.values_list('key', flat=True))
+        earned = earned_badge_ids(self.user)
+        keys = set(XPEvent.objects.filter(user=self.user).values_list('key', flat=True))
         passed = {k.split(':', 1)[1] for k in keys if k.startswith('pass:')}
         exercises = load_exercises()
-        _, best_streak = streaks(active_days())
+        _, best_streak = streaks(active_days(self.user))
 
         def count(prefix):
             return sum(1 for k in keys if k.startswith(prefix))
@@ -172,9 +175,9 @@ class Rewards:
 
     def summary(self):
         self._check_badges()
-        after = total_xp()
+        after = total_xp(self.user)
         level_before = level_for(self.xp_before)['number']
-        player = player_state(after)
+        player = player_state(self.user, after)
         return {
             'gained': self.gained,
             'total_gained': after - self.xp_before,
@@ -184,8 +187,8 @@ class Rewards:
         }
 
 
-def reward_run(exercise, progress, result):
-    rewards = Rewards()
+def reward_run(user, exercise, progress, result):
+    rewards = Rewards(user)
     rewards.daily()
     slug = exercise.slug
     new_tests = 0
@@ -206,11 +209,11 @@ def reward_run(exercise, progress, result):
     return rewards.summary()
 
 
-def reward_quiz(exercise, correct, total):
-    rewards = Rewards()
+def reward_quiz(user, exercise, correct, total):
+    rewards = Rewards(user)
     rewards.daily()
     slug = exercise.slug
-    first_attempt = not XPEvent.objects.filter(key=f'quiz:{slug}').exists()
+    first_attempt = not XPEvent.objects.filter(user=user, key=f'quiz:{slug}').exists()
     if first_attempt:
         # Recorded even when 0 are right, so that retakes (after the answers
         # have been revealed) don't pay out.

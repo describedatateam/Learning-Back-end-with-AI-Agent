@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-07 10:59+0000\n"
+"POT-Creation-Date: 2026-10-09 09:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,7 +15,21 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
+"&& n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+#: learn/accounts.py:14
+msgid "Invite code"
+msgstr "رمز الدعوة"
+
+#: learn/accounts.py:20
+msgid ""
+"This invite code is not valid. Ask the person who invited you for a new one."
+msgstr "رمز الدعوة هذا غير صالح. اطلب رمزًا جديدًا من الشخص الذي دعاك."
+
+#: learn/accounts.py:29
+msgid "This invite code has just been used up."
+msgstr "استُخدم رمز الدعوة هذا للتو بالكامل."
 
 #: learn/templates/learn/base.html:23
 msgid "Main"
@@ -45,76 +59,87 @@ msgstr "مستواك ونقاط الخبرة (XP)"
 msgid "Daily streak"
 msgstr "أيام التعلّم المتتالية"
 
-#: learn/templates/learn/base.html:50 learn/templates/learn/home.html:81
+#: learn/templates/learn/base.html:51
+msgid "Sign out"
+msgstr "تسجيل الخروج"
+
+#: learn/templates/learn/base.html:54 learn/templates/learn/signup.html:16
+#: learn/templates/registration/login.html:4
+#: learn/templates/registration/login.html:10
+#: learn/templates/registration/login.html:14
+msgid "Sign in"
+msgstr "تسجيل الدخول"
+
+#: learn/templates/learn/base.html:59 learn/templates/learn/home.html:82
 msgid "How this works"
 msgstr "كيف تعمل المنصة"
 
-#: learn/templates/learn/base.html:51
+#: learn/templates/learn/base.html:60
 msgid "Admin"
 msgstr "الإدارة"
 
-#: learn/templates/learn/base.html:52
+#: learn/templates/learn/base.html:61
 msgid "API health"
 msgstr "حالة الواجهة البرمجية (API)"
 
-#: learn/templates/learn/home.html:30
+#: learn/templates/learn/home.html:31
 msgid "Welcome back"
 msgstr "مرحبًا بعودتك"
 
-#: learn/templates/learn/home.html:30
+#: learn/templates/learn/home.html:31
 msgid "Welcome to Describe"
 msgstr "مرحبًا بك في Describe"
 
-#: learn/templates/learn/home.html:31
+#: learn/templates/learn/home.html:32
 msgid "Pick a path or make your own, then learn by building."
 msgstr "اختر مسارًا أو أنشئ مسارك الخاص، ثم تعلّم بالبناء."
 
-#: learn/templates/learn/home.html:36
+#: learn/templates/learn/home.html:37
 msgid "Continue learning"
 msgstr "تابع التعلّم"
 
-#: learn/templates/learn/home.html:36
+#: learn/templates/learn/home.html:37
 msgid "Start learning"
 msgstr "ابدأ التعلّم"
 
-#: learn/templates/learn/home.html:38
+#: learn/templates/learn/home.html:39
 msgid "Backend Developer (Python, Django)"
 msgstr "مطوّر الواجهات الخلفية (بايثون وجانغو)"
 
-#: learn/templates/learn/home.html:40
+#: learn/templates/learn/home.html:41
 msgid "Path progress"
 msgstr "التقدّم في المسار"
 
-#: learn/templates/learn/home.html:41
+#: learn/templates/learn/home.html:42
 #, python-format
 msgid "%(done)s of %(total)s exercises"
 msgstr "%(done)s من %(total)s تمارين"
 
-#: learn/templates/learn/home.html:44
+#: learn/templates/learn/home.html:45
 msgid "Resume"
 msgstr "تابِع"
 
-#: learn/templates/learn/home.html:44
+#: learn/templates/learn/home.html:45
 msgid "Start"
 msgstr "ابدأ"
 
-#: learn/templates/learn/home.html:47
+#: learn/templates/learn/home.html:48
 msgid "Path complete"
 msgstr "أكملت المسار"
 
-#: learn/templates/learn/home.html:48
+#: learn/templates/learn/home.html:49
 msgid "You finished every exercise in this path."
 msgstr "أنهيت جميع تمارين هذا المسار."
 
-#: learn/templates/learn/home.html:49 learn/templates/learn/home.html:55
+#: learn/templates/learn/home.html:50 learn/templates/learn/home.html:56
 msgid "Explore paths"
 msgstr "استكشف المسارات"
 
-#: learn/templates/learn/home.html:55
+#: learn/templates/learn/home.html:56
 msgid "Job path"
 msgstr "مسار وظيفي"
 
-#: learn/templates/learn/home.html:56
+#: learn/templates/learn/home.html:57
 msgid ""
 "Backend Developer (Python, Django): from your first view to a real, tested "
 "API."
@@ -122,90 +147,109 @@ msgstr ""
 "مطوّر الواجهات الخلفية (بايثون وجانغو): من أول view تكتبه إلى واجهة API "
 "حقيقية ومختبَرة."
 
-#: learn/templates/learn/home.html:58
+#: learn/templates/learn/home.html:59
 msgid "30 days"
 msgstr "30 يومًا"
 
-#: learn/templates/learn/home.html:59
+#: learn/templates/learn/home.html:60
 msgid "A REST API"
 msgstr "واجهة REST API"
 
-#: learn/templates/learn/home.html:65
+#: learn/templates/learn/home.html:66
 msgid "Generate a path"
 msgstr "أنشئ مسارًا"
 
-#: learn/templates/learn/home.html:65 learn/templates/learn/home.html:70
-#: learn/templates/learn/home.html:75
+#: learn/templates/learn/home.html:66 learn/templates/learn/home.html:71
+#: learn/templates/learn/home.html:76
 msgid "Coming soon"
 msgstr "قريبًا"
 
-#: learn/templates/learn/home.html:66
+#: learn/templates/learn/home.html:67
 msgid ""
-"Tell us a skill, your level and your time each week, and AI builds a path of"
-" courses, quizzes and slides for you."
+"Tell us a skill, your level and your time each week, and AI builds a path of "
+"courses, quizzes and slides for you."
 msgstr ""
 "أخبرنا بالمهارة ومستواك ووقتك المتاح كل أسبوع، وسيبني لك الذكاء الاصطناعي "
 "مسارًا من الدورات والاختبارات القصيرة والشرائح."
 
-#: learn/templates/learn/home.html:70
+#: learn/templates/learn/home.html:71
 msgid "My project"
 msgstr "مشروعي"
 
-#: learn/templates/learn/home.html:71
+#: learn/templates/learn/home.html:72
 msgid ""
 "Working on something? Describe it or upload its SRS (requirements), and "
 "we'll walk you through it."
-msgstr ""
-"تعمل على مشروع؟ صِفه أو ارفع وثيقة متطلباته (SRS)، وسنرشدك خطوة بخطوة."
+msgstr "تعمل على مشروع؟ صِفه أو ارفع وثيقة متطلباته (SRS)، وسنرشدك خطوة بخطوة."
 
-#: learn/templates/learn/home.html:75
+#: learn/templates/learn/home.html:76
 msgid "My portfolio"
 msgstr "معرض أعمالي"
 
-#: learn/templates/learn/home.html:76
+#: learn/templates/learn/home.html:77
 msgid ""
 "Your finished projects will live here. Finish your first path to add one."
 msgstr "ستظهر مشاريعك المكتملة هنا. أكمل مسارك الأول لتضيف أول مشروع."
 
-#: learn/templates/learn/home.html:83
+#: learn/templates/learn/home.html:84
 msgid "Pick a path or make your own."
 msgstr "اختر مسارًا أو أنشئ مسارك الخاص."
 
-#: learn/templates/learn/home.html:83
+#: learn/templates/learn/home.html:84
 msgid "Job paths take you toward a role. Skill paths teach one thing well."
 msgstr ""
-"المسارات الوظيفية تقودك نحو وظيفة، ومسارات المهارات تعلّمك شيئًا واحدًا "
-"بإتقان."
+"المسارات الوظيفية تقودك نحو وظيفة، ومسارات المهارات تعلّمك شيئًا واحدًا بإتقان."
 
-#: learn/templates/learn/home.html:84
+#: learn/templates/learn/home.html:85
 msgid "Learn by building."
 msgstr "تعلّم بالبناء."
 
-#: learn/templates/learn/home.html:84
+#: learn/templates/learn/home.html:85
 msgid "Each chapter ends in real code that is checked automatically."
 msgstr "ينتهي كل فصل بكود حقيقي يُفحص تلقائيًا."
 
-#: learn/templates/learn/home.html:85
+#: learn/templates/learn/home.html:86
 msgid "Remember it."
 msgstr "ثبّت ما تعلّمته."
 
-#: learn/templates/learn/home.html:85
+#: learn/templates/learn/home.html:86
 msgid "Short flashcards come back right before you'd forget them."
 msgstr "بطاقات مراجعة قصيرة تعود إليك قبل أن تنساها بقليل."
 
-#: learn/templates/learn/home.html:86
+#: learn/templates/learn/home.html:87
 msgid "Bring your own project."
 msgstr "أحضر مشروعك الخاص."
 
-#: learn/templates/learn/home.html:86
+#: learn/templates/learn/home.html:87
 msgid ""
 "Upload or write its requirements (SRS), and get a step-by-step walkthrough."
 msgstr "ارفع متطلباته (SRS) أو اكتبها، واحصل على دليل خطوة بخطوة."
 
-#: learn/templates/learn/home.html:87
+#: learn/templates/learn/home.html:88
 msgid "Leave with proof."
 msgstr "اخرج بدليل على ما تعلّمته."
 
-#: learn/templates/learn/home.html:87
+#: learn/templates/learn/home.html:88
 msgid "Every finished path adds a project to your public portfolio."
 msgstr "كل مسار تكمله يضيف مشروعًا إلى معرض أعمالك العام."
+
+#: learn/templates/learn/signup.html:4 learn/templates/learn/signup.html:10
+#: learn/templates/registration/login.html:16
+msgid "Create an account"
+msgstr "إنشاء حساب"
+
+#: learn/templates/learn/signup.html:11
+msgid "Describe is invite only. Use the code you were given."
+msgstr "الانضمام إلى Describe بالدعوة فقط. استخدم الرمز الذي حصلت عليه."
+
+#: learn/templates/learn/signup.html:14
+msgid "Create account"
+msgstr "إنشاء الحساب"
+
+#: learn/templates/learn/signup.html:16
+msgid "Already have an account?"
+msgstr "لديك حساب بالفعل؟"
+
+#: learn/templates/registration/login.html:16
+msgid "New here and have an invite code?"
+msgstr "جديد هنا ولديك رمز دعوة؟"
