@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load ui %}
+{% load i18n ui %}
 
 {% block style %}
   .hero { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 8px; }
@@ -57,43 +57,43 @@
 <main>
   <section class="hero">
     <div class="intro">
-      <h1>Learn backend by writing it</h1>
-      <p class="muted">Each exercise is a short lesson followed by code you write in the browser. Click <strong>Run tests</strong> to grade your code against real Django &amp; DRF tests, then check yourself with a quick quiz.</p>
+      <h1>{% translate "Learn backend by writing it" %}</h1>
+      <p class="muted">{% blocktranslate trimmed %}Each exercise is a short lesson followed by code you write in the browser. Click <strong>Run tests</strong> to grade your code against real Django &amp; DRF tests, then check yourself with a quick quiz.{% endblocktranslate %}</p>
     </div>
     <div class="profile" id="profile">
-      <div class="ring" style="--p: {{ player.level.percent }}"><div><span><small>Level</small><br><strong>{{ player.level.number }}</strong></span></div></div>
-      <div class="rank">{{ player.level.title }}</div>
+      <div class="ring" style="--p: {{ player.level.percent }}"><div><span><small>{% translate "Level" %}</small><br><strong>{{ player.level.number }}</strong></span></div></div>
+      <div class="rank"><bdi>{{ player.level.title }}</bdi></div>
       <div>
         <div class="xpbar-lg"><span style="width: {{ player.level.percent }}%"></span></div>
         <div class="sub" style="margin-top:4px">
-          {{ player.xp }} XP{% if player.level.next %} · {{ player.level.to_next }} XP to level {{ player.level.number|add:1 }}{% else %} · max level{% endif %}
+          {{ player.xp }} XP{% if player.level.next %} · {% blocktranslate trimmed with xp=player.level.to_next level=player.level.number|add:1 %}{{ xp }} XP to level {{ level }}{% endblocktranslate %}{% else %} · {% translate "max level" %}{% endif %}
         </div>
       </div>
       <div class="pstats">
-        <span>{% icon 'flame' %} <b>{{ player.streak }}</b> day streak</span>
-        <span>{% icon 'circle-check' %} <b>{{ done }}</b>/{{ total }} passed</span>
-        <span>{% icon 'trophy' %} <b>{{ badges_earned }}</b>/{{ badges|length }} badges</span>
+        <span>{% icon 'flame' %} {% blocktranslate trimmed count streak=player.streak %}<b>{{ streak }}</b> day streak{% plural %}<b>{{ streak }}</b> day streak{% endblocktranslate %}</span>
+        <span>{% icon 'circle-check' %} {% blocktranslate trimmed %}<b>{{ done }}</b>/{{ total }} passed{% endblocktranslate %}</span>
+        <span>{% icon 'trophy' %} {% blocktranslate trimmed with earned=badges_earned total=badges|length %}<b>{{ earned }}</b>/{{ total }} badges{% endblocktranslate %}</span>
       </div>
     </div>
   </section>
 
   {% for week in weeks %}
-    <h2 class="week-title">Week {{ week.number }} <small>{{ week.title }}</small></h2>
+    <h2 class="week-title">{% blocktranslate trimmed with week=week.number %}Week {{ week }}{% endblocktranslate %} <small><bdi>{{ week.title }}</bdi></small></h2>
     <div class="grid">
       {% for ex in week.exercises %}
         <a class="card" href="{% url 'learn:exercise' ex.slug %}">
           <div class="row">
             <span class="num">#{{ ex.number|stringformat:"02d" }}</span>
-            <h3>{{ ex.title }}</h3>
-            {% if ex.progress.passed %}<span class="badge done">Passed</span>
-            {% elif ex.progress %}<span class="badge wip">In progress</span>
-            {% else %}<span class="badge new">Not started</span>{% endif %}
+            <h3><bdi>{{ ex.title }}</bdi></h3>
+            {% if ex.progress.passed %}<span class="badge done">{% translate "Passed" %}</span>
+            {% elif ex.progress %}<span class="badge wip">{% translate "In progress" %}</span>
+            {% else %}<span class="badge new">{% translate "Not started" %}</span>{% endif %}
           </div>
-          <p>{{ ex.summary }}</p>
+          <p dir="ltr">{{ ex.summary }}</p>
           <div class="meta">
-            <span>{{ ex.concept }}</span>
-            {% if ex.progress.tests_total %}<span>Tests {{ ex.progress.tests_passed }}/{{ ex.progress.tests_total }}</span>{% endif %}
-            {% if ex.progress.quiz_total %}<span>Quiz {{ ex.progress.quiz_correct }}/{{ ex.progress.quiz_total }}</span>{% endif %}
+            <span><bdi>{{ ex.concept }}</bdi></span>
+            {% if ex.progress.tests_total %}<span>{% blocktranslate trimmed with passed=ex.progress.tests_passed total=ex.progress.tests_total %}Tests {{ passed }}/{{ total }}{% endblocktranslate %}</span>{% endif %}
+            {% if ex.progress.quiz_total %}<span>{% blocktranslate trimmed with correct=ex.progress.quiz_correct total=ex.progress.quiz_total %}Quiz {{ correct }}/{{ total }}{% endblocktranslate %}</span>{% endif %}
             {% if ex.xp_earned %}<span class="xp">{% icon 'zap' %} {{ ex.xp_earned }} XP</span>{% else %}<span class="xp todo">{{ ex.xp_max }}+ XP</span>{% endif %}
           </div>
         </a>
@@ -103,29 +103,29 @@
 
   <div class="lower">
     <section>
-      <h2>Badges <small class="muted" style="font-weight:400;font-size:14px">{{ badges_earned }} of {{ badges|length }} unlocked</small></h2>
+      <h2>{% translate "Badges" %} <small class="muted" style="font-weight:400;font-size:14px">{% blocktranslate trimmed with earned=badges_earned total=badges|length %}{{ earned }} of {{ total }} unlocked{% endblocktranslate %}</small></h2>
       <div class="badges">
         {% for item in badges %}
           <div class="badge-card {% if item.earned %}earned{% else %}locked{% endif %}">
             <span class="icon">{{ item.badge.icon }}</span>
-            <div><strong>{{ item.badge.name }}</strong><small>{{ item.badge.description }} · +{{ item.badge.xp }} XP</small></div>
+            <div><strong><bdi>{{ item.badge.name }}</bdi></strong><small><bdi>{{ item.badge.description }}</bdi> · +{{ item.badge.xp }} XP</small></div>
           </div>
         {% endfor %}
       </div>
     </section>
     <section>
-      <h2>Recent XP</h2>
+      <h2>{% translate "Recent XP" %}</h2>
       <div class="log">
         {% for event in recent_xp %}
-          <div><span class="amt">+{{ event.amount }}</span><span>{{ event.label }}</span><time datetime="{{ event.created_at|date:'c' }}">{{ event.created_at|timesince }} ago</time></div>
+          <div><span class="amt">+{{ event.amount }}</span><span><bdi>{{ event.label }}</bdi></span><time datetime="{{ event.created_at|date:'c' }}">{% blocktranslate trimmed with since=event.created_at|timesince %}{{ since }} ago{% endblocktranslate %}</time></div>
         {% empty %}
-          <div class="muted">No XP yet. Pass your first tests to get started.</div>
+          <div class="muted">{% translate "No XP yet. Pass your first tests to get started." %}</div>
         {% endfor %}
       </div>
       <p class="how">
-        <strong>How to earn XP:</strong> 5 per passing test · 100–250 per completed exercise (harder weeks pay more)
+        {% blocktranslate trimmed %}<strong>How to earn XP:</strong> 5 per passing test · 100–250 per completed exercise (harder weeks pay more)
         · +50 without opening the solution · +25 if you pass on the first run · 10 per correct quiz answer on your
-        first attempt (+20 if all correct) · 10 for practising each day · bonus XP for badges.
+        first attempt (+20 if all correct) · 10 for practising each day · bonus XP for badges.{% endblocktranslate %}
       </p>
     </section>
   </div>

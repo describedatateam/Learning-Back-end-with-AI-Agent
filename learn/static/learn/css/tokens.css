@@ -1,33 +1,57 @@
-/* Backend Lab design tokens. The source of truth is docs/design-system.md. */
-:root {
-  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --border: #dde1e7;
-  --text: #1c2330; --muted: #5d6778; --accent: #2f6fdf; --accent-soft: #e5eefc;
-  --ok: #1f8a4c; --ok-soft: #e3f4ea; --bad: #c43d3d; --bad-soft: #fbe7e7;
-  --warn: #a86a00; --warn-soft: #fdf1dc;
-  --xp: #8a4fe0; --xp-2: #d84fb5; --xp-soft: #f1e8fd;
-  --job: #0f766e; --job-soft: #e0f2f0; --skill: #2f6fdf; --skill-soft: #e5eefc;
-  --code-bg: #0f1623; --code-text: #e3e8f0; --gutter: #6b7688;
+/* Describe design tokens (design system v2.0). The source of truth is docs/design-system.md.
+   Token names stay the same as v1; only their values changed. */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("../fonts/inter-latin-wght-normal.woff2") format("woff2-variations"), url("../fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+@font-face { font-family: "IBM Plex Sans Arabic"; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-weight: 600; font-display: swap; src: url("../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
+@font-face { font-family: "IBM Plex Sans Arabic"; font-weight: 700; font-display: swap; src: url("../fonts/ibm-plex-sans-arabic-arabic-700-normal.woff2") format("woff2"); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
 
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-ar: "IBM Plex Sans Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
+:root {
+  --bg: #f8fafc; --surface: #ffffff; --surface-subtle: #f1f5f9; --surface-2: var(--surface-subtle); --border: #e2e8f0;
+  --text: #0f172a; --muted: #64748b;
+  --accent: #4f46e5; --accent-text: #ffffff; --accent-bar: #6366f1; --accent-soft: #e0e7ff;
+  --ok: #047857; --ok-soft: #d1fae5; --ok-bar: #10b981;
+  --bad: #dc2626; --bad-soft: #fee2e2;
+  --warn: #b45309; --warn-soft: #fef3c7;
+  --xp: #b45309; --xp-2: #f59e0b; --xp-soft: #fef3c7;
+  --info: #0369a1;
+  --job: #0f766e; --job-soft: #ccfbf1; --skill: #4f46e5; --skill-soft: #e0e7ff;
+  --nav-bg: #0b1b36; --nav-bg-2: #102544; --nav-active: #1f2d5c; --nav-text: #cbd5e1;
+  --code-bg: #0f172a; --code-text: #e2e8f0; --gutter: #64748b;
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "Inter", "Noto Sans Arabic", Tahoma, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
 
-  --radius: 10px; --radius-sm: 8px; --radius-pill: 999px;
+  --radius-card: 14px; --radius-control: 9px;
+  --radius: var(--radius-card); --radius-sm: var(--radius-control); --radius-chip: 6px; --radius-pill: 999px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 24px; --space-6: 32px; --space-7: 48px;
-  --shadow-hover: 0 2px 8px rgb(0 0 0 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.07);
+  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.10);
+  --shadow-hover: var(--shadow-md);
   --ease: 150ms ease-out;
+  --sidebar: 248px; --rail: 72px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11151c; --surface: #181d26; --surface-2: #1f2530; --border: #2c3442;
-    --text: #e4e8ef; --muted: #9aa4b5; --accent: #6b9bf5; --accent-soft: #1d2a42;
-    --ok: #4cc281; --ok-soft: #173024; --bad: #f07070; --bad-soft: #3a1c1f;
-    --warn: #e8b04a; --warn-soft: #362a14;
-    --xp: #b38cff; --xp-2: #ff7ad1; --xp-soft: #2a1f42;
-    --job: #4fd1c5; --job-soft: #12302e; --skill: #6b9bf5; --skill-soft: #1d2a42;
-    --code-bg: #0b0f16;
-    --shadow-hover: 0 2px 8px rgb(0 0 0 / 0.3);
+    --bg: #0b1220; --surface: #111a2e; --surface-subtle: #16213a; --border: #24304a;
+    --text: #e2e8f0; --muted: #94a3b8;
+    --accent: #818cf8; --accent-text: #0b1220; --accent-bar: #818cf8; --accent-soft: #1e1b4b;
+    --ok: #34d399; --ok-soft: #063b2c; --ok-bar: #34d399;
+    --bad: #f87171; --bad-soft: #3b1518;
+    --warn: #fbbf24; --warn-soft: #3a2a0a;
+    --xp: #fbbf24; --xp-2: #f59e0b; --xp-soft: #3a2a0a;
+    --info: #38bdf8;
+    --job: #2dd4bf; --job-soft: #0f2f2c; --skill: #818cf8; --skill-soft: #1e1b4b;
+    --nav-bg: #070f20; --nav-bg-2: #0b1b36;
+    --code-bg: #0b1220;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.45);
   }
 }

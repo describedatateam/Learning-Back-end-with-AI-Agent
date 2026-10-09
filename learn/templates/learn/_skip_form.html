@@ -1,0 +1,12 @@
+{% load i18n ui %}
+{# "I already know this" for a prerequisite. Needs `skill` (a SkillView). #}
+{% if user.is_authenticated %}
+<form class="skip-form" method="post" action="{% url 'learn:skip_path' skill.path.slug %}">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="skip" value="{% if skill.skipped %}0{% else %}1{% endif %}">
+  <label><input type="checkbox" {% if skill.skipped %}checked{% endif %} onchange="this.form.submit()"> {% translate "I already know this" %}</label>
+  <noscript><button class="btn quiet" type="submit">{% translate "Save" %}</button></noscript>
+  <span class="meta">{% translate "A placement test is coming soon, so you can prove it instead." %}</span>
+</form>
+{% endif %}

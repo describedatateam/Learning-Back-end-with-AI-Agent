@@ -1,0 +1,29 @@
+{% load i18n ui %}
+{# One skill path's courses and chapters. Needs `skill` (a SkillView). #}
+{% for course, chapters in skill.courses %}
+<section class="course">
+  <h4><bdi>{{ course.title }}</bdi> <span class="meta">{% blocktranslate trimmed count hours=course.hours %}{{ hours }} hour{% plural %}{{ hours }} hours{% endblocktranslate %}</span></h4>
+  <ol class="chapters">
+    {% for ch in chapters %}
+    <li class="chapter is-{{ ch.status }}{% if ch.current %} current{% endif %}"{% if ch.current %} id="here"{% endif %}>
+      <span class="chapter-icon">{% if ch.status == 'done' or ch.status == 'skipped' %}{% icon 'circle-check' %}{% elif ch.status == 'progress' %}{% icon 'circle-dot' %}{% elif ch.status == 'soon' %}{% icon 'lock' %}{% else %}{% icon 'circle' %}{% endif %}</span>
+      <div class="chapter-body">
+        <div class="chapter-title"><bdi>{{ ch.chapter.title }}</bdi>{% if ch.current %} <span class="badge wip here">{% icon 'map-pin' %}{% translate "You are here" %}</span>{% endif %}</div>
+        {% if ch.chapter.learning_goal %}<p class="meta" dir="ltr">{{ ch.chapter.learning_goal|capfirst }}.</p>{% endif %}
+        {% if ch.exercises %}
+        <ul class="chapter-exercises">
+          {% for exercise, state in ch.exercises %}
+          <li><a href="{% url 'learn:exercise' exercise.slug %}">{% icon 'code' %}<bdi>{{ exercise.title }}</bdi></a>{% if state == 'passed' %} <span class="badge done">{% translate "Passed" %}</span>{% elif state == 'started' %} <span class="badge wip">{% translate "Started" %}</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      <span class="chapter-status">{% include "learn/_status.html" with status=ch.status %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endfor %}
+{% if skill.path.project.title %}
+<div class="project-row">{% icon 'hammer' %}<div><strong>{% translate "Project" %}: <bdi>{{ skill.path.project.title }}</bdi></strong>{% if skill.path.project.brief %}<p class="meta" dir="ltr">{{ skill.path.project.brief }}</p>{% endif %}</div></div>
+{% endif %}

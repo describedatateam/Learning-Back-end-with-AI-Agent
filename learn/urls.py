@@ -6,6 +6,13 @@ app_name = 'learn'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('paths/', views.path_catalog, name='catalog'),
+    path('paths/<slug:slug>/', views.path_detail, name='path'),
+    path('paths/<slug:slug>/choose/', views.choose_path, name='choose_path'),
+    path('paths/<slug:slug>/skip/', views.skip_path, name='skip_path'),
+    path('flashcards/', views.coming_soon, {'section': 'flashcards'}, name='flashcards'),
+    path('project/', views.coming_soon, {'section': 'project'}, name='project'),
+    path('portfolio/', views.coming_soon, {'section': 'portfolio'}, name='portfolio'),
     path('tutor/', views.tutor_page, name='tutor'),
     path('notebook/', views.notebook_page, name='notebook'),
     path('notebook/<slug:slug>/generate/', views.notebook_generate, name='notebook_generate'),

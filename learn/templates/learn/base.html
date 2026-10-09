@@ -4,11 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Describe{% endblock %}</title>
-  {% if RTL %}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
-  {% endif %}
   <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
   <style>
@@ -16,43 +11,62 @@
   </style>
   {% include "learn/_code.html" %}
 </head>
-<body>
-  <header class="top">
-    <a class="brand" href="{% url 'home' %}">Describe</a>
-    {% with here=request.resolver_match.view_name %}
-    <nav aria-label="{% translate 'Main' %}">
-      <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %}>{% icon 'house' %}{% translate 'Home' %}</a>
-      <a href="{% url 'learn:dashboard' %}"{% if here == 'learn:dashboard' %} aria-current="page"{% endif %}>{% icon 'compass' %}{% translate 'Paths' %}</a>
-      <a href="{% url 'learn:tutor' %}"{% if here == 'learn:tutor' %} aria-current="page"{% endif %}>{% icon 'bot' %}{% translate 'Tutor' %}</a>
-      <a href="{% url 'learn:notebook' %}"{% if here == 'learn:notebook' %} aria-current="page"{% endif %}>{% icon 'notebook-pen' %}{% translate 'Notebook' %}</a>
+<body class="{% block body_class %}{% endblock %}">
+  {% with here=request.resolver_match.view_name %}
+  <aside class="sidebar" id="sidebar" aria-label="{% translate 'Main' %}">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span class="rail-hide" dir="ltr">Describe</span></a>
+    <button class="icon-btn rail-toggle" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{% translate 'Open menu' %}">{% icon 'menu' %}</button>
+    <nav>
+      <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %} title="{% translate 'Home' %}">{% icon 'house' %}<span class="rail-hide">{% translate 'Home' %}</span></a>
+      <a href="{% url 'learn:catalog' %}"{% if here in 'learn:catalog learn:path learn:dashboard learn:exercise' %} aria-current="page"{% endif %} title="{% translate 'Paths' %}">{% icon 'compass' %}<span class="rail-hide">{% translate 'Paths' %}</span></a>
+      <a href="{% url 'learn:project' %}"{% if here == 'learn:project' %} aria-current="page"{% endif %} title="{% translate 'My project' %}">{% icon 'file-text' %}<span class="rail-hide">{% translate 'My project' %}</span></a>
+      <a href="{% url 'learn:flashcards' %}"{% if here == 'learn:flashcards' %} aria-current="page"{% endif %} title="{% translate 'Flashcards' %}">{% icon 'layers' %}<span class="rail-hide">{% translate 'Flashcards' %}</span></a>
+      <a href="{% url 'learn:portfolio' %}"{% if here == 'learn:portfolio' %} aria-current="page"{% endif %} title="{% translate 'Portfolio' %}">{% icon 'briefcase' %}<span class="rail-hide">{% translate 'Portfolio' %}</span></a>
+      <span class="nav-label rail-hide">{% translate 'Study tools' %}</span>
+      <a href="{% url 'learn:tutor' %}"{% if here == 'learn:tutor' %} aria-current="page"{% endif %} title="{% translate 'AI tutor' %}">{% icon 'bot' %}<span class="rail-hide">{% translate 'AI tutor' %}</span></a>
+      <a href="{% url 'learn:notebook' %}"{% if here == 'learn:notebook' %} aria-current="page"{% endif %} title="{% translate 'Notebook' %}">{% icon 'notebook-pen' %}<span class="rail-hide">{% translate 'Notebook' %}</span></a>
     </nav>
-    {% endwith %}
-    {% if player %}
-    <a class="hud push" href="{% url 'learn:dashboard' %}#profile" title="{% translate 'Your level and XP' %}">
-      <span class="lvl" id="hud-level">Lv {{ player.level.number }}</span>
-      <span class="title" id="hud-title">{{ player.level.title }}</span>
-      <span class="xpbar"><span id="hud-bar" style="width: {{ player.level.percent }}%"></span></span>
-      <span class="num" id="hud-xp">{{ player.xp }} XP</span>
-      <span class="streak {% if not player.streak %}cold{% endif %}" title="{% translate 'Daily streak' %}">{% icon 'flame' %}<span id="hud-streak">{{ player.streak }}</span></span>
-    </a>
-    {% endif %}
-    <form class="lang-switch{% if not player %} push{% endif %}" action="{% url 'set_language' %}" method="post">
+    <div class="side-bottom">
+      {% if player %}
+      <a class="progress-box rail-hide" href="{% url 'learn:dashboard' %}#profile" title="{% translate 'Your level and XP' %}">
+        <div class="row"><strong>{% translate 'Progress' %}</strong><span class="streak{% if not player.streak %} cold{% endif %}" title="{% translate 'Daily streak' %}">{% icon 'flame' %}<span id="hud-streak" class="num">{{ player.streak }}</span></span></div>
+        <div class="xpbar"><span id="hud-bar" style="width: {{ player.level.percent }}%"></span></div>
+        <div class="row" dir="ltr"><span><span id="hud-level">Lv {{ player.level.number }}</span> · <span id="hud-title">{{ player.level.title }}</span></span><span class="num" id="hud-xp">{{ player.xp }} XP</span></div>
+      </a>
+      {% endif %}
+      <form class="lang-switch rail-hide" action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        {% icon 'languages' %}
+        <button type="submit" name="language" value="en" lang="en" aria-pressed="{% if LANG == 'en' %}true{% else %}false{% endif %}">English</button>
+        <span class="sep" aria-hidden="true">|</span>
+        <button type="submit" name="language" value="ar" lang="ar" aria-pressed="{% if LANG == 'ar' %}true{% else %}false{% endif %}">العربية</button>
+      </form>
+      {% if user.is_authenticated %}
+      <div class="side-user">
+        <span class="avatar" aria-hidden="true">{{ user.get_username|first }}</span>
+        <span class="who rail-hide"><bdi>{{ user.get_username }}</bdi></span>
+        <form class="rail-hide" action="{% url 'logout' %}" method="post">
+          {% csrf_token %}
+          <button class="icon-btn" type="submit" title="{% translate 'Sign out' %}">{% icon 'log-out' label=_('Sign out') %}</button>
+        </form>
+      </div>
+      {% else %}
+      <nav><a href="{% url 'login' %}" title="{% translate 'Sign in' %}">{% icon 'log-in' %}<span class="rail-hide">{% translate 'Sign in' %}</span></a></nav>
+      {% endif %}
+    </div>
+  </aside>
+  <div class="scrim" data-nav-toggle></div>
+
+  <div class="app">
+  <header class="topbar">
+    <button class="icon-btn" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{% translate 'Open menu' %}">{% icon 'menu' %}</button>
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+    <form class="lang-switch" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
-      {% icon 'languages' %}
-      <button type="submit" name="language" value="en" lang="en" aria-pressed="{% if LANG == 'en' %}true{% else %}false{% endif %}">English</button>
-      <span class="sep" aria-hidden="true">|</span>
-      <button type="submit" name="language" value="ar" lang="ar" aria-pressed="{% if LANG == 'ar' %}true{% else %}false{% endif %}">العربية</button>
+      {% if LANG == 'ar' %}<button type="submit" name="language" value="en" lang="en">English</button>{% else %}<button type="submit" name="language" value="ar" lang="ar">العربية</button>{% endif %}
     </form>
-    {% if user.is_authenticated %}
-    <form class="account" action="{% url 'logout' %}" method="post">
-      {% csrf_token %}
-      <span class="who">{% icon 'user' %}<bdi>{{ user.get_username }}</bdi></span>
-      <button class="btn quiet" type="submit">{% icon 'log-out' %}{% translate 'Sign out' %}</button>
-    </form>
-    {% else %}
-    <a class="btn quiet account" href="{% url 'login' %}">{% icon 'log-in' %}{% translate 'Sign in' %}</a>
-    {% endif %}
   </header>
   {% block content %}{% endblock %}
   <footer class="bottom">
@@ -60,8 +74,24 @@
     <a href="/admin/">{% translate 'Admin' %}</a>
     <a href="/api/health/">{% translate 'API health' %}</a>
   </footer>
+  <nav class="bottom-nav" aria-label="{% translate 'Main' %}">
+    <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %}>{% icon 'house' %}{% translate 'Home' %}</a>
+    <a href="{% url 'learn:catalog' %}"{% if here in 'learn:catalog learn:path learn:dashboard learn:exercise' %} aria-current="page"{% endif %}>{% icon 'compass' %}{% translate 'Paths' %}</a>
+    <a href="{% url 'learn:flashcards' %}"{% if here == 'learn:flashcards' %} aria-current="page"{% endif %}>{% icon 'layers' %}{% translate 'Flashcards' %}</a>
+    <a href="{% url 'learn:project' %}"{% if here == 'learn:project' %} aria-current="page"{% endif %}>{% icon 'file-text' %}{% translate 'Project' %}</a>
+    <a href="{% url 'learn:portfolio' %}"{% if here == 'learn:portfolio' %} aria-current="page"{% endif %}>{% icon 'briefcase' %}{% translate 'Portfolio' %}</a>
+  </nav>
+  </div>
+  {% endwith %}
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <script>
+  // The menu button opens the full sidebar over the page (phones, tablets, exercise page).
+  document.querySelectorAll('[data-nav-toggle]').forEach((el) => el.addEventListener('click', () => {
+    const open = document.body.classList.toggle('nav-open');
+    document.querySelectorAll('button[data-nav-toggle]').forEach((b) => b.setAttribute('aria-expanded', open));
+  }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.body.classList.remove('nav-open'); });
+
   // Shows the XP earned by an action and updates the header.
   window.celebrate = (xp) => {
     if (!xp) return;
@@ -75,9 +105,9 @@
     let delay = 0;
     for (const g of xp.gained) { toast(`<span class="amt">+${g.amount} XP</span><span>${esc(g.label)}</span>`, '', 3800, delay); delay += 350; }
     const icon = (name) => `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="{% static 'learn/icons.svg' %}#${name}"/></svg>`;
-    for (const b of xp.badges) { toast(`${icon('trophy')}<div><strong>Badge unlocked: ${esc(b.name)}</strong><small>${esc(b.description)}</small></div>`, 'big', 6000, delay); delay += 500; }
+    for (const b of xp.badges) { toast(`${icon('trophy')}<div><strong>{{ _('Badge unlocked')|escapejs }}: ${esc(b.name)}</strong><small>${esc(b.description)}</small></div>`, 'big', 6000, delay); delay += 500; }
     const p = xp.player;
-    if (xp.level_up) toast(`${icon('zap')}<div><strong>Level up! Lv ${p.level.number}</strong><small>New rank: ${esc(p.level.title)}</small></div>`, 'big', 7000, delay);
+    if (xp.level_up) toast(`${icon('zap')}<div><strong>{{ _('Level up!')|escapejs }} Lv ${p.level.number}</strong><small>{{ _('New rank')|escapejs }}: ${esc(p.level.title)}</small></div>`, 'big', 7000, delay);
     const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
     set('hud-level', `Lv ${p.level.number}`); set('hud-title', p.level.title);
     set('hud-xp', `${p.xp} XP`); set('hud-streak', p.streak);

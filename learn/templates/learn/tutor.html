@@ -1,6 +1,7 @@
 {% extends "learn/base.html" %}
+{% load i18n %}
 
-{% block title %}Study tutor · Describe{% endblock %}
+{% block title %}{% translate "Study tutor" %} · Describe{% endblock %}
 
 {% block style %}
   .tutor-page { max-width: 820px; margin: 0 auto; padding: 24px 24px 20px; height: calc(100vh - 58px); display: flex; flex-direction: column; }
@@ -12,8 +13,8 @@
 {% block content %}
 <main class="tutor-page">
   <header>
-    <h1>Study tutor</h1>
-    <p class="muted">Ask about any backend concept: HTTP, Django, REST, databases, testing, security… For help with a specific exercise, open its <strong>Tutor</strong> tab so the tutor can see your code.</p>
+    <h1>{% translate "Study tutor" %}</h1>
+    <p class="muted">{% blocktranslate trimmed %}Ask about any backend concept: HTTP, Django, REST, databases, testing, security… For help with a specific exercise, open its <strong>Tutor</strong> tab so the tutor can see your code.{% endblocktranslate %}</p>
   </header>
   <div class="panel">
     {% include "learn/_tutor.html" with tutor_topic="general" %}

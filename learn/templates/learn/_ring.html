@@ -1,0 +1,1 @@
+{% load i18n %}<svg class="ring" viewBox="0 0 48 48" role="img" aria-label="{{ percent }}%"><circle cx="24" cy="24" r="20" class="ring-track"/><circle cx="24" cy="24" r="20" class="ring-fill{% if percent == 100 %} complete{% endif %}" stroke-dasharray="{% widthratio percent 100 126 %} 126"/><text x="24" y="24" dy=".35em" text-anchor="middle">{{ percent }}%</text></svg>

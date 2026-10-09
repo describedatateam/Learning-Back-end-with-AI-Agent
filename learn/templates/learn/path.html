@@ -1,0 +1,103 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{{ path.title }} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} {% if job %}{% translate "Job path" %}{% else %}{% translate "Skill path" %}{% endif %}</p>
+
+  {% if job %}
+  <section class="card path-hero job">
+    <div class="card-head"><span class="tag job">{% translate "Job path" %}</span><span class="tag">{% include "learn/_level.html" with level=path.level %}</span>{% if is_current %}<span class="tag skill">{% translate "Your path" %}</span>{% endif %}</div>
+    <h1><bdi>{{ path.title }}</bdi></h1>
+    <p class="muted" dir="ltr">{{ path.summary }}</p>
+    <div class="promise">
+      <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+      <span>{% icon 'hammer' %}<bdi>{{ path.capstone.title }}</bdi></span>
+      <span>{% icon 'target' %}{% blocktranslate trimmed count n=job.skills|length %}{{ n }} skill path{% plural %}{{ n }} skill paths{% endblocktranslate %}</span>
+    </div>
+    <div class="progress-row">
+      <div class="progress{% if job.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ job.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Path progress' %}"><div style="width: {{ job.percent }}%"></div></div>
+      <span class="meta num">{% blocktranslate trimmed with done=job.done total=job.total percent=job.percent %}{{ done }} of {{ total }} chapters · {{ percent }}%{% endblocktranslate %}</span>
+    </div>
+    <div class="actions">
+      {% if is_current or not user.is_authenticated %}
+        {% if job.next_exercise %}<a class="btn primary" href="{% url 'learn:exercise' job.next_exercise.slug %}">{% if job.started %}{% translate "Continue learning" %}{% else %}{% translate "Start" %}{% endif %}{% icon 'arrow-right' css='icon-flip' %}</a>{% endif %}
+      {% else %}
+      <form method="post" action="{% url 'learn:choose_path' path.slug %}">{% csrf_token %}<button class="btn primary" type="submit">{% translate "Make this my path" %}{% icon 'arrow-right' css='icon-flip' %}</button></form>
+      {% endif %}
+      {% if job.current_chapter %}<a class="btn quiet" href="#here">{% icon 'map-pin' %}{% translate "Show where I am" %}</a>{% endif %}
+    </div>
+  </section>
+
+  {% if job.prerequisites %}
+  <h2>{% translate "Before you start" %}</h2>
+  {% for skill in job.prerequisites %}
+  <details class="card step prereq"{% if skill.current %} open{% endif %}>
+    <summary class="step-head">
+      <span class="step-title"><span class="tag">{% translate "Prerequisite" %}</span> <a href="{% url 'learn:path' skill.path.slug %}"><bdi>{{ skill.path.title }}</bdi></a></span>
+      {% include "learn/_status.html" with status=skill.status %}
+    </summary>
+    {% include "learn/_skip_form.html" %}
+    {% include "learn/_chapters.html" %}
+  </details>
+  {% endfor %}
+  {% endif %}
+
+  <h2>{% translate "Your learning journey" %}</h2>
+  <ol class="journey">
+    {% for skill in job.skills %}
+    <li class="journey-step is-{{ skill.status }}{% if skill.current %} current{% endif %}">
+      <span class="node" aria-hidden="true">{% if skill.status == 'done' or skill.status == 'skipped' %}{% icon 'check' %}{% else %}{{ forloop.counter }}{% endif %}</span>
+      <details class="card step"{% if skill.current %} open{% endif %}>
+        <summary class="step-head">
+          <span class="step-title"><a href="{% url 'learn:path' skill.path.slug %}"><bdi>{{ skill.path.title }}</bdi></a>
+            <span class="meta">{% blocktranslate trimmed count n=skill.total %}{{ n }} chapter{% plural %}{{ n }} chapters{% endblocktranslate %} · {% blocktranslate trimmed with hours=skill.path.hours %}About {{ hours }} hours{% endblocktranslate %}</span></span>
+          <span class="step-progress"><span class="meta num">{{ skill.percent }}%</span>{% include "learn/_status.html" with status=skill.status %}</span>
+        </summary>
+        {% include "learn/_chapters.html" %}
+      </details>
+    </li>
+    {% endfor %}
+    <li class="journey-step capstone">
+      <span class="node" aria-hidden="true">{% icon 'flag' %}</span>
+      <section class="card step">
+        <div class="step-head"><span class="step-title"><span class="tag job">{% translate "Capstone project" %}</span> <bdi>{{ path.capstone.title }}</bdi></span></div>
+        <p dir="ltr">{{ path.capstone.brief }}</p>
+        {% if job.capstone_exercises %}
+        <ul class="chapter-exercises">
+          {% for exercise, state in job.capstone_exercises %}
+          <li><a href="{% url 'learn:exercise' exercise.slug %}">{% icon 'code' %}<bdi>{{ exercise.title }}</bdi></a>{% if state == 'passed' %} <span class="badge done">{% translate "Passed" %}</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <details class="milestones">
+          <summary>{% blocktranslate trimmed count n=path.capstone.milestones|length %}{{ n }} milestone{% plural %}{{ n }} milestones{% endblocktranslate %}</summary>
+          <ol dir="ltr">{% for m in path.capstone.milestones %}<li>{{ m }}</li>{% endfor %}</ol>
+        </details>
+      </section>
+    </li>
+  </ol>
+
+  {% else %}
+  <section class="card path-hero">
+    <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}</div>
+    <h1><bdi>{{ path.title }}</bdi></h1>
+    <p class="muted" dir="ltr">{{ path.summary }}</p>
+    <div class="promise">
+      <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+      {% if path.project.title %}<span>{% icon 'hammer' %}<bdi>{{ path.project.title }}</bdi></span>{% endif %}
+      {% if path.project.skills_used %}<span>{% icon 'target' %}<bdi>{{ path.project.skills_used|join:", " }}</bdi></span>{% endif %}
+    </div>
+    <div class="progress-row">
+      <div class="progress{% if skill.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ skill.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Skill path progress' %}"><div style="width: {{ skill.percent }}%"></div></div>
+      <span class="meta num">{% blocktranslate trimmed with done=skill.done total=skill.total percent=skill.percent %}{{ done }} of {{ total }} chapters · {{ percent }}%{% endblocktranslate %}</span>
+    </div>
+    {% if jobs %}<p class="meta">{% translate "Part of" %}: {% for j in jobs %}<a href="{% url 'learn:path' j.slug %}"><bdi>{{ j.title }}</bdi></a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    {% if skill.prerequisite %}{% include "learn/_skip_form.html" %}{% endif %}
+  </section>
+  <div class="card step">{% include "learn/_chapters.html" %}</div>
+  {% endif %}
+</main>
+{% endblock %}

@@ -444,14 +444,14 @@ class SiteNavigationTests(SignedInTestCase):
     def test_home_shows_next_step(self):
         response = self.client.get('/')
         self.assertContains(response, '<html lang="en" dir="ltr">')
-        self.assertContains(response, 'Start learning')
+        self.assertContains(response, 'Backend Developer (Python, Django)')  # the catalog loads itself if empty
         self.assertContains(response, f'/learn/{load_exercises()[0].slug}/')
 
     def test_arabic_is_right_to_left(self):
         self.client.cookies['django_language'] = 'ar'
         response = self.client.get('/')
         self.assertContains(response, '<html lang="ar" dir="rtl">')
-        self.assertContains(response, 'استكشف المسارات')
+        self.assertContains(response, 'الرئيسية')
 
     def test_language_switch(self):
         response = self.client.post('/i18n/setlang/', {'language': 'ar', 'next': '/learn/'})
@@ -868,3 +868,84 @@ class RunnerSafetyTests(TestCase):
     def test_own_folder_still_works(self):
         result = self.run_sel('open("notes.txt", "w").write("hi")\nopen("notes.txt").read()')
         self.assertEqual(result['output'], "'hi'\n", result)
+
+
+class CatalogTests(SignedInTestCase):
+    """The path catalog loads from catalog.json and tracks progress from passed exercises."""
+
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        load_catalog()
+
+    def test_catalog_has_the_three_job_paths_and_valid_exercises(self):
+        from .models import Chapter, Path
+        self.assertEqual(set(Path.objects.filter(kind=Path.JOB).values_list('slug', flat=True)),
+                         {'backend-developer', 'frontend-developer', 'fullstack-developer'})
+        known = {e.slug for e in load_exercises()}
+        linked = [slug for ch in Chapter.objects.all() for slug in ch.exercises]
+        linked += [slug for p in Path.objects.filter(kind=Path.JOB) for slug in p.capstone.get('exercises', [])]
+        self.assertEqual(set(linked), known)  # every exercise appears, and only real ones
+
+    def test_loading_twice_is_safe(self):
+        from .catalog import load_catalog
+        from .models import Chapter
+        count = Chapter.objects.count()
+        load_catalog()
+        self.assertEqual(Chapter.objects.count(), count)
+
+    def test_catalog_and_path_pages(self):
+        response = self.client.get('/learn/paths/')
+        self.assertContains(response, 'Frontend Developer (HTML, CSS, JavaScript)')
+        self.assertContains(response, 'Full Stack Developer')
+        response = self.client.get('/learn/paths/backend-developer/')
+        self.assertContains(response, 'Admin, ownership and first APIs')
+        self.assertContains(response, '/learn/http-requests/')
+        self.assertEqual(self.client.get('/learn/paths/python-basics/').status_code, 200)
+        self.assertEqual(self.client.get('/learn/paths/nope/').status_code, 404)
+
+    def test_progress_and_you_are_here(self):
+        from .catalog import job_view
+        from .models import Path
+        for slug in ('http-requests', 'json-views'):
+            ExerciseProgress.objects.create(user=self.user, slug=slug, passed=True)
+        job = job_view(Path.objects.get(slug='backend-developer'), self.user)
+        self.assertEqual(job.done, 2)
+        self.assertEqual(job.current_chapter.chapter.title, 'Models and migrations')
+        self.assertEqual(job.next_exercise.slug, 'models')
+        self.assertEqual(job.exercises_passed, (2, 17))
+
+    def test_home_cockpit(self):
+        ExerciseProgress.objects.create(user=self.user, slug='http-requests', passed=True)
+        LearningEvent.objects.create(user=self.user, kind=LearningEvent.PASSED, slug='http-requests')
+        response = self.client.get('/')
+        self.assertContains(response, 'Backend Developer (Python, Django)')
+        self.assertContains(response, 'Continue learning')
+        self.assertContains(response, 'Recent activity')
+        self.assertContains(response, '/learn/json-views/')
+
+    def test_choose_path_changes_home(self):
+        response = self.client.post('/learn/paths/frontend-developer/choose/')
+        self.assertRedirects(response, '/')
+        self.assertContains(self.client.get('/'), 'Frontend Developer (HTML, CSS, JavaScript)')
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.PATH_CHOSEN).exists())
+
+    def test_skip_prerequisite(self):
+        from .catalog import job_view
+        from .models import Path
+        response = self.client.post('/learn/paths/python-basics/skip/', {'skip': '1', 'next': '/learn/paths/backend-developer/'})
+        self.assertRedirects(response, '/learn/paths/backend-developer/')
+        job = job_view(Path.objects.get(slug='backend-developer'), self.user)
+        self.assertTrue(job.prerequisites[0].skipped)
+        self.assertEqual(job.prerequisites[0].percent, 100)
+        self.client.post('/learn/paths/python-basics/skip/', {'skip': '0'})
+        self.assertFalse(job_view(Path.objects.get(slug='backend-developer'), self.user).prerequisites[0].skipped)
+        # Only prerequisites can be skipped.
+        self.assertEqual(self.client.post('/learn/paths/sql-basics/skip/', {'skip': '1'}).status_code, 404)
+
+    def test_coming_soon_sections_and_arabic_shell(self):
+        for url in ('/learn/flashcards/', '/learn/project/', '/learn/portfolio/'):
+            self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.cookies['django_language'] = 'ar'
+        response = self.client.get('/learn/paths/')
+        self.assertContains(response, 'dir="rtl"')

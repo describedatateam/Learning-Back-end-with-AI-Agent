@@ -1,6 +1,7 @@
 {% extends "learn/base.html" %}
+{% load i18n %}
 
-{% block title %}My notebook · Describe{% endblock %}
+{% block title %}{% translate "My notebook" %} · Describe{% endblock %}
 
 {% block style %}
   .nb-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -44,16 +45,16 @@
 <main>
   <section class="nb-head">
     <div class="intro">
-      <h1>My notebook</h1>
-      <p class="muted">One page for every exercise you've passed: the tools you learned (with examples), where they're used in real backends,
-        what you found hard and how you solved it, and your final code. Pages are written by AI from your tutor chats and test history.</p>
+      <h1>{% translate "My notebook" %}</h1>
+      <p class="muted">{% blocktranslate trimmed %}One page for every exercise you've passed: the tools you learned (with examples), where they're used in real backends,
+        what you found hard and how you solved it, and your final code. Pages are written by AI from your tutor chats and test history.{% endblocktranslate %}</p>
     </div>
-    <div class="muted"><strong style="color:var(--text)">{{ passed_count }}</strong> of {{ pages|length }} pages unlocked</div>
+    <div class="muted">{% blocktranslate trimmed with passed=passed_count total=pages|length %}<strong style="color:var(--text)">{{ passed }}</strong> of {{ total }} pages unlocked{% endblocktranslate %}</div>
   </section>
 
   <nav class="nb-toc">
     {% for p in pages %}
-      <a href="#page-{{ p.exercise.slug }}" class="{% if p.passed %}done{% else %}locked{% endif %}">#{{ p.exercise.number|stringformat:"02d" }} {{ p.exercise.title }}</a>
+      <a href="#page-{{ p.exercise.slug }}" class="{% if p.passed %}done{% else %}locked{% endif %}">#{{ p.exercise.number|stringformat:"02d" }} <bdi>{{ p.exercise.title }}</bdi></a>
     {% endfor %}
   </nav>
 
@@ -67,6 +68,30 @@
 {% block script %}
 <script>
 (() => {
+  const T = {
+    tools: "{{ _('Tools you learned')|escapejs }}",
+    noTools: "{{ _('No tools listed.')|escapejs }}",
+    used: "{{ _("Where it's used")|escapejs }}",
+    difficult: "{{ _('What you found difficult, and how you solved it')|escapejs }}",
+    nothingHard: "{{ _('Nothing stood out as hard in your chats and test runs. Nice!')|escapejs }}",
+    takeaways: "{{ _('Takeaways')|escapejs }}",
+    nextStep: "{{ _('Next step')|escapejs }}",
+    finalCode: "{{ _('Your final code')|escapejs }}",
+    showCode: "{{ _('Show your passing code')|escapejs }}",
+    unlock: "{{ _('Pass this exercise to unlock its page.')|escapejs }}",
+    youllLearn: "{{ _("You'll learn:")|escapejs }}",
+    write: "{{ _('You passed this exercise. Write its notebook page from your tutor chats and test history (takes about a minute).')|escapejs }}",
+    rewrite: "{{ _('Rewrite page')|escapejs }}",
+    writeMine: "{{ _('Write my page')|escapejs }}",
+    passed: "{{ _('Passed')|escapejs }}",
+    locked: "{{ _('Locked')|escapejs }}",
+    written: "{{ _('Written %(when)s')|escapejs }}",
+    open: "{{ _('Open exercise →')|escapejs }}",
+    writing: "{{ _('Writing… (about a minute)')|escapejs }}",
+    failed: "{{ _('Request failed (%(status)s)')|escapejs }}",
+    justNow: "{{ _('just now')|escapejs }}",
+    tryAgain: "{{ _('Try again')|escapejs }}",
+  };
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
   const canRun = {{ can_run|yesno:"true,false" }};
   const pages = JSON.parse(document.getElementById('notebook-data').textContent);
@@ -84,15 +109,15 @@
       <div class="difficulty"><strong>${rich(d.what)}</strong>${rich(d.why_it_was_hard)}
         <div class="solved">✓ ${rich(d.how_you_solved_it)}</div></div>`).join('');
     return `
-      <p class="summary">${rich(data.summary)}</p>
-      <h3>Tools you learned</h3><div class="tools">${tools || '<p class="empty-page">No tools listed.</p>'}</div>
-      <h3>Where it's used</h3><div class="usecase">${rich(data.use_case)}</div>
-      <h3>What you found difficult, and how you solved it</h3>
-      ${difficulties || '<p class="empty-page">Nothing stood out as hard in your chats and test runs. Nice!</p>'}
-      <h3>Takeaways</h3><ul>${(data.takeaways || []).map((t) => `<li>${rich(t)}</li>`).join('')}</ul>
-      <h3>Next step</h3><p class="next">${rich(data.next_step)}</p>
-      ${page.code ? `<h3>Your final code</h3><details class="code"><summary>Show your passing code</summary>
-        <pre class="cm-s-vscode"><code class="language-python">${esc(page.code)}</code></pre></details>` : ''}`;
+      <p class="summary" dir="ltr">${rich(data.summary)}</p>
+      <h3>${T.tools}</h3><div class="tools" dir="ltr">${tools || `<p class="empty-page">${T.noTools}</p>`}</div>
+      <h3>${T.used}</h3><div class="usecase" dir="ltr">${rich(data.use_case)}</div>
+      <h3>${T.difficult}</h3>
+      ${difficulties ? `<div dir="ltr">${difficulties}</div>` : `<p class="empty-page">${T.nothingHard}</p>`}
+      <h3>${T.takeaways}</h3><ul dir="ltr">${(data.takeaways || []).map((t) => `<li>${rich(t)}</li>`).join('')}</ul>
+      <h3>${T.nextStep}</h3><p class="next" dir="ltr">${rich(data.next_step)}</p>
+      ${page.code ? `<h3>${T.finalCode}</h3><details class="code"><summary>${T.showCode}</summary>
+        <pre class="cm-s-vscode" dir="ltr"><code class="language-python">${esc(page.code)}</code></pre></details>` : ''}`;
   }
 
   function render(page) {
@@ -102,21 +127,21 @@
     el.className = 'page' + (page.passed ? '' : ' locked');
     let body;
     if (!page.passed) {
-      body = `<p class="empty-page">Pass this exercise to unlock its page.${page.tools.length
-        ? ` You'll learn: <span class="tool-list">${page.tools.map((t) => `<code>${esc(t)}</code>`).join(' ')}</span>` : ''}</p>`;
+      body = `<p class="empty-page">${T.unlock}${page.tools.length
+        ? ` ${T.youllLearn} <span class="tool-list" dir="ltr">${page.tools.map((t) => `<code>${esc(t)}</code>`).join(' ')}</span>` : ''}</p>`;
     } else if (data) {
       body = entryHtml(page, data);
     } else {
-      body = `<p class="empty-page">You passed this exercise. Write its notebook page from your tutor chats and test history (takes about a minute).</p>`;
+      body = `<p class="empty-page">${T.write}</p>`;
     }
     const button = page.passed && canRun
-      ? `<button class="btn ${data ? '' : 'primary'}" data-generate>${data ? 'Rewrite page' : 'Write my page'}</button>` : '';
+      ? `<button class="btn ${data ? '' : 'primary'}" data-generate>${data ? T.rewrite : T.writeMine}</button>` : '';
     el.innerHTML = `
-      <header><span class="num">#${String(page.number).padStart(2, '0')}</span><h2>${esc(page.title)}</h2>
-        <span class="badge ${page.passed ? 'done' : 'new'}">${page.passed ? 'Passed' : 'Locked'}</span>
+      <header><span class="num">#${String(page.number).padStart(2, '0')}</span><h2><bdi>${esc(page.title)}</bdi></h2>
+        <span class="badge ${page.passed ? 'done' : 'new'}">${page.passed ? T.passed : T.locked}</span>
         <span class="spacer"></span>
-        ${page.updated && data ? `<span class="gen-status">Written ${esc(page.updated)}</span>` : ''}
-        <a class="btn" href="${page.url}">Open exercise →</a>${button}</header>
+        ${page.updated && data ? `<span class="gen-status">${esc(T.written.replace('%(when)s', page.updated))}</span>` : ''}
+        <a class="btn" href="${page.url}">${T.open}</a>${button}</header>
       <div class="body">${body}<p class="gen-error" hidden></p></div>`;
     if (!el.parentElement) box.appendChild(el);
     el.querySelector('[data-generate]')?.addEventListener('click', () => generate(page, el));
@@ -126,18 +151,18 @@
   async function generate(page, el) {
     const btn = el.querySelector('[data-generate]');
     const error = el.querySelector('.gen-error');
-    btn.disabled = true; btn.textContent = 'Writing… (about a minute)';
+    btn.disabled = true; btn.textContent = T.writing;
     error.hidden = true;
     try {
       const res = await fetch(page.generate_url, {method: 'POST', headers: {'X-CSRFToken': csrf}});
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      if (!res.ok) throw new Error(data.error || T.failed.replace('%(status)s', res.status));
       page.data = data.page;
-      page.updated = 'just now';
+      page.updated = T.justNow;
       render(page);
     } catch (err) {
       error.hidden = false; error.textContent = err.message;
-      btn.disabled = false; btn.textContent = 'Try again';
+      btn.disabled = false; btn.textContent = T.tryAgain;
     }
   }
 

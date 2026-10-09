@@ -1,19 +1,22 @@
 import json
 from itertools import groupby
-from pathlib import Path
+from pathlib import Path as FilePath
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, JsonResponse, StreamingHttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from . import gamification, notebook, tutor
+from . import catalog, gamification, notebook, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
-from .models import ExerciseProgress, LearningEvent, NotebookEntry, TutorMessage, XPEvent
+from .models import (
+    ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath, TutorMessage, XPEvent,
+)
 
 MAX_SECONDS_SPENT = 6 * 60 * 60  # ignore page timers left open overnight
 WEEK_TITLES = {
@@ -77,23 +80,102 @@ def dashboard(request):
     })
 
 
+ACTIVITY_KINDS = [LearningEvent.PASSED, LearningEvent.RUN, LearningEvent.QUIZ, LearningEvent.HINT,
+                  LearningEvent.SOLUTION_VIEWED, LearningEvent.PATH_SKIPPED, LearningEvent.PATH_CHOSEN]
+
+
+def _recent_activity(user, limit=5):
+    events = list(LearningEvent.objects.filter(user=user, kind__in=ACTIVITY_KINDS)[:limit])
+    passed_xp = {x.slug: x.amount for x in XPEvent.objects.filter(
+        user=user, key__in=[f'pass:{e.slug}' for e in events if e.kind == LearningEvent.PASSED])}
+    paths = {p.slug: p.title for p in Path.objects.filter(slug__in=[e.slug for e in events])}
+    for event in events:
+        exercise = get_exercise(event.slug)
+        event.topic = exercise.title if exercise else paths.get(event.slug, event.slug)
+        event.xp = passed_xp.get(event.slug) if event.kind == LearningEvent.PASSED else None
+    return events
+
+
 def home(request):
-    exercises = load_exercises()
-    mine = ExerciseProgress.objects.filter(user=request.user) if request.user.is_authenticated else []
-    progress = {p.slug: p for p in mine}
-    done = sum(1 for e in exercises if progress.get(e.slug) and progress[e.slug].passed)
-    # The next step: the first exercise you started but haven't passed, else the first untouched one.
-    unfinished = [e for e in exercises if not (progress.get(e.slug) and progress[e.slug].passed)]
-    started = [e for e in unfinished if e.slug in progress]
-    next_exercise = (started or unfinished or [None])[0]
-    return render(request, 'learn/home.html', {
-        'next_exercise': next_exercise,
-        'next_started': next_exercise is not None and next_exercise.slug in progress,
-        'done': done,
-        'total': len(exercises),
-        'percent': round(100 * done / len(exercises)) if exercises else 0,
-        'has_started': bool(progress),
+    """The learning cockpit: where you are in your path and the one next step."""
+    path = catalog.current_job_path(request.user)
+    job = catalog.job_view(path, request.user) if path else None
+    player = gamification.player_state(request.user)
+    context = {'job': job, 'player': player}
+    if job and request.user.is_authenticated:
+        passed, total = job.exercises_passed
+        chapters_done = job.done + sum(s.done for s in job.prerequisites)
+        chapters_total = job.total + sum(s.total for s in job.prerequisites)
+        context.update({
+            'exercises_passed': passed, 'exercises_total': total,
+            'exercises_percent': round(100 * passed / total) if total else 0,
+            'chapters_done': chapters_done, 'chapters_total': chapters_total,
+            'chapters_percent': round(100 * chapters_done / chapters_total) if chapters_total else 0,
+            'activity': _recent_activity(request.user),
+        })
+    return render(request, 'learn/home.html', context)
+
+
+def path_catalog(request):
+    current = catalog.current_job_path(request.user)  # also loads the catalog into an empty database
+    states = catalog.exercise_states(request.user)
+    chosen = request.user.is_authenticated and PathChoice.objects.filter(user=request.user).exists()
+    jobs = [catalog.job_view(p, request.user, states) for p in Path.objects.filter(kind=Path.JOB)]
+    skipped = catalog.skipped_ids(request.user)
+    prerequisite_ids = set(Path.objects.filter(in_jobs__prerequisite=True).values_list('id', flat=True))
+    skills = [catalog.skill_view(p, states, skipped, p.id in prerequisite_ids)
+              for p in Path.objects.filter(kind=Path.SKILL).prefetch_related('courses__chapters')]
+    return render(request, 'learn/catalog.html', {
+        'jobs': jobs, 'skills': skills, 'current': current if chosen else None,
         'player': gamification.player_state(request.user),
+    })
+
+
+def path_detail(request, slug):
+    path = get_object_or_404(Path, slug=slug)
+    context = {'path': path, 'player': gamification.player_state(request.user)}
+    if path.kind == Path.JOB:
+        context['job'] = catalog.job_view(path, request.user)
+        context['is_current'] = (request.user.is_authenticated
+                                 and PathChoice.objects.filter(user=request.user).values_list('path_id', flat=True).first() == path.id)
+    else:
+        prerequisite = path.in_jobs.filter(prerequisite=True).exists()
+        context['skill'] = catalog.skill_view(path, catalog.exercise_states(request.user),
+                                              catalog.skipped_ids(request.user), prerequisite)
+        context['jobs'] = Path.objects.filter(steps__skill=path).distinct()
+    return render(request, 'learn/path.html', context)
+
+
+@login_required
+@require_POST
+def choose_path(request, slug):
+    path = get_object_or_404(Path, slug=slug, kind=Path.JOB)
+    PathChoice.objects.create(user=request.user, path=path)
+    log_event(request, LearningEvent.PATH_CHOSEN, path.slug)
+    return redirect('home')
+
+
+@login_required
+@require_POST
+def skip_path(request, slug):
+    """Tick or untick "I already know this" on a prerequisite."""
+    path = get_object_or_404(Path.objects.filter(in_jobs__prerequisite=True).distinct(), slug=slug)
+    skip = request.POST.get('skip') == '1'
+    if skip:
+        SkippedPath.objects.get_or_create(user=request.user, path=path)
+    else:
+        SkippedPath.objects.filter(user=request.user, path=path).delete()
+    log_event(request, LearningEvent.PATH_SKIPPED, path.slug, skipped=skip)
+    next_url = request.POST.get('next', '')
+    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect('learn:path', path.slug)
+
+
+def coming_soon(request, section):
+    """Sections from the plan that aren't built yet show what will appear there."""
+    return render(request, 'learn/coming_soon.html', {
+        'section': section, 'player': gamification.player_state(request.user),
     })
 
 
@@ -179,7 +261,7 @@ def run_code_selection(request, slug):
 
 
 def _slides_path(exercise):
-    return Path(settings.BASE_DIR) / 'materials' / 'out' / 'pdf' / f'{exercise.path.name}.pdf'
+    return FilePath(settings.BASE_DIR) / 'materials' / 'out' / 'pdf' / f'{exercise.path.name}.pdf'
 
 
 @login_required
