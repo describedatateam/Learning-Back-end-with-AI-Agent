@@ -1,0 +1,1126 @@
+{
+ "_source": "Built from plans/curriculum/*-gemini-v1.json with the fixes in plans/curriculum/decisions.md (2026-10-09).",
+ "job_paths": [
+  {
+   "slug": "backend-developer",
+   "kind": "job",
+   "title": "Backend Developer (Python, Django)",
+   "summary": "Build, test, and deploy secure, performant RESTful APIs and backend services using Python, SQL, Django, and Django REST Framework.",
+   "level": "intermediate",
+   "hours": 68,
+   "steps": [
+    {
+     "skill": "python-basics",
+     "prerequisite": true
+    },
+    {
+     "skill": "git-github",
+     "prerequisite": false
+    },
+    {
+     "skill": "sql-basics",
+     "prerequisite": false
+    },
+    {
+     "skill": "django-foundations",
+     "prerequisite": false
+    },
+    {
+     "skill": "django-rest-framework",
+     "prerequisite": false
+    },
+    {
+     "skill": "advanced-django",
+     "prerequisite": false
+    }
+   ],
+   "capstone": {
+    "title": "Multi-tenant task management platform API",
+    "brief": "Design, develop, optimize, secure, and test a complete multi-tenant Task Management REST API capable of serving real-world client applications.",
+    "milestones": [
+     "Capstone planning: Define user stories, database ERD diagrams, and RESTful endpoint specifications.",
+     "Project endpoints: Implement CRUD resources for projects using DRF viewsets and serializers.",
+     "Task endpoints: Build nested task resources with status tracking and user assignment logic.",
+     "Ownership boundaries: Enforce strict multi-tenant authorization so users only access their organization's data.",
+     "API quality and UX: Standardize exception handling, custom validation error messages, and pagination structures.",
+     "Deployment readiness: Configure environment variables, CORS policies, security settings, and static collection.",
+     "Observability and maintenance: Integrate logging, API health check endpoints, and query execution timing metrics.",
+     "Capstone polish: Expand the APITestCase suite to achieve high coverage and fix discovered edge cases.",
+     "Demo and retrospective: Generate final OpenAPI documentation, complete README instructions, and present project architecture."
+    ],
+    "exercises": [
+     "capstone-api",
+     "health-check"
+    ]
+   }
+  },
+  {
+   "slug": "frontend-developer",
+   "kind": "job",
+   "title": "Frontend Developer (HTML, CSS, JavaScript)",
+   "summary": "Build accessible, responsive, interactive web applications from scratch using standard web technologies and public APIs.",
+   "level": "beginner",
+   "hours": 39,
+   "steps": [
+    {
+     "skill": "git-github",
+     "prerequisite": false
+    },
+    {
+     "skill": "html-css-foundations",
+     "prerequisite": false
+    },
+    {
+     "skill": "javascript-fundamentals",
+     "prerequisite": false
+    },
+    {
+     "skill": "dynamic-javascript",
+     "prerequisite": false
+    }
+   ],
+   "capstone": {
+    "title": "Interactive public API web application",
+    "brief": "Design, build, and deploy a responsive, fully accessible single-page web application that fetches data from a public REST API, allows user filtering and sorting, and saves user preferences using localStorage.",
+    "milestones": [
+     "Plan application wireframes, component structure, and select a CORS-enabled public API.",
+     "Construct the HTML foundation using semantic layout tags and accessible ARIA attributes.",
+     "Apply CSS grid and flexbox layouts to ensure mobile-first responsive styling.",
+     "Implement asynchronous Fetch API calls to retrieve data from the public endpoint with error handling.",
+     "Render fetched data dynamically in the DOM with interactive filtering, searching, and sorting controls.",
+     "Implement local storage persistence to save user preferences across page reloads.",
+     "Conduct keyboard navigation and accessibility checks to ensure compliance with WCAG standards.",
+     "Finalize code polish, test across different screen sizes, and publish the application."
+    ],
+    "exercises": []
+   }
+  },
+  {
+   "slug": "fullstack-developer",
+   "kind": "job",
+   "title": "Full Stack Developer (JavaScript front end, Django back end)",
+   "summary": "Build, secure, and deploy complete web applications from scratch using standard HTML/CSS/JavaScript frontends and Python Django REST backends.",
+   "level": "intermediate",
+   "hours": 66,
+   "steps": [
+    {
+     "skill": "python-basics",
+     "prerequisite": true
+    },
+    {
+     "skill": "javascript-fundamentals",
+     "prerequisite": true
+    },
+    {
+     "skill": "git-github",
+     "prerequisite": false
+    },
+    {
+     "skill": "html-css-foundations",
+     "prerequisite": false
+    },
+    {
+     "skill": "dynamic-javascript",
+     "prerequisite": false
+    },
+    {
+     "skill": "django-foundations",
+     "prerequisite": false
+    },
+    {
+     "skill": "django-rest-framework",
+     "prerequisite": false
+    },
+    {
+     "skill": "fullstack-integration",
+     "prerequisite": false
+    }
+   ],
+   "capstone": {
+    "title": "Custom full-stack web application with authentication",
+    "brief": "Design, build, and deploy a full-stack web application based on your own original project concept, featuring a Django REST API backend, token authentication, and a responsive JavaScript frontend.",
+    "milestones": [
+     "Project discovery and planning: Define user stories, REST API specifications, database ERD schema, and frontend UI wireframes.",
+     "Backend API setup: Implement Django models, REST serializers, and viewsets with token authentication endpoints.",
+     "Frontend interface: Build semantic HTML structure, responsive CSS layout, and interactive DOM components.",
+     "API Integration: Wire JavaScript fetch requests to Django API endpoints with full CRUD capabilities.",
+     "Authentication integration: Implement client-side user registration, sign-in, token storage, and protected session logic.",
+     "Error handling and UX polish: Standardize form validations, error notifications, loading indicators, and user feedback.",
+     "Deployment preparation: Configure production environment variables, database settings, WhiteNoise static file hosting, and CORS rules.",
+     "End-to-end testing and launch: Execute full-stack integration tests, deploy backend and frontend services, and publish final documentation."
+    ],
+    "exercises": []
+   }
+  }
+ ],
+ "skill_paths": [
+  {
+   "slug": "python-basics",
+   "kind": "skill",
+   "title": "Python basics",
+   "summary": "Learn core Python programming concepts from basic data types and control structures to functions, error reading, and an introduction to classes.",
+   "hours": 10,
+   "courses": [
+    {
+     "title": "Python data types and control flow",
+     "hours": 5,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Variables and primitive types",
+       "learning_goal": "you can declare variables and perform arithmetic and boolean operations with integers, floats, and booleans",
+       "exercise_idea": "Define price, quantity, and tax variables, then calculate the total bill amount as a float.",
+       "exercises": []
+      },
+      {
+       "title": "Strings and string formatting",
+       "learning_goal": "you can manipulate text using string methods, slicing, and f-string interpolation",
+       "exercise_idea": "Clean messy user name inputs with strip and title methods, then output a formatted welcome message.",
+       "exercises": []
+      },
+      {
+       "title": "Lists and dictionaries",
+       "learning_goal": "you can store, retrieve, update, and remove elements in Python lists and key-value dictionaries",
+       "exercise_idea": "Create a dictionary representing a user profile, append new entries to its 'roles' list, and retrieve specific key values.",
+       "exercises": []
+      },
+      {
+       "title": "Conditions and logic",
+       "learning_goal": "you can write conditional execution blocks using if, elif, else, and logical operators",
+       "exercise_idea": "Write an authorization check that verifies if a user is active and possesses admin privileges before granting access.",
+       "exercises": []
+      },
+      {
+       "title": "Loops and iteration",
+       "learning_goal": "you can iterate over sequences and collections using for and while loops",
+       "exercise_idea": "Loop through a list of transaction amounts, calculate the total sum, and count transactions exceeding 100.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Functions, modules, and object basics",
+     "hours": 5,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Functions and parameters",
+       "learning_goal": "you can write reusable functions with positional arguments, default parameters, and return values",
+       "exercise_idea": "Write a function that calculates discounted item prices based on user role with a default 0% discount.",
+       "exercises": []
+      },
+      {
+       "title": "Modules and imports",
+       "learning_goal": "you can import functions, constants, and modules from the Python standard library",
+       "exercise_idea": "Import the datetime and random modules to generate randomized order IDs and timestamp current dates.",
+       "exercises": []
+      },
+      {
+       "title": "Reading errors and exceptions",
+       "learning_goal": "you can interpret Python error tracebacks and handle exceptions gracefully using try-except blocks",
+       "exercise_idea": "Wrap unsafe dictionary key lookups and numerical divisions in try-except blocks to return fallback default values.",
+       "exercises": []
+      },
+      {
+       "title": "First look at classes",
+       "learning_goal": "you can define basic classes with __init__ constructors, instance attributes, and custom methods",
+       "exercise_idea": "Create a User class storing username and email attributes with a method that returns a formatted profile tag.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Command-line inventory manager",
+    "brief": "Build a modular Python script that manages product inventory data using custom classes, dictionary lookup tables, functions, and exception handling.",
+    "skills_used": [
+     "Dictionaries",
+     "Functions",
+     "Try-Except",
+     "Classes"
+    ]
+   },
+   "level": "beginner",
+   "placement_test": {
+    "title": "Python Basics Placement Test",
+    "summary": "Verify student readiness for Django Foundations by evaluating core Python knowledge across all 9 prerequisite chapters.",
+    "pass_mark": "8 out of 10 multiple-choice questions correct AND both short coding tasks fully passing (minimum 80% overall score).",
+    "multiple_choice_questions": [
+     {
+      "id": 1,
+      "chapter_tagged": "Variables and primitive types",
+      "question": "Which data type is produced by the division operation `10 / 2` in Python?",
+      "options": [
+       "int",
+       "float",
+       "str",
+       "bool"
+      ],
+      "correct_option": "float",
+      "explanation": "Standard division `/` in Python always evaluates to a float type."
+     },
+     {
+      "id": 2,
+      "chapter_tagged": "Strings and string formatting",
+      "question": "What is the output of `'  hello '.strip().upper()`?",
+      "options": [
+       "'  HELLO '",
+       "'HELLO'",
+       "'Hello'",
+       "SyntaxError"
+      ],
+      "correct_option": "'HELLO'",
+      "explanation": "`.strip()` removes leading and trailing whitespace, and `.upper()` converts the string to uppercase."
+     },
+     {
+      "id": 3,
+      "chapter_tagged": "Lists and dictionaries",
+      "question": "Given `user = {'name': 'Alex', 'role': 'admin'}`, how do you access the value `'admin'`?",
+      "options": [
+       "user[1]",
+       "user['role']",
+       "user.role",
+       "user.get(1)"
+      ],
+      "correct_option": "user['role']",
+      "explanation": "Dictionary values are retrieved using square brackets with the corresponding key string."
+     },
+     {
+      "id": 4,
+      "chapter_tagged": "Conditions and logic",
+      "question": "What does the expression `not (5 > 3 and 2 == 4)` evaluate to in Python?",
+      "options": [
+       "True",
+       "False",
+       "None",
+       "ValueError"
+      ],
+      "correct_option": "True",
+      "explanation": "`5 > 3` is True and `2 == 4` is False, making the `and` expression False. `not False` evaluates to True."
+     },
+     {
+      "id": 5,
+      "chapter_tagged": "Loops and iteration",
+      "question": "How many iterations will `for i in range(2, 6):` perform?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "correct_option": "4",
+      "explanation": "`range(2, 6)` produces values 2, 3, 4, and 5, resulting in exactly 4 iterations."
+     },
+     {
+      "id": 6,
+      "chapter_tagged": "Functions and parameters",
+      "question": "What value is returned by a Python function that does not contain an explicit `return` statement?",
+      "options": [
+       "0",
+       "False",
+       "None",
+       "SyntaxError"
+      ],
+      "correct_option": "None",
+      "explanation": "Python functions implicitly return `None` when no explicit `return` expression is executed."
+     },
+     {
+      "id": 7,
+      "chapter_tagged": "Modules and imports",
+      "question": "Which import statement allows calling `sqrt(16)` directly without using a module prefix?",
+      "options": [
+       "import math",
+       "from math import sqrt",
+       "import sqrt from math",
+       "include math.sqrt"
+      ],
+      "correct_option": "from math import sqrt",
+      "explanation": "`from module import function` brings the function directly into the local namespace."
+     },
+     {
+      "id": 8,
+      "chapter_tagged": "Reading errors and exceptions",
+      "question": "Which exception is raised when attempting to access a key that does not exist in a Python dictionary?",
+      "options": [
+       "IndexError",
+       "KeyError",
+       "ValueError",
+       "TypeError"
+      ],
+      "correct_option": "KeyError",
+      "explanation": "Accessing a missing key on a dictionary raises a `KeyError`."
+     },
+     {
+      "id": 9,
+      "chapter_tagged": "First look at classes",
+      "question": "In a Python class method definition, what does the first parameter (conventionally named `self`) represent?",
+      "options": [
+       "The parent module",
+       "The class definition object",
+       "The specific instance of the class",
+       "A reserved global system variable"
+      ],
+      "correct_option": "The specific instance of the class",
+      "explanation": "`self` refers to the instance upon which the method was invoked."
+     },
+     {
+      "id": 10,
+      "chapter_tagged": "Lists and dictionaries",
+      "question": "Which list method adds a new item to the end of an existing list in place?",
+      "options": [
+       "list.add(item)",
+       "list.insert(item)",
+       "list.push(item)",
+       "list.append(item)"
+      ],
+      "correct_option": "list.append(item)",
+      "explanation": "`.append(item)` modifies the list in place by adding the given item to the end."
+     }
+    ],
+    "coding_tasks": [
+     {
+      "id": 1,
+      "chapter_tagged": "Functions and parameters",
+      "prompt": "Write a function `filter_products(products, max_price)` that accepts a list of product dictionaries `[{'name': str, 'price': float}]` and a maximum price float. Return a list containing only the names of products whose price is less than or equal to `max_price`.",
+      "test_case_idea": "Pass `[{'name': 'Widget', 'price': 10.0}, {'name': 'Gadget', 'price': 25.0}]` with `max_price=15.0` and assert returned list is `['Widget']`."
+     },
+     {
+      "id": 2,
+      "chapter_tagged": "First look at classes",
+      "prompt": "Define a `BankAccount` class with an `__init__` constructor accepting `owner` (str) and an optional initial `balance` (float, default 0.0). Add a `deposit(amount)` method that adds to balance, and a `withdraw(amount)` method that subtracts from balance or raises a `ValueError('Insufficient funds')` if `amount > balance`.",
+      "test_case_idea": "Instantiate `account = BankAccount('Alice', 100.0)`, call `account.deposit(50.0)` (balance 150.0), and verify that `account.withdraw(200.0)` raises `ValueError`."
+     }
+    ]
+   }
+  },
+  {
+   "slug": "javascript-fundamentals",
+   "kind": "skill",
+   "title": "JavaScript programming fundamentals",
+   "summary": "Master JavaScript fundamentals, control structures, functional programming, and data manipulation.",
+   "hours": 9,
+   "courses": [
+    {
+     "title": "Core JavaScript concepts",
+     "hours": 5,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "Variables, data types, and operators",
+       "learning_goal": "you can declare variables and perform operations using primitive JavaScript data types",
+       "exercise_idea": "Declare let and const variables, check types with typeof, and perform arithmetic and string concatenation.",
+       "exercises": []
+      },
+      {
+       "title": "Control flow and loops",
+       "learning_goal": "you can implement conditional logic and loops to control program execution",
+       "exercise_idea": "Write if/else conditional blocks and for loops to evaluate numerical thresholds and repeat operations.",
+       "exercises": []
+      },
+      {
+       "title": "Functions and scope",
+       "learning_goal": "you can write reusable functions using parameter passing, return statements, and arrow syntax",
+       "exercise_idea": "Refactor repeated calculation code into modular arrow functions with explicit return values.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Data structures and array methods",
+     "hours": 4,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "Working with arrays",
+       "learning_goal": "you can manipulate JavaScript arrays using push, pop, shift, unshift, and slice",
+       "exercise_idea": "Write functions to add, remove, and extract specific elements from an array of strings.",
+       "exercises": []
+      },
+      {
+       "title": "Higher-order array methods",
+       "learning_goal": "you can iterate and transform data using map, filter, reduce, and forEach",
+       "exercise_idea": "Filter an array of item objects by price and map the results to a list of title strings.",
+       "exercises": []
+      },
+      {
+       "title": "Objects and JSON",
+       "learning_goal": "you can store and access structured data using JavaScript objects and JSON syntax",
+       "exercise_idea": "Parse a JSON string into an object, modify property values, and serialize it back to JSON.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Interactive quiz engine",
+    "brief": "Build a JavaScript logic module that parses question data objects, scores user selections, and returns formatted feedback.",
+    "skills_used": [
+     "Functions",
+     "Array Methods",
+     "Objects",
+     "JSON"
+    ]
+   }
+  },
+  {
+   "slug": "git-github",
+   "kind": "skill",
+   "title": "Git and GitHub",
+   "summary": "Master version control fundamentals and collaborative GitHub workflows for team software development.",
+   "hours": 8,
+   "courses": [
+    {
+     "title": "Version control with Git",
+     "hours": 4,
+     "language": "",
+     "chapters": [
+      {
+       "title": "Git repository fundamentals",
+       "learning_goal": "you can initialize a Git repository and check repository status",
+       "exercise_idea": "Initialize a local repo, create a .gitignore file, and verify untracked files using git status tests.",
+       "exercises": []
+      },
+      {
+       "title": "Commits and staging",
+       "learning_goal": "you can stage modified files and commit changes with clear log messages",
+       "exercise_idea": "Stage specific files using git add and write a formatted commit message verified by test assertions.",
+       "exercises": []
+      },
+      {
+       "title": "Branching and merging",
+       "learning_goal": "you can create git branches, switch context, and merge feature branches into main",
+       "exercise_idea": "Create a feature branch, commit a change, switch back to main, and perform a fast-forward merge.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Collaborative workflows on GitHub",
+     "hours": 4,
+     "language": "",
+     "chapters": [
+      {
+       "title": "Remote repositories and pushing",
+       "learning_goal": "you can link local repositories to remotes and push local branches",
+       "exercise_idea": "Configure a remote origin URL and push commits to a simulated remote repository.",
+       "exercises": []
+      },
+      {
+       "title": "Pull requests and code reviews",
+       "learning_goal": "you can construct pull request descriptions and inspect diffs",
+       "exercise_idea": "Parse a Git diff patch and generate structured markdown pull request documentation.",
+       "exercises": []
+      },
+      {
+       "title": "Resolving merge conflicts",
+       "learning_goal": "you can identify, resolve, and finalize Git merge conflicts",
+       "exercise_idea": "Inspect conflicting markers in a file, resolve the conflict manually, and finalize the merge commit.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Collaborative Git workflow",
+    "brief": "Initialize a Git repository, create feature branches, resolve a merge conflict, and prepare a clean pull request.",
+    "skills_used": [
+     "git init",
+     "git branch",
+     "git merge",
+     "conflict resolution"
+    ]
+   }
+  },
+  {
+   "slug": "sql-basics",
+   "kind": "skill",
+   "title": "SQL basics",
+   "summary": "Query, filter, join, and manage relational database schemas using standard SQL queries.",
+   "hours": 8,
+   "courses": [
+    {
+     "title": "Querying relational databases",
+     "hours": 4,
+     "language": "sql",
+     "chapters": [
+      {
+       "title": "Selecting and filtering data",
+       "learning_goal": "you can write SELECT statements with WHERE conditions to query database records",
+       "exercise_idea": "Write SQL queries to retrieve specific user fields filtered by active status and date range.",
+       "exercises": []
+      },
+      {
+       "title": "Sorting and aggregating results",
+       "learning_goal": "you can aggregate data using GROUP BY and sort results with ORDER BY",
+       "exercise_idea": "Calculate total order counts per customer grouped by user ID and ordered by highest total.",
+       "exercises": []
+      },
+      {
+       "title": "Joining relational tables",
+       "learning_goal": "you can combine data across related database tables using INNER and LEFT JOINs",
+       "exercise_idea": "Write a query joining user profiles and orders to display customer names alongside order status.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Data manipulation and schema basics",
+     "hours": 4,
+     "language": "sql",
+     "chapters": [
+      {
+       "title": "Inserting, updating, and deleting data",
+       "learning_goal": "you can modify database rows using INSERT, UPDATE, and DELETE queries",
+       "exercise_idea": "Execute INSERT statements for new products and UPDATE price fields based on condition rules.",
+       "exercises": []
+      },
+      {
+       "title": "Table creation and data constraints",
+       "learning_goal": "you can construct database tables using CREATE TABLE with constraints",
+       "exercise_idea": "Create a tasks table with PRIMARY KEY, NOT NULL, and UNIQUE column constraints.",
+       "exercises": []
+      },
+      {
+       "title": "Foreign keys and indexing",
+       "learning_goal": "you can enforce referential integrity with foreign keys and create indexes",
+       "exercise_idea": "Define foreign key references between tasks and projects tables and index the author_id column.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Relational database design and querying",
+    "brief": "Design a multi-table database schema with foreign keys, populate sample data, and write complex JOIN queries.",
+    "skills_used": [
+     "CREATE TABLE",
+     "FOREIGN KEY",
+     "JOIN",
+     "GROUP BY"
+    ]
+   }
+  },
+  {
+   "slug": "django-foundations",
+   "kind": "skill",
+   "title": "Django foundations",
+   "summary": "Build structured web applications with Django models, migrations, administration views, and user relationships.",
+   "hours": 10,
+   "courses": [
+    {
+     "title": "Core Python web and Django architecture",
+     "hours": 5,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Python and HTTP foundations",
+       "learning_goal": "you can parse HTTP request methods, headers, and status codes in Python",
+       "exercise_idea": "Write a Python script to parse HTTP request strings and build structured HTTP response dictionaries.",
+       "exercises": [
+        "http-requests"
+       ]
+      },
+      {
+       "title": "Django project anatomy",
+       "learning_goal": "you can configure Django project settings, manage apps, and route URL patterns",
+       "exercise_idea": "Configure INSTALLED_APPS and map root URL patterns to simple HTTP view functions.",
+       "exercises": [
+        "json-views"
+       ]
+      },
+      {
+       "title": "Models and migrations",
+       "learning_goal": "you can define Django model fields and execute migration commands",
+       "exercise_idea": "Define a Project model with string, boolean, and datetime fields, then generate migration files.",
+       "exercises": [
+        "models"
+       ]
+      }
+     ]
+    },
+    {
+     "title": "Admin, ownership and first APIs",
+     "hours": 5,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Django admin",
+       "learning_goal": "you can customize the Django admin interface for model management",
+       "exercise_idea": "Register custom models in admin.py with list_display, list_filter, and search_fields settings.",
+       "exercises": []
+      },
+      {
+       "title": "Users and ownership",
+       "learning_goal": "you can associate Django models with the User model to enforce resource ownership",
+       "exercise_idea": "Add a ForeignKey pointing to settings.AUTH_USER_MODEL and auto-assign request.user on save.",
+       "exercises": [
+        "users-ownership"
+       ]
+      },
+      {
+       "title": "REST and serializers",
+       "learning_goal": "you can convert Django models into JSON representations using serializers",
+       "exercise_idea": "Implement a Django REST Framework ModelSerializer with field validations.",
+       "exercises": [
+        "serializers"
+       ]
+      },
+      {
+       "title": "Testing fundamentals",
+       "learning_goal": "you can write automated unit tests for Django models and API views",
+       "exercise_idea": "Write TestCase classes testing model creation, custom methods, and HTTP response codes.",
+       "exercises": [
+        "writing-tests"
+       ]
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Core task manager application",
+    "brief": "Create a Django core app featuring user-owned Task models, migration files, custom Django admin setup, and unit tests.",
+    "skills_used": [
+     "Django Models",
+     "Migrations",
+     "Django Admin",
+     "TestCase"
+    ]
+   }
+  },
+  {
+   "slug": "django-rest-framework",
+   "kind": "skill",
+   "title": "Django REST Framework",
+   "summary": "Develop production-grade REST APIs complete with viewsets, authentication, filtering, and OpenAPI docs.",
+   "hours": 12,
+   "courses": [
+    {
+     "title": "DRF viewsets and security",
+     "hours": 6,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Viewsets and routers",
+       "learning_goal": "you can construct DRF ModelViewSets and register automated URL routers",
+       "exercise_idea": "Define a ModelViewSet for projects and wire it to a DefaultRouter instance.",
+       "exercises": [
+        "viewsets-routers"
+       ]
+      },
+      {
+       "title": "Authentication and permissions",
+       "learning_goal": "you can secure REST endpoints using Token authentication and object-level permissions",
+       "exercise_idea": "Implement custom BasePermission classes ensuring users can only modify their own resources.",
+       "exercises": [
+        "permissions"
+       ]
+      },
+      {
+       "title": "CRUD design",
+       "learning_goal": "you can design clean RESTful CRUD endpoints following HTTP standard practices",
+       "exercise_idea": "Override viewset perform_create and perform_update hooks to attach metadata to objects.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "API polish and quality control",
+     "hours": 6,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Filtering and search",
+       "learning_goal": "you can enable searching and backend field filtering on DRF viewsets",
+       "exercise_idea": "Configure DjangoFilterBackend and SearchFilter with specific filterset_fields.",
+       "exercises": [
+        "filtering-search"
+       ]
+      },
+      {
+       "title": "Pagination and ordering",
+       "learning_goal": "you can configure API response pagination and field ordering rules",
+       "exercise_idea": "Implement a custom PageNumberPagination class and OrderingFilter on list endpoints.",
+       "exercises": [
+        "pagination"
+       ]
+      },
+      {
+       "title": "Validation and errors",
+       "learning_goal": "you can write custom serializer validations and format error payloads",
+       "exercise_idea": "Add field-level and object-level validate() methods raising standardized ValidationError exceptions.",
+       "exercises": [
+        "error-responses"
+       ]
+      },
+      {
+       "title": "API documentation",
+       "learning_goal": "you can generate OpenAPI schemas and interactive documentation for APIs",
+       "exercise_idea": "Annotate DRF views using drf-spectacular schema decorators to publish API documentation.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Secured and documented REST API",
+    "brief": "Build a feature-complete RESTful API with token authentication, custom permissions, query filtering, pagination, and OpenAPI docs.",
+    "skills_used": [
+     "ModelViewSet",
+     "Token Authentication",
+     "SearchFilter",
+     "OpenAPI"
+    ]
+   }
+  },
+  {
+   "slug": "advanced-django",
+   "kind": "skill",
+   "title": "Advanced Django backend development",
+   "summary": "Optimize database queries, handle safe transactions, organize app architecture, and write integration tests.",
+   "hours": 12,
+   "courses": [
+    {
+     "title": "Database performance and query safety",
+     "hours": 6,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Database relationships",
+       "learning_goal": "you can design relational Django models using OneToOne, ForeignKey, and ManyToMany fields",
+       "exercise_idea": "Model project member roles using ManyToManyField with an explicit through table.",
+       "exercises": []
+      },
+      {
+       "title": "Querysets and performance",
+       "learning_goal": "you can optimize database queries using select_related and prefetch_related",
+       "exercise_idea": "Refactor a viewset queryset using select_related and prefetch_related to eliminate N+1 queries.",
+       "exercises": [
+        "query-performance"
+       ]
+      },
+      {
+       "title": "Transactions and safety",
+       "learning_goal": "you can protect data updates using atomic database transactions",
+       "exercise_idea": "Wrap multi-table updates inside transaction.atomic() blocks to ensure rollbacks on errors.",
+       "exercises": [
+        "transactions"
+       ]
+      }
+     ]
+    },
+    {
+     "title": "Architecture, security, and testing",
+     "hours": 6,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Reusable app structure",
+       "learning_goal": "you can decouple features into independent, modular Django app modules",
+       "exercise_idea": "Extract user profile logic into an isolated, reusable application package.",
+       "exercises": []
+      },
+      {
+       "title": "Settings and environment variables",
+       "learning_goal": "you can manage environment variables and isolate development/production settings",
+       "exercise_idea": "Configure django-environ to read secret keys and database URLs from environment files.",
+       "exercises": [
+        "settings-env"
+       ]
+      },
+      {
+       "title": "Security essentials",
+       "learning_goal": "you can configure Django security headers, CORS settings, and rate limiting",
+       "exercise_idea": "Configure SECURE_SSL_REDIRECT, CORS_ALLOWED_ORIGINS, and throttle rate limits.",
+       "exercises": [
+        "security"
+       ]
+      },
+      {
+       "title": "Integration testing",
+       "learning_goal": "you can write end-to-end integration tests using DRF APITestCase",
+       "exercise_idea": "Write APITestCase test flows covering multi-step user authentication, task creation, and authorization failure.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Optimized and secured backend architecture",
+    "brief": "Refactor a Django project for high query efficiency, atomic transactions, decoupled environment configurations, and integration test coverage.",
+    "skills_used": [
+     "select_related",
+     "transaction.atomic",
+     "django-environ",
+     "APITestCase"
+    ]
+   }
+  },
+  {
+   "slug": "html-css-foundations",
+   "kind": "skill",
+   "title": "HTML and CSS foundations",
+   "summary": "Structure and style modern, responsive, and accessible web pages using semantic HTML and CSS.",
+   "hours": 12,
+   "courses": [
+    {
+     "title": "Semantic HTML and page structure",
+     "hours": 4,
+     "language": "html",
+     "chapters": [
+      {
+       "title": "Document structure and semantic tags",
+       "learning_goal": "you can structure web documents using semantic HTML5 tags like header, nav, main, article, and footer",
+       "exercise_idea": "Replace generic div elements in an unstructured HTML document with appropriate semantic HTML5 layout tags.",
+       "exercises": []
+      },
+      {
+       "title": "Forms and input elements",
+       "learning_goal": "you can create accessible HTML forms using labels, input types, and field validation attributes",
+       "exercise_idea": "Build a user registration form containing text, email, password, select dropdowns, and required validation attributes.",
+       "exercises": []
+      },
+      {
+       "title": "Media and links",
+       "learning_goal": "you can embed images, video, and hyperlinks with appropriate fallback attributes",
+       "exercise_idea": "Add responsive image elements with descriptive alt attributes and external links opening safely in new tabs.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "CSS layout and responsive design",
+     "hours": 5,
+     "language": "css",
+     "chapters": [
+      {
+       "title": "Box model and CSS positioning",
+       "learning_goal": "you can manipulate box dimensions, padding, margins, borders, and positioning modes",
+       "exercise_idea": "Adjust box-sizing, padding, and margins on card components to eliminate unwanted layout overflow.",
+       "exercises": []
+      },
+      {
+       "title": "Flexbox layouts",
+       "learning_goal": "you can align and distribute page elements dynamically using CSS Flexbox",
+       "exercise_idea": "Build a navigation bar and flex child items using justify-content, align-items, and flex-wrap properties.",
+       "exercises": []
+      },
+      {
+       "title": "CSS grid layouts",
+       "learning_goal": "you can construct multi-column grid layouts using CSS Grid properties",
+       "exercise_idea": "Design a photo gallery layout using grid-template-columns, gap, and fractional grid units.",
+       "exercises": []
+      },
+      {
+       "title": "Responsive web design and media queries",
+       "learning_goal": "you can write media queries to adapt layouts across mobile, tablet, and desktop viewports",
+       "exercise_idea": "Write breakpoint media queries that stack multi-column flex containers vertically on small screen viewports.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Web accessibility essentials",
+     "hours": 3,
+     "language": "html",
+     "chapters": [
+      {
+       "title": "Accessible structure and ARIA attributes",
+       "learning_goal": "you can enhance web accessibility using ARIA roles, labels, and landmarks",
+       "exercise_idea": "Annotate interactive icon buttons and modal popups with aria-label and aria-expanded attributes.",
+       "exercises": []
+      },
+      {
+       "title": "Color contrast and visual accessibility",
+       "learning_goal": "you can audit and adjust CSS color contrast ratios and focus indicators",
+       "exercise_idea": "Modify low-contrast text colors and explicit focus ring outlines to meet WCAG AA standards.",
+       "exercises": []
+      },
+      {
+       "title": "Keyboard navigation and screen readers",
+       "learning_goal": "you can make interactive elements fully navigable using keyboard tab order",
+       "exercise_idea": "Fix tabIndex values and keyboard event handlers so custom buttons are fully focusable and triggerable via Enter and Space keys.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Responsive accessible personal portfolio page",
+    "brief": "Build a fully responsive and keyboard-accessible personal portfolio website using semantic HTML5 and plain CSS.",
+    "skills_used": [
+     "Semantic HTML",
+     "Flexbox",
+     "CSS Grid",
+     "Media Queries",
+     "ARIA"
+    ]
+   }
+  },
+  {
+   "slug": "dynamic-javascript",
+   "kind": "skill",
+   "title": "Dynamic web development with JavaScript",
+   "summary": "Connect HTML and CSS to JavaScript to create interactive, event-driven web apps that consume REST APIs.",
+   "hours": 10,
+   "courses": [
+    {
+     "title": "DOM manipulation and event handling",
+     "hours": 5,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "Selecting and modifying DOM elements",
+       "learning_goal": "you can query HTML elements and modify their content, styles, and attributes using JavaScript",
+       "exercise_idea": "Use querySelector to select elements and update textContent, classList, and inline styles dynamically.",
+       "exercises": []
+      },
+      {
+       "title": "Event listeners and event propagation",
+       "learning_goal": "you can handle user interactions using event listeners and event delegation",
+       "exercise_idea": "Attach click and input event listeners to forms and list containers using event delegation.",
+       "exercises": []
+      },
+      {
+       "title": "Dynamic HTML rendering",
+       "learning_goal": "you can dynamically create, append, and remove HTML elements in response to user input",
+       "exercise_idea": "Build a dynamically updating to-do list where items can be created, marked completed, or deleted from the DOM.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Asynchronous JavaScript and APIs",
+     "hours": 5,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "Asynchronous execution and promises",
+       "learning_goal": "you can manage asynchronous code using JavaScript Promises and setTimeout",
+       "exercise_idea": "Create a function returning a Promise that resolves after a delay or rejects on error conditions.",
+       "exercises": []
+      },
+      {
+       "title": "Fetching data with Fetch API",
+       "learning_goal": "you can make GET requests to external APIs using fetch and async/await",
+       "exercise_idea": "Fetch a list of user profiles from a JSON API using async/await and render the output as HTML cards.",
+       "exercises": []
+      },
+      {
+       "title": "Error handling and loading states",
+       "learning_goal": "you can handle API fetch errors and display loading states to the user",
+       "exercise_idea": "Wrap fetch calls in try/catch blocks to display error messages on network failure and show spinner indicators during load.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Live weather dashboard application",
+    "brief": "Develop a dynamic web dashboard that fetches weather data from a REST API, handles user search inputs, and renders current conditions.",
+    "skills_used": [
+     "DOM Manipulation",
+     "Event Delegation",
+     "Fetch API",
+     "Async/Await",
+     "Error Handling"
+    ]
+   }
+  },
+  {
+   "slug": "fullstack-integration",
+   "kind": "skill",
+   "title": "Full-stack integration and deployment",
+   "summary": "Connect vanilla JavaScript client interfaces to Django REST Framework APIs with token authentication and production deployment.",
+   "hours": 14,
+   "courses": [
+    {
+     "title": "Connecting front end to Django REST API",
+     "hours": 5,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "CORS and API cross-origin requests",
+       "learning_goal": "you can configure Django CORS headers and issue cross-origin fetch requests from a JavaScript front end",
+       "exercise_idea": "Configure django-cors-headers settings in Django and write frontend fetch calls to exchange JSON data across origins.",
+       "exercises": []
+      },
+      {
+       "title": "Full-stack CRUD operations",
+       "learning_goal": "you can wire HTML form events and dynamic JavaScript DOM updates to Django REST viewsets",
+       "exercise_idea": "Build a client dashboard that issues POST, PUT, and DELETE fetch requests to a Django API and updates DOM elements in real time.",
+       "exercises": []
+      },
+      {
+       "title": "Handling API state and UI feedback",
+       "learning_goal": "you can render loading states, handle HTTP status codes, and present backend validation errors in the frontend UI",
+       "exercise_idea": "Parse Django REST validation error response payloads in JavaScript and render inline error messages next to form inputs.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Full-stack authentication and authorization",
+     "hours": 5,
+     "language": "javascript",
+     "chapters": [
+      {
+       "title": "Token-based authentication integration",
+       "learning_goal": "you can implement token login flows by storing authentication tokens in client storage and attaching authorization headers",
+       "exercise_idea": "Write a login fetch handler that posts credentials to Django, saves the returned token in localStorage, and sets Authorization headers on subsequent requests.",
+       "exercises": []
+      },
+      {
+       "title": "Protected routes and user state",
+       "learning_goal": "you can restrict client-side view navigation and conditional rendering based on authentication state",
+       "exercise_idea": "Build a JavaScript route guard that redirects unauthenticated users to a sign-in view and displays personalized account data when logged in.",
+       "exercises": []
+      },
+      {
+       "title": "Session persistent logout and token refresh",
+       "learning_goal": "you can handle token expiry, user logout, and session clearance in the frontend",
+       "exercise_idea": "Implement a sign-out mechanism that deletes stored tokens from localStorage and resets the frontend user interface.",
+       "exercises": []
+      }
+     ]
+    },
+    {
+     "title": "Full-stack application deployment",
+     "hours": 4,
+     "language": "python",
+     "chapters": [
+      {
+       "title": "Production build configuration",
+       "learning_goal": "you can prepare Django static file serving and frontend assets for production deployment",
+       "exercise_idea": "Configure WhiteNoise and STATIC_ROOT settings in Django to serve compiled static frontend assets directly.",
+       "exercises": []
+      },
+      {
+       "title": "Environment management and cloud deployment",
+       "learning_goal": "you can deploy Django APIs and static JavaScript frontends using environment variables on platform-as-a-service providers",
+       "exercise_idea": "Set up production environment variables for database URLs, secret keys, and allowed hosts for cloud hosting.",
+       "exercises": []
+      },
+      {
+       "title": "Full-stack health monitoring and CORS security",
+       "learning_goal": "you can verify end-to-end full-stack connectivity and secure production CORS origins",
+       "exercise_idea": "Write a client-side health check diagnostic and restrict production CORS origins to match deployed client domains.",
+       "exercises": []
+      }
+     ]
+    }
+   ],
+   "project": {
+    "title": "Integrated auth and task dashboard",
+    "brief": "Connect a vanilla JavaScript frontend interface to a Django REST API, implementing full token authentication, CRUD operations, error handling, and production deployment settings.",
+    "skills_used": [
+     "CORS",
+     "Fetch API",
+     "Token Authentication",
+     "localStorage",
+     "WhiteNoise",
+     "Deployment"
+    ]
+   }
+  }
+ ]
+}

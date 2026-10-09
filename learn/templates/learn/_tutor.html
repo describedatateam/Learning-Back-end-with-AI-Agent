@@ -3,12 +3,14 @@ Study tutor chat. Include with: tutor_topic (exercise slug or "general"),
 tutor_history, can_run. A page can define window.tutorContext() returning
 {code, result} to share the learner's code and test results with the tutor.
 {% endcomment %}
+{% load i18n %}
 <style>
   .tutor { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .tutor-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 12px; min-height: 0; }
   .tmsg { max-width: 92%; padding: 10px 14px; border-radius: 12px; font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
-  .tmsg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; white-space: pre-wrap; }
-  .tmsg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .tmsg.user { align-self: flex-end; background: var(--accent); color: #fff; border-end-end-radius: 4px; white-space: pre-wrap; unicode-bidi: plaintext; }
+  .tmsg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-end-start-radius: 4px; }
+  .tmsg.assistant > * { direction: ltr; text-align: start; }  /* tutor replies are English */
   .tmsg.assistant > :first-child { margin-top: 0; }
   .tmsg.assistant > :last-child { margin-bottom: 0; }
   .tmsg.assistant p { margin: 0 0 8px; }
@@ -36,24 +38,24 @@ tutor_history, can_run. A page can define window.tutorContext() returning
   <div class="tutor-log" id="tutor-log" aria-live="polite"></div>
   <div class="tutor-chips" id="tutor-chips">
     {% if tutor_topic == "general" %}
-      <button type="button">What does a backend actually do?</button>
-      <button type="button">Explain REST like I'm new to it</button>
-      <button type="button">What's the difference between a model and a serializer?</button>
-      <button type="button">How do I read a Python traceback?</button>
+      <button type="button">{% translate "What does a backend actually do?" %}</button>
+      <button type="button">{% translate "Explain REST like I'm new to it" %}</button>
+      <button type="button">{% translate "What's the difference between a model and a serializer?" %}</button>
+      <button type="button">{% translate "How do I read a Python traceback?" %}</button>
     {% else %}
-      <button type="button">Explain this lesson's main idea simply</button>
-      <button type="button">Give me a small hint</button>
-      <button type="button">Why are my tests failing?</button>
-      <button type="button">Review my code</button>
+      <button type="button">{% translate "Explain this lesson's main idea simply" %}</button>
+      <button type="button">{% translate "Give me a small hint" %}</button>
+      <button type="button">{% translate "Why are my tests failing?" %}</button>
+      <button type="button">{% translate "Review my code" %}</button>
     {% endif %}
   </div>
   <form class="tutor-form" id="tutor-form">
-    <textarea id="tutor-input" rows="2" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" {% if not can_run %}disabled{% endif %}></textarea>
-    <button class="btn primary" type="submit" id="tutor-send" {% if not can_run %}disabled title="Open this page from localhost to use the tutor"{% endif %}>Send</button>
+    <textarea id="tutor-input" rows="2" placeholder="{% translate "Ask anything… (Enter to send, Shift+Enter for a new line)" %}" {% if not can_run %}disabled{% endif %}></textarea>
+    <button class="btn primary" type="submit" id="tutor-send" {% if not can_run %}disabled title="{% translate "Open this page from localhost to use the tutor" %}"{% endif %}>{% translate "Send" %}</button>
   </form>
   <div class="tutor-foot">
-    <span>{% if tutor_topic == "general" %}Ask about any backend concept.{% else %}The tutor sees the lesson, your current code and your latest test results.{% endif %}{% if tutor_backend %} Uses {{ tutor_backend }}.{% endif %}</span>
-    <button type="button" id="tutor-clear">Clear chat</button>
+    <span>{% if tutor_topic == "general" %}{% translate "Ask about any backend concept." %}{% else %}{% translate "The tutor sees the lesson, your current code and your latest test results." %}{% endif %}{% if tutor_backend %} {% blocktranslate trimmed with backend=tutor_backend %}Uses <bdi>{{ backend }}</bdi>.{% endblocktranslate %}{% endif %}</span>
+    <button type="button" id="tutor-clear">{% translate "Clear chat" %}</button>
   </div>
 </div>
 {{ tutor_history|json_script:"tutor-history" }}
@@ -62,6 +64,11 @@ tutor_history, can_run. A page can define window.tutorContext() returning
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script>
 (() => {
+  const T = {
+    empty: "{{ _("<strong>Hi! I'm your study tutor.</strong><br>Ask me about any concept that isn't clear yet. I'll help you understand it, and I'll give you hints rather than answers when you're stuck.")|escapejs }}",
+    failed: "{{ _('Request failed (%(status)s)')|escapejs }}",
+    clear: "{{ _('Clear this conversation?')|escapejs }}",
+  };
   const askUrl = "{% url 'learn:tutor_ask' tutor_topic %}";
   const clearUrl = "{% url 'learn:tutor_clear' tutor_topic %}";
   const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -84,9 +91,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
     return el;
   };
   const showEmpty = () => {
-    log.innerHTML = `<div class="tutor-empty">
-      <p><strong>Hi! I'm your study tutor.</strong><br>Ask me about any concept that isn't clear yet.
-      I'll help you understand it, and I'll give you hints rather than answers when you're stuck.</p></div>`;
+    log.innerHTML = `<div class="tutor-empty"><p>${T.empty}</p></div>`;
   };
 
   const history = JSON.parse(document.getElementById('tutor-history').textContent);
@@ -111,7 +116,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Request failed (${res.status})`);
+        throw new Error(data.error || T.failed.replace('%(status)s', res.status));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -159,7 +164,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
   });
   document.querySelectorAll('#tutor-chips button').forEach((b) => b.addEventListener('click', () => ask(b.textContent)));
   document.getElementById('tutor-clear').addEventListener('click', async () => {
-    if (!confirm('Clear this conversation?')) return;
+    if (!confirm(T.clear)) return;
     await fetch(clearUrl, {method: 'POST', headers: {'X-CSRFToken': csrf}});
     showEmpty();
   });

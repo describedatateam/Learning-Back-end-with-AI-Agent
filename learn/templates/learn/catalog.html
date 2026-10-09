@@ -1,0 +1,62 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Paths" %} · Describe{% endblock %}
+
+{% block content %}
+<main>
+  <header class="page-head">
+    <h1>{% translate "Paths" %}</h1>
+    <p class="muted">{% translate "Job paths take you toward a role. Skill paths teach one thing well." %}</p>
+  </header>
+
+  {% if not jobs %}
+  <div class="notice warning">{% icon 'triangle-alert' %}<span>{% translate "The catalog is empty. Run: python manage.py load_catalog" %}</span></div>
+  {% endif %}
+
+  <h2>{% translate "Job paths" %}</h2>
+  <div class="card-grid">
+    {% for job in jobs %}
+    <a class="card job path-card" href="{% url 'learn:path' job.path.slug %}">
+      <div class="card-head"><span class="tag job">{% translate "Job path" %}</span><span class="tag">{% include "learn/_level.html" with level=job.path.level %}</span>{% if current and current.id == job.path.id %}<span class="tag skill push">{% translate "Your path" %}</span>{% endif %}</div>
+      <h3><bdi>{{ job.path.title }}</bdi></h3>
+      <p class="muted" dir="ltr">{{ job.path.summary }}</p>
+      <div class="promise">
+        <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=job.path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+        <span>{% icon 'hammer' %}<bdi>{{ job.path.capstone.title }}</bdi></span>
+        <span>{% icon 'target' %}{% blocktranslate trimmed count n=job.skills|length %}{{ n }} skill path{% plural %}{{ n }} skill paths{% endblocktranslate %}</span>
+      </div>
+      {% if job.started %}
+      <div class="progress-row">
+        <div class="progress{% if job.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ job.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Path progress' %}"><div style="width: {{ job.percent }}%"></div></div>
+        <span class="meta num">{{ job.percent }}%</span>
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <h2>{% translate "Skill paths" %}</h2>
+  <div class="card-grid three">
+    {% for skill in skills %}
+    <a class="card path-card" href="{% url 'learn:path' skill.path.slug %}">
+      <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}{% if skill.skipped %}<span class="tag push">{% translate "Already known" %}</span>{% endif %}</div>
+      <h3><bdi>{{ skill.path.title }}</bdi></h3>
+      <div class="promise">
+        <span>{% icon 'clock' %}{% blocktranslate trimmed with hours=skill.path.hours %}About {{ hours }} hours{% endblocktranslate %}</span>
+        {% if skill.path.project.title %}<span>{% icon 'hammer' %}<bdi>{{ skill.path.project.title }}</bdi></span>{% endif %}
+      </div>
+      <p class="meta">{% blocktranslate trimmed count n=skill.total %}{{ n }} chapter{% plural %}{{ n }} chapters{% endblocktranslate %} · {% if skill.exercise_count %}{% blocktranslate trimmed count n=skill.exercise_count %}{{ n }} exercise{% plural %}{{ n }} exercises{% endblocktranslate %}{% else %}{% translate "Exercises coming soon" %}{% endif %}</p>
+      {% if skill.done %}
+      <div class="progress-row">
+        <div class="progress{% if skill.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ skill.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Skill path progress' %}"><div style="width: {{ skill.percent }}%"></div></div>
+        <span class="meta num">{{ skill.percent }}%</span>
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <p class="meta all-exercises"><a href="{% url 'learn:dashboard' %}">{% icon 'list-checks' %}{% translate "All back-end exercises, XP and badges" %}</a></p>
+</main>
+{% endblock %}

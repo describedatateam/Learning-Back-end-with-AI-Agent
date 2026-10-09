@@ -159,8 +159,11 @@ source .venv/bin/activate
 git pull
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py load_catalog
 python manage.py collectstatic --noinput
 ```
+
+`load_catalog` refreshes the paths, courses and chapters from `learn/catalog.json`; it is safe to run every time.
 
 Then click **Reload** on the Web tab.
 

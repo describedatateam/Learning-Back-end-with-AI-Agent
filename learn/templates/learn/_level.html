@@ -1,0 +1,1 @@
+{% load i18n %}{% if level == 'beginner' %}{% translate "Beginner" %}{% elif level == 'intermediate' %}{% translate "Intermediate" %}{% elif level == 'advanced' %}{% translate "Advanced" %}{% else %}{{ level|capfirst }}{% endif %}

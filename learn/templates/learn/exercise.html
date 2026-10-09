@@ -1,6 +1,7 @@
 {% extends "learn/base.html" %}
-{% load ui %}
+{% load i18n ui %}
 
+{% block body_class %}rail{% endblock %}
 {% block title %}{{ exercise.title }} · Describe{% endblock %}
 
 {% block style %}
@@ -91,51 +92,51 @@
 {% block content %}
 <main class="wide">
   <div class="crumbs">
-    <a href="{% url 'learn:dashboard' %}">All exercises</a>
-    <span class="muted">/ Week {{ exercise.week }} / #{{ exercise.number|stringformat:"02d" }}</span>
+    <a href="{% url 'learn:dashboard' %}">{% translate "All exercises" %}</a>
+    <span class="muted">/ {% blocktranslate trimmed with week=exercise.week %}Week {{ week }}{% endblocktranslate %} / #{{ exercise.number|stringformat:"02d" }}</span>
     <span id="status-badge">
-      {% if progress.passed %}<span class="badge done">Passed</span>
-      {% elif progress %}<span class="badge wip">In progress</span>
-      {% else %}<span class="badge new">Not started</span>{% endif %}
+      {% if progress.passed %}<span class="badge done">{% translate "Passed" %}</span>
+      {% elif progress %}<span class="badge wip">{% translate "In progress" %}</span>
+      {% else %}<span class="badge new">{% translate "Not started" %}</span>{% endif %}
     </span>
     <span class="spacer"></span>
-    {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">{% icon 'presentation' %}Slides</a>{% endif %}
-    {% if previous %}<a class="btn" href="{% url 'learn:exercise' previous.slug %}">← {{ previous.title }}</a>{% endif %}
-    {% if next %}<a class="btn" href="{% url 'learn:exercise' next.slug %}">{{ next.title }} →</a>{% endif %}
+    {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">{% icon 'presentation' %}{% translate "Slides" %}</a>{% endif %}
+    {% if previous %}<a class="btn" href="{% url 'learn:exercise' previous.slug %}"><span class="icon-flip" style="display:inline-block">←</span> <bdi>{{ previous.title }}</bdi></a>{% endif %}
+    {% if next %}<a class="btn" href="{% url 'learn:exercise' next.slug %}"><bdi>{{ next.title }}</bdi> <span class="icon-flip" style="display:inline-block">→</span></a>{% endif %}
   </div>
 
   <div class="layout">
     <section class="panel">
       <div class="tabs" role="tablist">
-        <button class="active" data-tab="lesson">Lesson</button>
-        <button data-tab="hints">Hints ({{ exercise.hints|length }})</button>
-        <button data-tab="quiz">Quiz ({{ quiz|length }})</button>
-        <button data-tab="tutor">Tutor</button>
+        <button class="active" data-tab="lesson">{% translate "Lesson" %}</button>
+        <button data-tab="hints">{% blocktranslate trimmed with n=exercise.hints|length %}Hints ({{ n }}){% endblocktranslate %}</button>
+        <button data-tab="quiz">{% blocktranslate trimmed with n=quiz|length %}Quiz ({{ n }}){% endblocktranslate %}</button>
+        <button data-tab="tutor">{% translate "Tutor" %}</button>
       </div>
       <div class="tab-body lesson" id="tab-lesson">
-        <div class="rewards" title="XP you can earn in this exercise">
-          <span class="chip">{% icon 'zap' %} {{ rewards.pass }} XP to complete</span>
-          <span class="chip">+5 XP per test</span>
-          <span class="chip {% if progress.solution_viewed and not progress.passed %}gone{% endif %}" id="chip-nopeek">+{{ rewards.no_peek }} no-peek</span>
-          <span class="chip {% if progress.attempts and not progress.passed %}gone{% endif %}">+{{ rewards.first_try }} first try</span>
-          <span class="chip {% if quiz_taken %}gone{% endif %}" id="chip-quiz">+{{ rewards.quiz }} quiz</span>
+        <div class="rewards" title="{% translate "XP you can earn in this exercise" %}">
+          <span class="chip">{% icon 'zap' %} {% blocktranslate trimmed with xp=rewards.pass %}{{ xp }} XP to complete{% endblocktranslate %}</span>
+          <span class="chip">{% translate "+5 XP per test" %}</span>
+          <span class="chip {% if progress.solution_viewed and not progress.passed %}gone{% endif %}" id="chip-nopeek">{% blocktranslate trimmed with xp=rewards.no_peek %}+{{ xp }} no-peek{% endblocktranslate %}</span>
+          <span class="chip {% if progress.attempts and not progress.passed %}gone{% endif %}">{% blocktranslate trimmed with xp=rewards.first_try %}+{{ xp }} first try{% endblocktranslate %}</span>
+          <span class="chip {% if quiz_taken %}gone{% endif %}" id="chip-quiz">{% blocktranslate trimmed with xp=rewards.quiz %}+{{ xp }} quiz{% endblocktranslate %}</span>
         </div>
-        {{ exercise.instructions_html|safe }}
-        <p class="muted" style="font-size:13px">Related lesson in this repo: <code>{{ exercise.lesson }}</code></p>
+        <div dir="ltr">{{ exercise.instructions_html|safe }}</div>
+        <p class="muted" style="font-size:13px">{% translate "Related lesson in this repo:" %} <code dir="ltr">{{ exercise.lesson }}</code></p>
       </div>
       <div class="tab-body" id="tab-hints" hidden>
-        <p class="muted">Try on your own first — open one hint at a time.</p>
+        <p class="muted">{% translate "Try on your own first — open one hint at a time." %}</p>
         {% for hint in exercise.hints %}
-          <details class="hint"><summary>Hint {{ forloop.counter }}</summary><div>{{ hint|safe }}</div></details>
+          <details class="hint"><summary>{% blocktranslate trimmed with n=forloop.counter %}Hint {{ n }}{% endblocktranslate %}</summary><div dir="ltr">{{ hint|safe }}</div></details>
         {% endfor %}
-        <p style="margin-top:20px"><button class="btn" id="show-solution">Show reference solution</button></p>
+        <p style="margin-top:20px"><button class="btn" id="show-solution">{% translate "Show reference solution" %}</button></p>
       </div>
       <div class="tab-body" id="tab-quiz" hidden>
-        <p class="quiz-note">{% if quiz_taken %}You've already taken this quiz. Retakes are for practice and don't earn XP.{% else %}Quiz XP is earned on your <strong>first attempt</strong> ({{ rewards.quiz }} XP max), so think before you check!{% endif %}</p>
+        <p class="quiz-note">{% if quiz_taken %}{% translate "You've already taken this quiz. Retakes are for practice and don't earn XP." %}{% else %}{% blocktranslate trimmed with xp=rewards.quiz %}Quiz XP is earned on your <strong>first attempt</strong> ({{ xp }} XP max), so think before you check!{% endblocktranslate %}{% endif %}</p>
         <form id="quiz-form">
           {% for q in quiz %}
             {% with qi=forloop.counter0 %}
-            <div class="q" data-q="{{ qi }}">
+            <div class="q" data-q="{{ qi }}" dir="ltr">
               <div class="prompt">{{ forloop.counter }}. {{ q.question|safe }}</div>
               {% for option in q.options %}
                 <label><input type="radio" name="q{{ qi }}" value="{{ forloop.counter0 }}"> <span>{{ option|safe }}</span></label>
@@ -145,8 +146,8 @@
             {% endwith %}
           {% endfor %}
           <p style="margin-top:18px; display:flex; gap:12px; align-items:center">
-            <button class="btn primary" type="submit">Check answers</button>
-            <span id="quiz-score" class="muted">{% if progress.quiz_total %}Best score: {{ progress.quiz_correct }}/{{ progress.quiz_total }}{% endif %}</span>
+            <button class="btn primary" type="submit">{% translate "Check answers" %}</button>
+            <span id="quiz-score" class="muted">{% if progress.quiz_total %}{% blocktranslate trimmed with correct=progress.quiz_correct total=progress.quiz_total %}Best score: {{ correct }}/{{ total }}{% endblocktranslate %}{% endif %}</span>
           </p>
         </form>
       </div>
@@ -157,46 +158,81 @@
 
     <section class="panel">
       <div class="editor-head">
-        <span class="file">{{ exercise.file }}</span>
-        <span class="kbd" title="Ctrl+/ toggles comments · Ctrl+Space shows suggestions"><b>Shift+Enter</b> run selection · <b>Ctrl+Enter</b> run tests</span>
-        <button class="btn" id="reset">Reset</button>
-        <button class="btn" id="run-selection" {% if not can_run %}disabled title="Open this page from localhost to run code"{% else %}title="Run the highlighted code (or the current line)"{% endif %}>▶ Run selection</button>
-        <button class="btn primary" id="run" {% if not can_run %}disabled title="Open this page from localhost to run code"{% endif %}>▶ Run tests</button>
+        <span class="file" dir="ltr">{{ exercise.file }}</span>
+        <span class="kbd" title="{% translate "Ctrl+/ toggles comments · Ctrl+Space shows suggestions" %}">{% blocktranslate trimmed %}<b>Shift+Enter</b> run selection · <b>Ctrl+Enter</b> run tests{% endblocktranslate %}</span>
+        <button class="btn" id="reset">{% translate "Reset" %}</button>
+        <button class="btn" id="run-selection" {% if not can_run %}disabled title="{% translate "Open this page from localhost to run code" %}"{% else %}title="{% translate "Run the highlighted code (or the current line)" %}"{% endif %}>▶ {% translate "Run selection" %}</button>
+        <button class="btn primary" id="run" {% if not can_run %}disabled title="{% translate "Open this page from localhost to run code" %}"{% endif %}>▶ {% translate "Run tests" %}</button>
       </div>
-      <div class="editor" id="editor-box">
+      <div class="editor" id="editor-box" dir="ltr">
         <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off">{{ code }}</textarea>
       </div>
       <div class="bottom-tabs tabs">
-        <button class="active" data-panel="results">Tests <span class="count">({{ tests|length }})</span></button>
-        <button data-panel="console">Console</button>
+        <button class="active" data-panel="results">{% translate "Tests" %} <span class="count">({{ tests|length }})</span></button>
+        <button data-panel="console">{% translate "Console" %}</button>
         <span class="spacer"></span>
-        <button class="run-one" id="clear-console" hidden>Clear console</button>
+        <button class="run-one" id="clear-console" hidden>{% translate "Clear console" %}</button>
       </div>
       <div class="results" id="results"></div>
       <div class="console" id="console" hidden>
-        <p class="empty">Highlight some code and press <strong>Shift+Enter</strong> (or click <strong>Run selection</strong>) to run just that part.
-          The rest of your file (imports, functions, classes) loads first, and the value of the last line is printed, like in a Python shell.</p>
+        <p class="empty">{% blocktranslate trimmed %}Highlight some code and press <strong>Shift+Enter</strong> (or click <strong>Run selection</strong>) to run just that part.
+          The rest of your file (imports, functions, classes) loads first, and the value of the last line is printed, like in a Python shell.{% endblocktranslate %}</p>
       </div>
     </section>
   </div>
 </main>
 
 <dialog id="solution-dialog">
-  <header><strong>Reference solution</strong><button class="btn" id="copy-solution">Load into editor</button><button class="btn" id="close-solution">Close</button></header>
-  <pre><code id="solution-code" class="language-python"></code></pre>
+  <header><strong>{% translate "Reference solution" %}</strong><button class="btn" id="copy-solution">{% translate "Load into editor" %}</button><button class="btn" id="close-solution">{% translate "Close" %}</button></header>
+  <pre dir="ltr"><code id="solution-code" class="language-python"></code></pre>
 </dialog>
 
 {% csrf_token %}
 {{ starter|json_script:"starter-code" }}
 {{ tests|json_script:"test-list" }}
+{% if progress.tests_total %}{% blocktranslate trimmed with passed=progress.tests_passed total=progress.tests_total asvar last_run %}Last full run: {{ passed }}/{{ total }} tests passed.{% endblocktranslate %}{% endif %}
 <script>
-  window.LEARN_LAST_RUN = {% if progress.tests_total %}"Last full run: {{ progress.tests_passed }}/{{ progress.tests_total }} tests passed."{% else %}null{% endif %};
+  window.LEARN_LAST_RUN = {% if progress.tests_total %}"{{ last_run|escapejs }}"{% else %}null{% endif %};
 </script>
 {% endblock %}
 
 {% block script %}
+{% blocktranslate trimmed with xp=rewards.no_peek asvar peek_warning %}Peek at the solution? You learn more by struggling a little first, and you will lose the +{{ xp }} XP no-peek bonus for this exercise.{% endblocktranslate %}
 <script>
 (() => {
+  const T = {
+    passing: "{{ _('%(passed)s/%(total)s tests passing')|escapejs }}",
+    notRun: "{{ _('%(count)s not run yet')|escapejs }}",
+    emptyTests: "{{ _('Write your code, then run all tests, or click ▶ next to a test to run just that one.')|escapejs }}",
+    runOnly: "{{ _('Run only this test')|escapejs }}",
+    didntLoad: "{{ _("Your code didn't load.")|escapejs }}",
+    running: "{{ _('Running…')|escapejs }}",
+    runTests: "{{ _('Run tests')|escapejs }}",
+    runSelection: "{{ _('Run selection')|escapejs }}",
+    output: "{{ _('Output')|escapejs }}",
+    outputPrint: "{{ _('Output from print()')|escapejs }}",
+    askError: "{{ _('Ask the tutor what this error means')|escapejs }}",
+    askErrorQ: "{{ _("My code won't load. What does this error mean and where should I look?")|escapejs }}",
+    allPassed: "{{ _('<strong>All %(total)s tests passed. Nice work!</strong> Try the quiz, or move on to the next exercise.')|escapejs }}",
+    askWhy: "{{ _('Ask the tutor why')|escapejs }}",
+    askWhyQ: "{{ _("My tests aren't passing. Can you help me understand what's wrong, without giving me the full answer?")|escapejs }}",
+    passed: "{{ _('Passed')|escapejs }}",
+    inProgress: "{{ _('In progress')|escapejs }}",
+    unreachable: "{{ _('Could not reach the server: %(error)s')|escapejs }}",
+    askTest: "{{ _('Ask the tutor about this test')|escapejs }}",
+    askTestQ: "{{ _('This test is failing: "%(test)s". Can you help me understand why, without giving me the full answer?')|escapejs }}",
+    highlightFirst: "{{ _('Highlight some code first (or put the cursor on a line with code).')|escapejs }}",
+    ranOne: "{{ _('ran 1 line')|escapejs }}",
+    ranMany: "{{ _('ran %(count)s lines')|escapejs }}",
+    noOutput: "{{ _('(no output)')|escapejs }}",
+    cleared: "{{ _('Console cleared.')|escapejs }}",
+    score: "{{ _('You got %(correct)s/%(total)s')|escapejs }}",
+    showSolution: "{{ _('Show the reference solution?')|escapejs }}",
+    peek: "{{ peek_warning|escapejs }}",
+    reset: "{{ _('Replace your code with the starter code?')|escapejs }}",
+  };
+  // Fills %(name)s placeholders in a translated string.
+  const fmt = (s, values) => s.replace(/%\((\w+)\)s/g, (m, key) => values[key]);
   const urls = {
     run: "{% url 'learn:run' exercise.slug %}",
     runSelection: "{% url 'learn:run_selection' exercise.slug %}",
@@ -267,7 +303,7 @@
   window.highlightCode?.($('#tab-lesson'));
 
   $('#reset').addEventListener('click', () => {
-    if (!confirm('Replace your code with the starter code?')) return;
+    if (!confirm(T.reset)) return;
     editor.setValue(JSON.parse($('#starter-code').textContent));
     saveDraft();
   });
@@ -290,10 +326,10 @@
     let html = banner;
     if (!banner) {
       html += known.length
-        ? `<div class="summary">${passed}/${TESTS.length} tests passing${notRun ? ` <span class="muted" style="font-weight:400">· ${notRun} not run yet</span>` : ''}</div>`
-        : `<p class="empty">${esc(window.LEARN_LAST_RUN || 'Write your code, then run all tests, or click ▶ next to a test to run just that one.')}</p>`;
+        ? `<div class="summary">${fmt(T.passing, {passed, total: TESTS.length})}${notRun ? ` <span class="muted" style="font-weight:400">· ${fmt(T.notRun, {count: notRun})}</span>` : ''}</div>`
+        : `<p class="empty">${esc(window.LEARN_LAST_RUN || T.emptyTests)}</p>`;
     }
-    html += '<div>';
+    html += '<div dir="ltr">';
     for (const t of TESTS) {
       const record = status[t.id];
       const state = running.has(t.id) ? 'running' : record ? record.outcome : 'none';
@@ -301,7 +337,7 @@
         ? `<pre>${esc(record.message)}${record.trace ? '\n\n' + esc(record.trace) : ''}</pre>` : '';
       html += `<div class="test ${state}"><span class="icon">${icons[state]}</span>
         <div class="body">${esc(t.description)}${detail}</div>
-        <button class="run-one" type="button" data-test="${esc(t.id)}" ${canRun && !running.size ? '' : 'disabled'} title="Run only this test">▶</button></div>`;
+        <button class="run-one" type="button" data-test="${esc(t.id)}" ${canRun && !running.size ? '' : 'disabled'} title="${T.runOnly}">▶</button></div>`;
     }
     html += '</div>' + footer;
     results.innerHTML = html;
@@ -321,14 +357,14 @@
     `<button class="btn ask-tutor" type="button" data-question="${esc(question)}">${label}</button>`;
 
   function loadErrorBanner(data) {
-    return `<div class="alert bad"><strong>Your code didn't load.</strong><pre>${esc(data.error)}</pre></div>`;
+    return `<div class="alert bad"><strong>${T.didntLoad}</strong><pre dir="ltr">${esc(data.error)}</pre></div>`;
   }
 
   const runBtn = $('#run');
   async function runTests() {
     if (runBtn.disabled || running.size) return;
     showPanel('results');
-    runBtn.disabled = true; runBtn.textContent = 'Running…';
+    runBtn.disabled = true; runBtn.textContent = T.running;
     running = new Set(TESTS.map((t) => t.id));
     banner = ''; footer = ''; renderTests();
     try {
@@ -338,23 +374,23 @@
       (data.tests || []).forEach((r) => { status[r.id] = r; });
       if (data.error && !data.tests?.length) {
         banner = loadErrorBanner(data);
-        footer = (data.stdout ? `<p class="muted" style="margin:12px 0 4px">Output</p><pre>${esc(data.stdout)}</pre>` : '')
-          + tutorButton('Ask the tutor what this error means', "My code won't load. What does this error mean and where should I look?");
+        footer = (data.stdout ? `<p class="muted" style="margin:12px 0 4px">${T.output}</p><pre dir="ltr">${esc(data.stdout)}</pre>` : '')
+          + tutorButton(T.askError, T.askErrorQ);
       } else {
         banner = data.all_passed
-          ? `<div class="alert ok" style="margin-bottom:6px"><strong>All ${data.total} tests passed. Nice work!</strong> Try the quiz, or move on to the next exercise.</div>`
+          ? `<div class="alert ok" style="margin-bottom:6px">${fmt(T.allPassed, {total: data.total})}</div>`
           : '';
-        footer = (data.stdout.trim() ? `<p class="muted" style="margin:12px 0 4px">Output from print()</p><pre>${esc(data.stdout)}</pre>` : '')
-          + (data.all_passed ? '' : tutorButton('Ask the tutor why', "My tests aren't passing. Can you help me understand what's wrong, without giving me the full answer?"));
-        if (data.all_passed) $('#status-badge').innerHTML = '<span class="badge done">Passed</span>';
-        else if (!$('#status-badge .done')) $('#status-badge').innerHTML = '<span class="badge wip">In progress</span>';
+        footer = (data.stdout.trim() ? `<p class="muted" style="margin:12px 0 4px">${T.outputPrint}</p><pre dir="ltr">${esc(data.stdout)}</pre>` : '')
+          + (data.all_passed ? '' : tutorButton(T.askWhy, T.askWhyQ));
+        if (data.all_passed) $('#status-badge').innerHTML = `<span class="badge done">${T.passed}</span>`;
+        else if (!$('#status-badge .done')) $('#status-badge').innerHTML = `<span class="badge wip">${T.inProgress}</span>`;
       }
       celebrate(data.xp);
     } catch (err) {
       running = new Set();
-      banner = `<div class="alert bad">Could not reach the server: ${esc(err)}</div>`;
+      banner = `<div class="alert bad">${esc(fmt(T.unreachable, {error: err}))}</div>`;
     } finally {
-      runBtn.disabled = !canRun; runBtn.textContent = '▶ Run tests';
+      runBtn.disabled = !canRun; runBtn.textContent = '▶ ' + T.runTests;
       renderTests();
     }
   }
@@ -368,18 +404,18 @@
       const data = await post(urls.run, {code: editor.getValue(), test: testId});
       if (data.error && !data.tests?.length) {
         banner = loadErrorBanner(data);
-        footer = tutorButton('Ask the tutor what this error means', "My code won't load. What does this error mean and where should I look?");
+        footer = tutorButton(T.askError, T.askErrorQ);
       } else {
         (data.tests || []).forEach((r) => { status[r.id] = r; });
         const record = status[testId];
-        footer = (data.stdout?.trim() ? `<p class="muted" style="margin:12px 0 4px">Output from print()</p><pre>${esc(data.stdout)}</pre>` : '')
+        footer = (data.stdout?.trim() ? `<p class="muted" style="margin:12px 0 4px">${T.outputPrint}</p><pre dir="ltr">${esc(data.stdout)}</pre>` : '')
           + (record && record.outcome !== 'passed'
-            ? tutorButton('Ask the tutor about this test', `This test is failing: "${record.description}". Can you help me understand why, without giving me the full answer?`)
+            ? tutorButton(T.askTest, fmt(T.askTestQ, {test: record.description}))
             : '');
       }
-      if (!$('#status-badge .done')) $('#status-badge').innerHTML = '<span class="badge wip">In progress</span>';
+      if (!$('#status-badge .done')) $('#status-badge').innerHTML = `<span class="badge wip">${T.inProgress}</span>`;
     } catch (err) {
-      banner = `<div class="alert bad">Could not reach the server: ${esc(err)}</div>`;
+      banner = `<div class="alert bad">${esc(fmt(T.unreachable, {error: err}))}</div>`;
     } finally {
       running = new Set();
       renderTests();
@@ -396,11 +432,11 @@
     const sel = editor.getSelectionInfo();
     if (!sel.text.trim()) {
       showPanel('console');
-      addConsoleEntry('', '', 'Highlight some code first (or put the cursor on a line with code).', []);
+      addConsoleEntry('', '', T.highlightFirst, []);
       return;
     }
     showPanel('console');
-    selBtn.disabled = true; selBtn.textContent = 'Running…';
+    selBtn.disabled = true; selBtn.textContent = T.running;
     const entry = addConsoleEntry(sel.text, '', '', [], true);
     try {
       const data = await post(urls.runSelection, {
@@ -408,9 +444,9 @@
       });
       fillConsoleEntry(entry, sel.text, data.output || '', data.error || '', data.notes || []);
     } catch (err) {
-      fillConsoleEntry(entry, sel.text, '', `Could not reach the server: ${err}`, []);
+      fillConsoleEntry(entry, sel.text, '', fmt(T.unreachable, {error: err}), []);
     } finally {
-      selBtn.disabled = !canRun; selBtn.textContent = '▶ Run selection';
+      selBtn.disabled = !canRun; selBtn.textContent = '▶ ' + T.runSelection;
       editor.focus();
     }
   }
@@ -425,20 +461,20 @@
   function fillConsoleEntry(entry, code, output, error, notes, pending) {
     const lines = code ? code.replace(/\n+$/, '').split('\n').length : 0;
     entry.innerHTML =
-      (code ? `<div class="prompt"><span>&gt;&gt;&gt; ran ${lines} line${lines === 1 ? '' : 's'}</span></div>
-        <pre class="code cm-s-vscode"><code class="language-python">${esc(code.replace(/\n+$/, ''))}</code></pre>` : '')
-      + (pending ? '<div class="note">Running…</div>' : '')
-      + (output ? `<pre class="out">${esc(output.replace(/\n$/, ''))}</pre>` : '')
-      + (error ? `<pre class="err">${esc(error)}</pre>` : '')
-      + (!pending && code && !output && !error ? '<div class="note">(no output)</div>' : '')
-      + notes.map((n) => `<div class="note">ℹ ${esc(n)}</div>`).join('');
+      (code ? `<div class="prompt"><span><bdi>&gt;&gt;&gt;</bdi> ${lines === 1 ? T.ranOne : fmt(T.ranMany, {count: lines})}</span></div>
+        <pre class="code cm-s-vscode" dir="ltr"><code class="language-python">${esc(code.replace(/\n+$/, ''))}</code></pre>` : '')
+      + (pending ? `<div class="note">${T.running}</div>` : '')
+      + (output ? `<pre class="out" dir="ltr">${esc(output.replace(/\n$/, ''))}</pre>` : '')
+      + (error ? `<pre class="err" dir="ltr">${esc(error)}</pre>` : '')
+      + (!pending && code && !output && !error ? `<div class="note">${T.noOutput}</div>` : '')
+      + notes.map((n) => `<div class="note" dir="ltr">ℹ ${esc(n)}</div>`).join('');
     window.highlightCode?.(entry);
     consoleBox.scrollTop = consoleBox.scrollHeight;
   }
   selBtn.addEventListener('click', runSelection);
   $('#clear-console').addEventListener('click', () => {
     consoleStarted = false;
-    consoleBox.innerHTML = '<p class="empty">Console cleared.</p>';
+    consoleBox.innerHTML = `<p class="empty">${T.cleared}</p>`;
   });
 
   // ---- Quiz ----
@@ -459,7 +495,7 @@
       const why = blocks[i].querySelector('.why');
       why.hidden = !r.explanation; why.innerHTML = r.explanation;
     });
-    $('#quiz-score').textContent = `You got ${data.correct}/${data.total}`;
+    $('#quiz-score').textContent = fmt(T.score, {correct: data.correct, total: data.total});
     $('#chip-quiz').classList.add('gone');
     celebrate(data.xp);
   });
@@ -468,9 +504,7 @@
   const dialog = $('#solution-dialog');
   $('#show-solution').addEventListener('click', async () => {
     const passed = !!document.querySelector('#status-badge .done');
-    const warning = passed
-      ? 'Show the reference solution?'
-      : 'Peek at the solution? You learn more by struggling a little first, and you will lose the +{{ rewards.no_peek }} XP no-peek bonus for this exercise.';
+    const warning = passed ? T.showSolution : T.peek;
     if (!confirm(warning)) return;
     const data = await post(urls.solution, {});
     if (!passed) $('#chip-nopeek').classList.add('gone');

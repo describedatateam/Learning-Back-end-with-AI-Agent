@@ -1,6 +1,10 @@
-# Describe Design System
+# Platform Design System
 
-**Version 1.1 · 2026-10-07** (no emojis, icon set, Arabic and RTL) · Built on the colours already in `learn/templates/learn/base.html`, so the current exercise pages fit in without a redesign.
+**Version 2.0 · 2026-10-08** · Adopts the "Describe" design system and dashboard mockup (`plans/reference/dashboard-mockup.png`, source text in `plans/reference/describe-design-system-v1-source.md`): indigo palette, Inter, dark navy sidebar, learning-cockpit home. Everything from v1.1 that the new system didn't cover stays: no emojis, Lucide icons, Arabic and RTL, dark mode, the promise and discovery rules.
+
+**Token names stay the same as Day 1** (`--accent`, `--ok`, ...), only their values change, so existing pages pick up the new look without template edits. Where the mockup breaks our rules, our rules win: its emojis (wave, flame, star) become Lucide icons, the Python logo becomes a Lucide icon, and the mountain illustrations are optional extras for later.
+
+The product name is **Describe** (decided 2026-10-08), a product of the user's agency, so the brand can be reused for other products later. It replaces "Dev Lab" from Day 1.
 
 ---
 
@@ -20,6 +24,8 @@ Learners should always know two things: **what the platform will give them**, an
 | **Learn by doing first** | Exercises and projects are the main thing. Lessons, slides and videos support them and never compete with them visually. |
 | **Progress you can feel** | Progress bars, ticks and XP sit on every path and chapter, and are small, honest and never noisy. |
 | **Quiet by default** | Neutral backgrounds and one accent colour. Colour carries meaning (done, error, XP), not decoration. |
+| **Show where they are** | Every learning screen answers "Where am I?" with path position, chapter label and progress. The home page is a learning cockpit, not a course list. |
+| **Data changes what happens next** | Show a number only if it helps the learner decide something. Call it "progress" or "skill path progress", never "knowledge" or "mastery", until the data backs that up. |
 
 ## 3. The platform promise (copy that appears in the product)
 
@@ -35,56 +41,77 @@ Every path card repeats the promise in miniature, each item with its icon: **tim
 
 ## 4. Colour
 
-Existing tokens, kept as they are. Light and dark are both supported.
+Indigo primary, emerald success, amber motivation, dark navy navigation (from the new system). Same token names as Day 1. The new system's raw colours are used for fills and bars; text and button colours are one shade darker where the raw colour fails WCAG AA (for example, white text on `#6366F1` is only 4.5:1 at best, so buttons use `#4F46E5`).
 
 | Token | Light | Dark | Use for |
 |---|---|---|---|
-| `--bg` | `#f6f7f9` | `#11151c` | Page background |
-| `--surface` | `#ffffff` | `#181d26` | Cards, panels |
-| `--border` | `#dde1e7` | `#2c3442` | Card edges, dividers |
-| `--text` | `#1c2330` | `#e4e8ef` | Main text |
-| `--muted` | `#5d6778` | `#9aa4b5` | Secondary text, hints |
-| `--accent` | `#2f6fdf` | `#6b9bf5` | Primary buttons, links, active progress |
-| `--accent-soft` | `#e5eefc` | `#1d2a42` | Selected tabs, highlighted cards |
-| `--ok` / `--ok-soft` | `#1f8a4c` / `#e3f4ea` | `#4cc281` / `#173024` | Passed, done, correct |
-| `--bad` / `--bad-soft` | `#c43d3d` / `#fbe7e7` | `#f07070` / `#3a1c1f` | Failed tests, errors |
-| `--warn` / `--warn-soft` | `#a86a00` / `#fdf1dc` | `#e8b04a` / `#362a14` | Gaps in an SRS, cards overdue |
-| `--xp` / `--xp-soft` | `#8a4fe0` / `#f1e8fd` | `#b38cff` / `#2a1f42` | XP, streaks, achievements only |
-| `--code-bg` / `--code-text` | `#0f1623` / `#e3e8f0` | same | Code editor and code blocks |
+| `--bg` | `#f8fafc` | `#0b1220` | Page background |
+| `--surface` | `#ffffff` | `#111a2e` | Cards, panels |
+| `--surface-subtle` (new) | `#f1f5f9` | `#16213a` | Secondary panels, table stripes, metric icon wells |
+| `--border` | `#e2e8f0` | `#24304a` | Card edges, dividers |
+| `--text` | `#0f172a` | `#e2e8f0` | Main text |
+| `--muted` | `#64748b` | `#94a3b8` | Secondary text, hints, metadata |
+| `--accent` | `#4f46e5` | `#818cf8` | Primary buttons, links, focus ring (dark theme: button text `#0b1220`) |
+| `--accent-bar` (new) | `#6366f1` | `#818cf8` | Progress bar fill, active journey node |
+| `--accent-soft` | `#e0e7ff` | `#1e1b4b` | Selected tabs, highlighted cards, "in progress" badge |
+| `--ok` / `--ok-soft` | `#047857` / `#d1fae5` | `#34d399` / `#063b2c` | Passed, done, correct (text and icons) |
+| `--ok-bar` (new) | `#10b981` | `#34d399` | Completed bars, "Generate another exercise" button fill |
+| `--bad` / `--bad-soft` | `#dc2626` / `#fee2e2` | `#f87171` / `#3b1518` | Failed tests, errors |
+| `--warn` / `--warn-soft` | `#b45309` / `#fef3c7` | `#fbbf24` / `#3a2a0a` | Needs practice, gaps in an SRS, cards overdue |
+| `--xp` / `--xp-soft` | `#b45309` / `#fef3c7` | `#fbbf24` / `#3a2a0a` | XP, streaks, achievements (amber now; always with `zap`, `flame` or `award` so it never reads as a warning) |
+| `--info` (new) | `#0369a1` | `#38bdf8` | Informational notices |
+| `--job` | `#0f766e` | `#2dd4bf` | Job path badges and card top border |
+| `--skill` | `#4f46e5` (same as accent) | `#818cf8` | Skill path badges |
+| `--nav-bg` (new) | `#0b1b36` | `#070f20` | Sidebar background |
+| `--nav-bg-2` (new) | `#102544` | `#0b1b36` | Sidebar progress box, bottom nav on phones |
+| `--nav-active` (new) | `#1f2d5c` | `#1f2d5c` | Active sidebar item |
+| `--nav-text` (new) | `#cbd5e1` | `#cbd5e1` | Sidebar text; active item text is `#ffffff` |
+| `--code-bg` / `--code-text` | `#0f172a` / `#e2e8f0` | same | Code editor and code blocks |
 
 **Rules**
-- One accent per screen. If two things are blue, one of them shouldn't be.
-- Purple (`--xp`) is reserved for rewards, so it stays special.
-- Colour never carries meaning on its own: a passed test is green **and** has a `check` icon.
-
-**New tokens to add on Day 1** (two path types need their own quiet identity):
-
-| Token | Light | Dark | Use for |
-|---|---|---|---|
-| `--job` | `#0f766e` | `#4fd1c5` | Job path badges and card top border |
-| `--skill` | `#2f6fdf` (same as accent) | `#6b9bf5` | Skill path badges |
+- One accent per screen. If two things are indigo, one of them shouldn't be.
+- Amber means "effort and reward" (XP, streaks) or "needs attention" (warnings); the icon and label say which.
+- Colour never carries meaning on its own: a passed test is green **and** has a `circle-check` icon **and** says "Passed".
+- The sidebar is dark in both themes.
 
 ## 5. Type
 
-| Role | Size / weight | Example |
+| Role | Size / weight / line height | Example |
 |---|---|---|
-| Page title | 28px / 700 | "Backend Developer" |
-| Section title | 20px / 650 | "Course 2: Models and Databases" |
-| Card title | 16px / 600 | "Migrations" |
-| Body | 15px / 400, line height 1.6 | Lesson text |
-| Small / meta | 13px / 500, `--muted` | "4 courses · 30 days" |
+| Display (home greeting) | 32px / 700 / 40px (24px on phones) | "Good evening, Sara" |
+| Page title | 24px / 700 / 32px | "Backend Developer" |
+| Section / card title | 16px / 600 / 24px | "Your learning journey" |
+| Data value | 28px / 700 / 1 | "48 / 62" |
+| Body (dashboard) | 14px / 400 / 22px | Card text |
+| Body (lessons) | 16px / 400 / 1.6 | Lesson text |
+| Small / meta | 12px / 500 / 18px, `--muted` | "8 lessons · 21 exercises" |
 | Code | 14px, `--mono` | Editor, inline code |
 
-- Font: the system UI font stack (fast, no download): `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`.
-- Keep lines under about 70 characters in lessons.
-- Sentence case everywhere ("Generate a path", not "Generate A Path").
+- Latin font: **Inter** (variable, weights 400 to 700), self-hosted in `static/fonts/` so it works on PythonAnywhere's free plan and loads fast. Fallback: `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`.
+- Arabic font: **IBM Plex Sans Arabic**, self-hosted too (Inter has no Arabic letters). See 7b.
+- Numbers in metric cards use `font-variant-numeric: tabular-nums` so they line up.
+- Keep lesson lines under about 70 characters. Sentence case everywhere. Don't overuse bold.
 
 ## 6. Space, shape, depth
 
-- **Spacing scale:** 4, 8, 12, 16, 24, 32, 48px. Inside cards: 16px. Between cards: 16px. Between sections: 32px.
-- **Radius:** `--radius: 10px` for cards; 8px for buttons and inputs; 999px for tags.
-- **Shadows:** almost none. Cards use a 1px `--border`; only hover adds `0 2px 8px rgb(0 0 0 / 0.06)`.
-- **Layout:** content max width 1080px; lessons 720px. One column on phones (under 640px), two or three card columns above.
+- **Spacing scale (4px base):** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64px. Card padding 20px (16px on phones). Gaps between cards 16px. Between page sections 24 to 32px.
+- **Radius:** cards `--radius-card: 14px`; buttons and inputs `--radius-control: 9px`; small chips 6px; badges and pills 999px.
+- **Shadows:** `--shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05)` on cards (with the 1px border), `--shadow-md: 0 4px 12px rgb(15 23 42 / 0.07)` on hover, `--shadow-lg: 0 12px 32px rgb(15 23 42 / 0.10)` for menus and dialogs only.
+
+## 6a. Layout and navigation
+
+**App shell (from the mockup)**
+- **Laptop and desktop (1024px and up):** fixed dark sidebar, 248px wide, on the inline-start side (left in English, right in Arabic). Content area padding 32px, dashboard max width 1440px, lessons 720px.
+- **Tablet (640 to 1023px):** sidebar collapses to a 72px icon rail with tooltips; a menu button expands it.
+- **Phone (under 640px):** no sidebar. A bottom navigation bar with 5 items (Home, Paths, Flashcards, Project, Portfolio) in `--nav-bg-2`, plus a top bar with the language switch and profile. Single column cards; the journey scrolls sideways; the primary action sticks to the bottom above the nav.
+- **Exercise page:** the sidebar collapses to the icon rail so the editor gets the room (split view on desktop, stacked on phones).
+
+**Sidebar contents**
+- Top: product name and logo mark.
+- Items (icon 18px + label): Home `house`, Paths `compass`, My project `file-text`, Flashcards `layers`, Portfolio `briefcase`. The mockup's separate Learn, Pathways and Courses all live under **Paths**. AI tutor `bot` and Analytics `chart-line` are added only when those pages exist.
+- Bottom: a progress box (level and XP bar, in `--nav-bg-2`), then the learner's name, language switch and settings.
+- Active item: `--nav-active` background, white icon and text, 9px radius. No bright blocks.
+- **Dashboard grid:** 12 columns. Typical splits: main 8 + side 4, journey 7 + activity 5. Sizes follow importance; not every card is the same size.
 
 ## 7. Components
 
@@ -104,7 +131,9 @@ Minimum height 40px (44px on phones). Labels are verbs: **Resume**, **Run tests*
 - **Next-step card (home page):** the biggest card on the page with one primary button.
 
 ### Progress
-- Bar: 6px tall, `--border` track, `--accent` fill, `--ok` when 100%.
+- Bar: 8px tall, fully rounded, `--surface-subtle` track, `--accent-bar` fill, `--ok-bar` when 100%.
+- Ring (metric cards only): 48px circle, 5px stroke, percentage in the middle.
+- Status badges (pill, icon + label): Completed (`--ok`), In progress (`--accent`), Needs practice (`--warn`), Locked (`--muted`).
 - Always show the number beside it ("45%" or "5 of 11 chapters").
 
 ### Tags and badges
@@ -126,12 +155,34 @@ Every empty screen explains what will appear there and offers the one action to 
 - Flashcards: "No cards due. Nice. New cards arrive as you finish chapters."
 - My project: "Working on something? Describe it or upload its SRS, and we'll walk you through it."
 
+### Learning cockpit (home page)
+
+The home page from the mockup, built from data we actually have. Each block lists when its data exists, so no block shows made-up numbers.
+
+| Block | What it shows | Data ready |
+|---|---|---|
+| Greeting | "Good evening, Sara" and one encouraging line about the next milestone. No emoji. | Day 2 (accounts) |
+| Path hero | Current path name and one-line promise, progress bar with %, time remaining, next milestone, **Continue learning** button (the page's one primary action). Path icon from Lucide instead of a logo; illustration optional later. | Day 3 |
+| Metric cards (4) | Lessons completed, Exercises passed (each with a ring), Streak (`flame`), Total XP and level (`zap`). | Day 2 (per-user progress and XP) |
+| Your learning journey | Vertical list of the path's courses or chapters: status icon, title, "8 lessons · 21 exercises", %. Current one highlighted, locked ones muted. "View full path" link. | Day 3 |
+| Recent activity | Last 5 events: icon, what happened, topic, time ago, XP earned. | Day 2 event log |
+| Skill path progress | One row per skill path in the job path, with icon and bar. Named "Skill path progress" (completion), not "skill level", until concept tracking exists. | Day 3 |
+| Encouragement card | Navy card with one line of text. Optional. | Any time |
+
+Empty states follow section 7: a new learner sees the greeting, the path hero with **Start**, and the promise, not a wall of zeros.
+
+### Later screens (designed in the mockup, built after the 2 weeks)
+- **Exercise page:** instructions, Tests and Hints tabs on the start side, editor and console on the end side, "Exercise 2 of 5" and **Generate another exercise** (`--ok-bar` button, `sparkles` icon). Today's exercise page only picks up the new tokens.
+- **Attempt history table:** attempt #, result badge, accuracy, hints, time.
+- **Analytics:** tabs Overview, Performance, IDE activity, AI tutor; line chart of progress over time.
+- **Profile:** avatar, level, current path, recent achievements (icons, not emojis).
+
 ## 7a. Icons (no emojis)
 
 The interface uses **no emojis**, anywhere: not in buttons, notices, headings or AI-generated content (the Gemini prompts say so too). Icons are used only where they help someone scan or recognise something faster.
 
 - **Set:** [Lucide](https://lucide.dev) (free, open source, consistent outline style). Copy the SVGs we use into `static/icons/` so nothing loads from outside the site.
-- **Size:** 16px inline with text, 20px in buttons and navigation, 24px on cards. Stroke width 1.75.
+- **Size:** 16px inline with text, 18px in the sidebar, 20px in buttons, 24px on cards and metric wells. Stroke width 1.75.
 - **Colour:** `currentColor`, so icons take the colour of their text.
 - **Always labelled:** an icon sits next to a text label, or has an `aria-label` when it stands alone (like a close button).
 - **Use icons for:** navigation items, path-card promise line, chapter status, chapter resource types (video, slides, lesson, exercise, quiz, flashcards), notices.
@@ -145,7 +196,10 @@ The interface uses **no emojis**, anywhere: not in buttons, notices, headings or
 | Not started / In progress / Done / Locked | `circle` / `circle-dot` / `circle-check` / `lock` |
 | Time / Build / Skills | `clock` / `hammer` / `target` |
 | Upload SRS / Warning / Error / Success | `upload` / `triangle-alert` / `circle-x` / `circle-check` |
-| XP / Streak | `zap` / `flame` |
+| XP / Streak / Achievement | `zap` / `flame` / `award` |
+| Lessons done / Exercises passed / Activity | `book-check` / `circle-check-big` / `activity` |
+| Search / Notifications / Settings | `search` / `bell` / `settings` |
+| AI tutor / Analytics / Generate another exercise | `bot` / `chart-line` / `sparkles` |
 
 ## 7b. Arabic and right-to-left
 
@@ -211,4 +265,4 @@ Small and quick: 150ms ease-out for hover and reveals, 250ms for the flashcard f
 
 ---
 
-**Next:** Day 1 turns this file into a shared stylesheet (`static/css/tokens.css` plus components) and builds the home page with it. Copy this file into the repo as `docs/design-system.md` in that session so it stays with the code.
+**Next:** Day 1 built v1.1 into `static/css/tokens.css` and the home page. Adopting v2.0 means: swap token values and add the new tokens (section 4), self-host Inter (section 5), add the app shell (section 6a), and rebuild the home page as the learning cockpit (section 7). Copy this file over `docs/design-system.md` in the repo in that session. The previous version is in `plans/reference/design-system-v1.1.md`.

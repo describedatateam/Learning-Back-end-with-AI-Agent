@@ -1,0 +1,26 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% if section == 'flashcards' %}{% translate "Flashcards" %}{% elif section == 'project' %}{% translate "My project" %}{% else %}{% translate "Portfolio" %}{% endif %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <section class="card empty-state">
+    {% if section == 'flashcards' %}
+      {% icon 'layers' css='icon-lg' %}
+      <h1>{% translate "Flashcards" %}</h1>
+      <p>{% translate "No cards due. Nice. New cards arrive as you finish chapters." %}</p>
+    {% elif section == 'project' %}
+      {% icon 'file-text' css='icon-lg' %}
+      <h1>{% translate "My project" %}</h1>
+      <p>{% translate "Working on something? Describe it or upload its SRS (requirements), and we'll walk you through it." %}</p>
+    {% else %}
+      {% icon 'briefcase' css='icon-lg' %}
+      <h1>{% translate "Portfolio" %}</h1>
+      <p>{% translate "Your finished projects will live here. Finish your first path to add one." %}</p>
+    {% endif %}
+    <span class="tag">{% translate "Coming soon" %}</span>
+    <a class="btn primary" href="{% url 'learn:catalog' %}">{% translate "Explore paths" %}{% icon 'arrow-right' css='icon-flip' %}</a>
+  </section>
+</main>
+{% endblock %}

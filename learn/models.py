@@ -119,6 +119,8 @@ class LearningEvent(models.Model):
     SOLUTION_VIEWED = 'solution_viewed'
     LESSON_FINISHED = 'lesson_finished'
     CHAPTER_SKIPPED = 'chapter_skipped'
+    PATH_SKIPPED = 'path_skipped'  # ticked "I already know this" on a prerequisite (data: skipped)
+    PATH_CHOSEN = 'path_chosen'
     KIND_CHOICES = [
         (RUN, 'Ran the tests'),
         (TEST_RUN, 'Ran one test'),
@@ -129,6 +131,8 @@ class LearningEvent(models.Model):
         (SOLUTION_VIEWED, 'Opened the solution'),
         (LESSON_FINISHED, 'Finished a lesson'),
         (CHAPTER_SKIPPED, 'Skipped a chapter'),
+        (PATH_SKIPPED, 'Skipped a prerequisite'),
+        (PATH_CHOSEN, 'Chose a job path'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_events')
@@ -144,3 +148,96 @@ class LearningEvent(models.Model):
 
     def __str__(self):
         return f'{self.user} {self.kind} {self.slug}'
+
+
+# The catalog: job paths are made of skill paths, skill paths of courses, courses of chapters.
+# It is loaded from learn/catalog.json with `python manage.py load_catalog`.
+
+class Path(models.Model):
+    JOB = 'job'
+    SKILL = 'skill'
+    KIND_CHOICES = [(JOB, 'Job path'), (SKILL, 'Skill path')]
+
+    slug = models.SlugField(unique=True)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    title = models.CharField(max_length=200)
+    summary = models.TextField(blank=True)
+    level = models.CharField(max_length=20, blank=True)
+    hours = models.PositiveSmallIntegerField(default=0)
+    order = models.PositiveSmallIntegerField(default=0)
+    project = models.JSONField(default=dict, blank=True)         # skill path project: title, brief, skills_used
+    capstone = models.JSONField(default=dict, blank=True)        # job path capstone: title, brief, milestones, exercises
+    placement_test = models.JSONField(default=dict, blank=True)  # prerequisites only; used from Day 4
+
+    class Meta:
+        ordering = ['kind', 'order', 'id']
+
+    def __str__(self):
+        return self.title
+
+
+class PathStep(models.Model):
+    """One skill path inside a job path, in order. Prerequisites can be skipped."""
+
+    job = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='steps')
+    skill = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='in_jobs')
+    order = models.PositiveSmallIntegerField()
+    prerequisite = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f'{self.job} > {self.skill}'
+
+
+class Course(models.Model):
+    path = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='courses')
+    order = models.PositiveSmallIntegerField()
+    title = models.CharField(max_length=200)
+    hours = models.PositiveSmallIntegerField(default=0)
+    language = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return self.title
+
+
+class Chapter(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='chapters')
+    order = models.PositiveSmallIntegerField()
+    slug = models.SlugField(unique=True)
+    title = models.CharField(max_length=200)
+    learning_goal = models.TextField(blank=True)
+    exercise_idea = models.TextField(blank=True)
+    exercises = models.JSONField(default=list, blank=True)  # slugs of exercises in learn/content/
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return self.title
+
+
+class PathChoice(models.Model):
+    """The job path a learner picked. The latest one is their current path."""
+
+    user = _owner()
+    path = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+
+class SkippedPath(models.Model):
+    """A prerequisite the learner said they already know."""
+
+    user = _owner()
+    path = models.ForeignKey(Path, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'path'], name='unique_skip_per_user')]
