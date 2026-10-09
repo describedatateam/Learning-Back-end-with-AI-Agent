@@ -1,0 +1,56 @@
+{% load static %}
+{# Draws Mermaid diagrams on the page: ```mermaid blocks in lessons and <pre class="diagram-src"> (mind maps, slides). #}
+{# The script is self-hosted and only loads when the page has a diagram. A diagram that can't be drawn is hidden. #}
+<script>
+(() => {
+  const sources = [...document.querySelectorAll('pre.diagram-src, pre > code.language-mermaid')];
+  if (!sources.length) return;
+  const script = document.createElement('script');
+  script.src = "{% static 'learn/vendor/mermaid-11.4.1.min.js' %}";
+  script.onload = async () => {
+    const css = getComputedStyle(document.documentElement);
+    const token = (name) => css.getPropertyValue(name).trim();
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: 'strict', theme: 'base', fontFamily: token('--font'),
+      themeVariables: {
+        darkMode: dark, fontSize: '14px', background: token('--surface'),
+        primaryColor: token('--accent-soft'), primaryTextColor: token('--text'), primaryBorderColor: token('--accent-bar'),
+        secondaryColor: token('--job-soft'), tertiaryColor: token('--surface-subtle'),
+        lineColor: token('--muted'), textColor: token('--text'), noteBkgColor: token('--xp-soft'),
+        actorBkg: token('--accent-soft'), actorBorder: token('--accent-bar'), signalColor: token('--text'),
+        // Mind map branches use the design system's soft colours instead of Mermaid's bright defaults.
+        ...Object.fromEntries(['--accent-soft', '--job-soft', '--xp-soft', '--ok-soft', '--skill-soft', '--warn-soft']
+          .flatMap((name, i) => [[`cScale${i}`, token(name)], [`cScale${i + 6}`, token(name)],
+                                 [`cScaleLabel${i}`, token('--text')], [`cScaleLabel${i + 6}`, token('--text')]])),
+        ...Object.fromEntries(['--accent-bar', '--job', '--xp-2', '--ok-bar', '--skill', '--warn']
+          .flatMap((name, i) => [[`cScaleInv${i}`, token(name)], [`cScaleInv${i + 6}`, token(name)]])),
+      },
+    });
+    const phone = matchMedia('(max-width: 639px)').matches;
+    let n = 0;
+    for (const source of sources) {
+      const box = source.tagName === 'CODE' ? source.parentElement : source;
+      const holder = box.closest('[data-diagram]') || box;
+      let text = source.textContent.trim();
+      const kind = text.split(/\s/)[0];
+      // On a phone, a left-to-right flowchart would shrink to unreadable; draw it top to bottom instead.
+      if (phone && /^(flowchart|graph)\s+(LR|RL)\b/.test(text)) text = text.replace(/^(flowchart|graph)\s+(LR|RL)/, '$1 TD');
+      try {
+        if (!(await mermaid.parse(text, {suppressErrors: true}))) throw new Error('bad diagram');
+        const {svg} = await mermaid.render(`diagram-${n++}`, text);
+        const figure = document.createElement('div');
+        figure.className = `diagram is-${kind}`;
+        figure.setAttribute('dir', 'ltr');
+        figure.innerHTML = svg;
+        box.replaceWith(figure);
+        figure.scrollLeft = (figure.scrollWidth - figure.clientWidth) / 2;  // a wide mind map opens on its centre
+        holder.hidden = false;
+      } catch (err) {
+        holder.remove();  // the lesson reads fine without it
+      }
+    }
+  };
+  document.head.appendChild(script);
+})();
+</script>

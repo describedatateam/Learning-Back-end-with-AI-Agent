@@ -306,6 +306,7 @@ def chapter_detail(request, slug, chapter):
     context = {
         'path': path, 'chapter': chapter, 'lesson': lesson_html(chapter.content.get('lesson', '')),
         'slides': chapter.content.get('slides', []), 'quiz': quiz, 'progress': progress,
+        'mind_map': chapter.content.get('mind_map', ''),
         'previous': chapters[index - 1] if index > 0 else None,
         'next': chapters[index + 1] if index + 1 < len(chapters) else None,
         'number': index + 1, 'count': len(chapters), 'pass_needed': math.ceil(QUIZ_PASS_SHARE * len(quiz)),

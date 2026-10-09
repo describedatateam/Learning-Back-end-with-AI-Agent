@@ -21,6 +21,16 @@ field, ready to send back with a 400 status.
 A serializer is like a bouncer with a checklist: each field is checked on its
 own first, then the whole thing is checked together.
 
+```mermaid
+flowchart LR
+    D["Data from the client"] --> F["Check each field"]
+    F --> W["validate(): check fields together"]
+    W -->|is_valid() is True| C["validated_data: clean values"]
+    F -->|a rule fails| E["errors: one list per field"]
+    W -->|a rule fails| E
+    E --> R["400 Bad Request"]
+```
+
 ## New words
 
 | word | meaning |

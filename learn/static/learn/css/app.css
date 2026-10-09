@@ -500,3 +500,12 @@ a.card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); tex
 .practise-panel { margin-block-start: var(--space-4); }
 .practise-panel[open] summary .icon { transform: rotate(180deg); }
 .practise-panel summary + .lang-groups { margin-block-start: var(--space-2); }
+
+/* Diagrams and mind maps (Mermaid, drawn in the browser by _diagrams.html) */
+pre.diagram-src, pre:has(> code.language-mermaid) { display: none; }
+.diagram { overflow-x: auto; text-align: center; padding: var(--space-2) 0; }
+.diagram svg { max-width: 100%; height: auto; }
+.diagram-card { gap: var(--space-2); }
+.diagram-card h2 { font-size: 15px; display: flex; align-items: center; gap: var(--space-2); }
+.slide .diagram { margin-block-start: var(--space-2); }
+@media (max-width: 639px) { .diagram.is-mindmap svg { min-width: 560px; } }

@@ -21,6 +21,17 @@ again and again. Django REST framework (DRF) bundles them:
 It's like `df.describe()` in pandas: one call does many standard calculations you
 could write by hand, because everybody needs the same ones.
 
+```mermaid
+flowchart LR
+    R["router.register('books', BookViewSet)"] --> L["/books/"]
+    R --> One["/books/1/"]
+    L -->|GET| List[list]
+    L -->|POST| Create[create]
+    One -->|GET| Retrieve[retrieve]
+    One -->|PUT or PATCH| Update[update]
+    One -->|DELETE| Destroy[destroy]
+```
+
 ## New words
 
 | word | meaning |

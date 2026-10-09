@@ -18,6 +18,16 @@ Think of an office building. Showing your badge at the door is authentication. T
 rules about which rooms your badge opens are permissions. In this exercise you
 write the rules. The badge check is already done for you.
 
+```mermaid
+flowchart LR
+    Q["Request arrives"] --> A{"Authentication: who are you?"}
+    A --> P{"has_permission: may you use this view?"}
+    P -->|False| N["403 Forbidden"]
+    P -->|True| O{"has_object_permission: may you touch this object?"}
+    O -->|False| N
+    O -->|True| Y["The view runs"]
+```
+
 ## New words
 
 | word | meaning |

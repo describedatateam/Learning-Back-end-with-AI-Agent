@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext
 
-from . import tutor
+from . import diagrams, tutor
 from .models import Chapter, Course, Path
 
 LEVELS = ('beginner', 'intermediate', 'advanced')
@@ -50,8 +50,10 @@ Reply with a single JSON object and nothing else, in exactly this shape:
        {"title": "...",
         "learning_goal": "starts with 'you can', one sentence",
         "exercise_idea": "one sentence describing a hands-on task",
-        "lesson": "Markdown, 150 to 350 words: explain the idea plainly, then one short fenced code example with a language tag, then one sentence on when to use it",
-        "slides": [{"title": "...", "points": ["short point", "short point", "short point"]}],
+        "mind_map": "a Mermaid mindmap of the chapter's main ideas (see Diagrams below)",
+        "lesson": "Markdown, 150 to 350 words: explain the idea plainly, then one short fenced code example with a language tag, then one sentence on when to use it. Where a process, flow or structure is easier to see than read, add one ```mermaid diagram",
+        "slides": [{"title": "...", "points": ["short point", "short point", "short point"],
+                    "diagram": "optional Mermaid diagram that replaces long points on at most one slide"}],
         "quiz": [{"question": "...", "options": ["...", "...", "...", "..."], "answer": index of the right option (0-3),
                   "explanation": "one sentence on why"}]}
      ]}
@@ -64,7 +66,14 @@ Rules:
 - Size the path for the learner's hours per week so it takes about 2 to 4 weeks.
 - Match the learner's level: don't re-teach basics to an advanced learner.
 - Plain, friendly language, sentence-case titles, no emojis, no HTML tags, no links.
-- Write all prose in {language}. Code, file names and technical names stay in English.\
+- Write all prose in {language}. Code, file names and technical names stay in English.
+
+Diagrams (Mermaid syntax, drawn on the page):
+- mind_map: a "mindmap" with the chapter topic as root((...)) and 3 to 5 branches of 1 to 3 short leaves each.
+- In lessons and slides use "flowchart LR" for steps and flows, "sequenceDiagram" for two sides talking \
+(browser and server), and "erDiagram" for data that links together.
+- Labels are 1 to 4 words in {language}. Put a label in double quotes if it has brackets, colons or other symbols.
+- No styling, no classDef, no click, no %% directives, no HTML. At most 12 nodes per diagram.\
 """
 
 
@@ -227,8 +236,13 @@ def _slides(items, where, errors):
         if not isinstance(slide, dict):
             errors.append(f'{here} must be an object.')
             continue
-        points = [_text(p, f'{here} point', errors, 300) for p in _list(slide.get('points'), f'{here} points', errors, 1, 6)]
-        slides.append({'title': _text(slide.get('title'), f'{here} title', errors, 120), 'points': points})
+        diagram = diagrams.clean_diagram(slide.get('diagram', ''))
+        if diagram and not slide.get('points'):  # a slide can be just a diagram
+            points = []
+        else:
+            points = [_text(p, f'{here} point', errors, 300) for p in _list(slide.get('points'), f'{here} points', errors, 1, 6)]
+        slides.append({'title': _text(slide.get('title'), f'{here} title', errors, 120), 'points': points,
+                       'diagram': diagram})
     return slides
 
 
@@ -270,13 +284,14 @@ def clean_path(data):
             if title.lower() in titles:
                 errors.append(f'{here} repeats the title "{title}".')
             titles.add(title.lower())
-            lesson = _text(chapter.get('lesson'), f'{here} lesson', errors, 6000)
+            lesson = diagrams.clean_lesson(_text(chapter.get('lesson'), f'{here} lesson', errors, 8000))
             if lesson and len(lesson) < 200:
                 errors.append(f'{here} lesson is too short.')
             chapters.append({
                 'title': title,
                 'learning_goal': _text(chapter.get('learning_goal'), f'{here} learning_goal', errors, 300),
                 'exercise_idea': _text(chapter.get('exercise_idea', ''), f'{here} exercise_idea', errors, 400, False),
+                'mind_map': diagrams.clean_diagram(chapter.get('mind_map', '')),
                 'lesson': lesson,
                 'slides': _slides(chapter.get('slides'), here, errors),
                 'quiz': _quiz(chapter.get('quiz'), here, errors),
@@ -309,6 +324,7 @@ def save_path(user, data, request):
             Chapter.objects.create(
                 course=course, order=ch_order, slug=f'{slug}-{number}', title=chapter['title'],
                 learning_goal=chapter['learning_goal'], exercise_idea=chapter['exercise_idea'],
-                content={'lesson': chapter['lesson'], 'slides': chapter['slides'], 'quiz': chapter['quiz']},
+                content={'lesson': chapter['lesson'], 'slides': chapter['slides'], 'quiz': chapter['quiz'],
+                         'mind_map': chapter['mind_map']},
             )
     return path
