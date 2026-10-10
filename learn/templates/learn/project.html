@@ -1,0 +1,151 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{{ project.title }} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow proj">
+  <p class="meta crumbs"><a href="{% url 'learn:project' %}">{% translate "My project" %}</a> {% icon 'chevron-right' css='icon-flip' %} <bdi>{{ project.title }}</bdi></p>
+  <header class="card proj-head">
+    <span id="proj-ring">{% include "learn/_ring.html" with percent=progress.percent %}</span>
+    <div class="proj-head-body">
+      <h1 dir="auto">{{ project.title }}</h1>
+      <p dir="{{ srs_dir }}">{{ srs.summary }}</p>
+      <p class="meta">{% if project.source == 'uploaded' %}{% icon 'upload' %}{% translate "Mapped from your SRS" %}{% if project.brief.file %} (<bdi>{{ project.brief.file }}</bdi>){% endif %}{% else %}{% icon 'sparkles' %}{% translate "SRS written by AI from your description" %}{% endif %} · <span id="proj-count">{% blocktranslate trimmed with done=progress.done total=progress.total %}{{ done }} of {{ total }} tasks done{% endblocktranslate %}</span></p>
+    </div>
+  </header>
+
+  {% if updated %}<div class="notice success" role="status">{% icon 'circle-check' %}<span>{% translate "Your SRS is updated. Tasks you had ticked stay ticked where they still exist." %}</span></div>{% endif %}
+
+  <div class="proj-grid">
+    <div class="proj-main">
+      {% if srs.gaps or error %}
+      <section class="card proj-gaps" id="gaps" aria-labelledby="gaps-title">
+        <h2 id="gaps-title">{% icon 'triangle-alert' %}{% translate "Gaps to fill" %}</h2>
+        {% if srs.gaps %}
+        <p class="meta">{% translate "Answer these and AI works your answers into the SRS. Nothing else changes." %}</p>
+        <ul dir="{{ srs_dir }}">{% for gap in srs.gaps %}<li>{{ gap.note }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ error }}</span></div>{% endif %}
+        <form method="post" action="{% url 'learn:project_update' project.id %}" class="gen-form" data-busy>
+          {% csrf_token %}
+          <div class="field">
+            <label for="answers">{% translate "Your answers or new details" %}</label>
+            <textarea id="answers" name="answers" rows="4" maxlength="3000" dir="auto" required></textarea>
+          </div>
+          <div class="actions">
+            <button class="btn" type="submit"{% if not ai_available %} disabled{% endif %}>{% icon 'rotate-ccw' %}{% translate "Update my SRS" %}</button>
+            <span class="meta busy-note" hidden>{% translate "Updating your SRS. This can take a minute, so keep this page open." %}</span>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+
+      <section aria-labelledby="walk-title">
+        <h2 id="walk-title">{% icon 'list-checks' %}{% translate "Walkthrough" %}</h2>
+        <ol class="milestones" dir="{{ srs_dir }}">
+          {% for m in milestones %}
+          <li class="card milestone{% if m.finished %} is-done{% endif %}{% if m.current %} current{% endif %}" id="{{ m.id }}">
+            <div class="milestone-head">
+              <span class="milestone-num num" aria-hidden="true">{% if m.finished %}{% icon 'check' %}{% else %}{{ m.number }}{% endif %}</span>
+              <div>
+                <h3>{{ m.title }}{% if m.current %} <span class="badge wip here">{% icon 'map-pin' %}{% translate "You are here" %}</span>{% endif %}</h3>
+                {% if m.goal %}<p class="meta">{{ m.goal }}</p>{% endif %}
+              </div>
+            </div>
+            <ul class="tasks">
+              {% for t in m.tasks %}
+              <li><label><input type="checkbox" data-task="{{ t.id }}"{% if t.done %} checked{% endif %}><span>{{ t.text }}</span></label></li>
+              {% endfor %}
+            </ul>
+            {% if m.links %}
+            <p class="milestone-links meta" dir="auto">{% icon 'book-open' %}{% translate "Learn it:" %} {% for link in m.links %}<a href="{{ link.url }}"><bdi>{{ link.title }}</bdi></a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section aria-labelledby="srs-title">
+        <h2 id="srs-title">{% icon 'file-text' %}{% translate "Requirements (SRS)" %}</h2>
+        <div class="srs" dir="{{ srs_dir }}">
+          <details class="card" open>
+            <summary class="step-head"><span class="step-title">{% icon 'target' %}{% translate "Goals" %}</span>{% icon 'chevron-down' %}</summary>
+            <ul>{% for g in srs.goals %}<li>{{ g }}</li>{% endfor %}</ul>
+          </details>
+          <details class="card">
+            <summary class="step-head"><span class="step-title">{% icon 'user' %}{% translate "Users" %}</span>{% icon 'chevron-down' %}</summary>
+            <ul>{% for u in srs.users %}<li><strong>{{ u.name }}</strong>: {{ u.needs }}</li>{% endfor %}</ul>
+          </details>
+          <details class="card">
+            <summary class="step-head"><span class="step-title">{% icon 'book-check' %}{% translate "User stories" %} <span class="tab-count num">{{ srs.stories|length }}</span></span>{% icon 'chevron-down' %}</summary>
+            <ul class="stories">{% for s in srs.stories %}<li><span class="badge {% if s.priority == 'must' %}wip{% elif s.priority == 'should' %}muted{% else %}new{% endif %}">{% if s.priority == 'must' %}{% translate "Must" %}{% elif s.priority == 'should' %}{% translate "Should" %}{% else %}{% translate "Could" %}{% endif %}</span> <span>{% blocktranslate trimmed with role=s.role want=s.want %}As {{ role }}, I want {{ want }}{% endblocktranslate %}{% if s.benefit %}{% blocktranslate trimmed with benefit=s.benefit %}, so that {{ benefit }}{% endblocktranslate %}{% endif %}.</span></li>{% endfor %}</ul>
+          </details>
+          <details class="card">
+            <summary class="step-head"><span class="step-title">{% icon 'layers' %}{% translate "Data models" %} <span class="tab-count num">{{ srs.data_models|length }}</span></span>{% icon 'chevron-down' %}</summary>
+            {% for m in srs.data_models %}
+            <div class="model"><code dir="ltr">{{ m.name }}</code>
+              <ul class="fields" dir="ltr">{% for f in m.fields %}<li><code>{{ f }}</code></li>{% endfor %}</ul>
+              {% if m.relations %}<p class="meta">{{ m.relations }}</p>{% endif %}
+            </div>
+            {% empty %}<p class="meta">{% translate "None yet." %}</p>
+            {% endfor %}
+          </details>
+          <details class="card">
+            <summary class="step-head"><span class="step-title">{% icon 'code' %}{% translate "API endpoints" %} <span class="tab-count num">{{ srs.endpoints|length }}</span></span>{% icon 'chevron-down' %}</summary>
+            {% if srs.endpoints %}
+            <ul class="endpoints">{% for e in srs.endpoints %}<li><code dir="ltr" class="method m-{{ e.method|lower }}">{{ e.method }}</code><code dir="ltr">{{ e.path }}</code><span>{{ e.purpose }}</span></li>{% endfor %}</ul>
+            {% else %}<p class="meta">{% translate "This project has no API." %}</p>{% endif %}
+          </details>
+          <details class="card">
+            <summary class="step-head"><span class="step-title">{% icon 'circle-check' %}{% translate "Done checks" %}</span>{% icon 'chevron-down' %}</summary>
+            <ul>{% for c in srs.done_checks %}<li>{{ c }}</li>{% empty %}<li class="meta">{% translate "None yet." %}</li>{% endfor %}</ul>
+          </details>
+        </div>
+      </section>
+
+      <form method="post" action="{% url 'learn:project_delete' project.id %}" class="proj-delete" onsubmit="return confirm('{{ _("Delete this project and its walkthrough?")|escapejs }}')">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">{% icon 'trash-2' %}{% translate "Delete project" %}</button>
+      </form>
+    </div>
+
+    <aside class="card tutor-box proj-tutor" aria-label="{% translate 'Tutor' %}">
+      {% include "learn/_tutor.html" with tutor_project=True %}
+    </aside>
+  </div>
+</main>
+<script>
+(() => {
+  const url = "{% url 'learn:project_check' project.id %}";
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const countText = "{{ _('{done} of {total} tasks done')|escapejs }}";
+  document.querySelectorAll('input[data-task]').forEach((box) => box.addEventListener('change', async () => {
+    box.disabled = true;
+    try {
+      const res = await fetch(url, {method: 'POST', headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json'},
+                                    body: JSON.stringify({task: box.dataset.task, done: box.checked})});
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      const p = data.progress;
+      document.getElementById('proj-count').textContent = countText.replace('{done}', p.done).replace('{total}', p.total);
+      const ring = document.querySelector('#proj-ring .ring');
+      ring.setAttribute('aria-label', p.percent + '%');
+      ring.querySelector('text').textContent = p.percent + '%';
+      const fill = ring.querySelector('.ring-fill');
+      fill.setAttribute('stroke-dasharray', `${Math.round(p.percent * 1.26)} 126`);
+      fill.classList.toggle('complete', p.percent === 100);
+      document.querySelectorAll('.milestone').forEach((m) => m.classList.toggle('is-done', data.finished.includes(m.id)));
+    } catch (e) {
+      box.checked = !box.checked;  // keep the box as the server has it
+    }
+    box.disabled = false;
+  }));
+  document.querySelectorAll('form[data-busy]').forEach((form) => form.addEventListener('submit', () => {
+    form.querySelector('button[type=submit]').disabled = true;
+    const note = form.querySelector('.busy-note');
+    if (note) note.hidden = false;
+  }));
+})();
+</script>
+{% endblock %}

@@ -18,11 +18,11 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, flashcards, gamification, generator, languages, notebook, placement, tutor
+from . import catalog, flashcards, gamification, generator, languages, notebook, placement, projects, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
-    CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
-    TutorMessage, XPEvent,
+    CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, Project,
+    SkippedPath, TutorMessage, XPEvent,
 )
 
 MAX_SECONDS_SPENT = 6 * 60 * 60  # ignore page timers left open overnight
@@ -465,6 +465,135 @@ def coming_soon(request, section):
     })
 
 
+MILESTONE_XP = 20  # first time each milestone of the learner's own project is ticked off
+
+
+def _project_or_404(request, project_id):
+    if not request.user.is_authenticated:
+        raise Http404('Log in to see your projects')
+    return get_object_or_404(Project, id=project_id, user=request.user)
+
+
+@login_required
+def project_home(request):
+    """The learner's projects, and the two ways to start one: describe it, or upload an SRS."""
+    mine = list(Project.objects.filter(user=request.user))
+    form = {'title': '', 'what': '', 'who': '', 'tech': ''}
+    context = {'ai_available': generator.ai_available(),
+               'left_today': max(0, projects.DAILY_LIMIT - projects.written_today(request.user)),
+               'mode': 'upload' if request.GET.get('mode') == 'upload' else 'describe',
+               'player': gamification.player_state(request.user)}
+    if request.method == 'POST':
+        mode = 'upload' if request.POST.get('mode') == 'upload' else 'describe'
+        context['mode'] = mode
+        for key in form:
+            form[key] = request.POST.get(key, '').strip()[:projects.MAX_FIELD_CHARS]
+        language = 'ar' if get_language() == 'ar' else 'en'
+        prompt, brief, error = None, {}, ''
+        if not context['ai_available']:
+            error = gettext('AI is not set up on this server yet. Add GEMINI_API_KEY to the .env file.')
+        elif not context['left_today']:
+            error = gettext('You have written the most SRS documents allowed today. Try again tomorrow.')
+        elif mode == 'describe':
+            if len(form['what']) < 20:
+                error = gettext('Describe what your project does in a sentence or two.')
+            else:
+                brief = dict(form)
+                prompt = projects.describe_prompt(brief)
+        else:
+            upload = request.FILES.get('srs')
+            if not upload:
+                error = gettext('Choose your SRS file first.')
+            else:
+                try:
+                    text = projects.read_upload(upload)
+                except projects.UploadError as exc:
+                    error = str(exc)
+                else:
+                    brief = {'file': upload.name[:120]}
+                    prompt = projects.upload_prompt(text, upload.name)
+        if prompt:
+            source = Project.UPLOADED if mode == 'upload' else Project.DESCRIBED
+            try:
+                srs = projects.write_srs(request.user, source, prompt, language)
+            except Exception as exc:  # unreachable AI, a blocked network or an unusable reply: say so, save nothing
+                error = generator.friendly_error(exc)
+            else:
+                project = Project.objects.create(user=request.user, title=form['title'][:120] or srs['title'],
+                                                 source=source, brief=brief, srs=srs, language=language)
+                log_event(request, LearningEvent.PROJECT_SRS, '', source=source, gaps=len(srs['gaps']))
+                return redirect('learn:project_detail', project.id)
+        context['error'] = error
+    context.update(form=form, mine=[(p, projects.progress(p)) for p in mine])
+    return render(request, 'learn/projects.html', context)
+
+
+@login_required
+def project_detail(request, project_id):
+    """The SRS and its milestone walkthrough, with the tutor that knows the project."""
+    project = _project_or_404(request, project_id)
+    topic = tutor.project_topic(project)
+    return render(request, 'learn/project.html', {
+        'project': project, 'srs': project.srs, 'milestones': projects.milestones(project),
+        'progress': projects.progress(project), 'srs_dir': 'rtl' if project.language == 'ar' else 'ltr',
+        'updated': request.GET.get('updated'), 'error': request.session.pop('project_error', ''),
+        'ai_available': generator.ai_available(),
+        'player': gamification.player_state(request.user),
+        'tutor_topic': topic, 'tutor_backend': tutor.backend_label(),
+        'tutor_history': _chat_history(request.user, topic), 'can_run': _can_run(request),
+    })
+
+
+@login_required
+@require_POST
+def project_check(request, project_id):
+    """Tick or untick one task of the walkthrough."""
+    project = _project_or_404(request, project_id)
+    data = json.loads(request.body or '{}')
+    if not projects.toggle(project, str(data.get('task', '')), bool(data.get('done'))):
+        return JsonResponse({'error': 'Unknown task.'}, status=400)
+    rewards = gamification.Rewards(request.user)
+    for milestone in projects.milestones(project):
+        if milestone['finished']:
+            rewards.award(f'project:{project.id}:{milestone["id"]}', MILESTONE_XP, 'Project milestone')
+    return JsonResponse({'progress': projects.progress(project),
+                         'finished': [m['id'] for m in projects.milestones(project) if m['finished']]})
+
+
+@login_required
+@require_POST
+def project_update(request, project_id):
+    """Work the learner's answers to the gaps (or any new details) into the SRS."""
+    project = _project_or_404(request, project_id)
+    answers = request.POST.get('answers', '').strip()[:projects.MAX_FIELD_CHARS * 2]
+    url = reverse('learn:project_detail', args=[project.id])
+    if not answers:
+        request.session['project_error'] = gettext('Write your answers or new details first.')
+        return redirect(f'{url}#gaps')
+    if projects.written_today(request.user) >= projects.DAILY_LIMIT:
+        request.session['project_error'] = gettext('You have written the most SRS documents allowed today. Try again tomorrow.')
+        return redirect(f'{url}#gaps')
+    try:
+        srs = projects.write_srs(request.user, project.source, projects.update_prompt(project, answers), project.language)
+    except Exception as exc:
+        request.session['project_error'] = generator.friendly_error(exc)
+        return redirect(f'{url}#gaps')
+    project.done = projects.carry_ticks(project.srs, project.done, srs)
+    project.srs = srs
+    project.save()
+    log_event(request, LearningEvent.PROJECT_SRS, '', source='update', gaps=len(srs['gaps']))
+    return redirect(f'{url}?updated=1')
+
+
+@login_required
+@require_POST
+def project_delete(request, project_id):
+    project = _project_or_404(request, project_id)
+    TutorMessage.objects.filter(user=request.user, topic=tutor.project_topic(project)).delete()
+    project.delete()
+    return redirect('learn:project')
+
+
 @login_required
 def exercise_detail(request, slug):
     exercise = _exercise_or_404(slug)
@@ -608,6 +737,9 @@ def _topic_target(request, topic):
     """What a tutor topic refers to: (exercise, chapter), both None for the general tutor."""
     if topic in (tutor.GENERAL_TOPIC, tutor.FLASHCARD_TOPIC):
         return None, None
+    if tutor.project_id(topic) is not None:
+        _project_or_404(request, tutor.project_id(topic))
+        return None, None
     chapter_id = tutor.chapter_id(topic)
     if chapter_id is not None:
         chapter = get_object_or_404(Chapter.objects.select_related('course__path'), id=chapter_id,
@@ -653,7 +785,8 @@ def tutor_ask(request, topic):
         history.pop(0)
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
-    system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC)
+    project = _project_or_404(request, tutor.project_id(topic)) if tutor.project_id(topic) is not None else None
+    system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC, project=project)
     user = request.user
     if exercise:
         log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))

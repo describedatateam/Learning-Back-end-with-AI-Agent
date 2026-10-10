@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ExerciseProgress, InviteCode, LearningEvent, XPEvent
+from .models import ExerciseProgress, InviteCode, LearningEvent, Project, XPEvent
 
 
 @admin.register(ExerciseProgress)
@@ -32,3 +32,10 @@ class LearningEventAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False  # the log is a record of what happened
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'source', 'language', 'updated_at')
+    list_filter = ('source',)
+    search_fields = ('title', 'user__username')

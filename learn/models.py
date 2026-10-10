@@ -125,6 +125,7 @@ class LearningEvent(models.Model):
     PATH_GENERATED = 'path_generated'  # generated a skill path with AI (data: skill, level, hours_per_week)
     CARDS_ADDED = 'cards_added'        # added a chapter's flashcards to the review queue (data: cards, written)
     CARD_REVIEWED = 'card_reviewed'    # answered one flashcard (data: rating, box)
+    PROJECT_SRS = 'project_srs'        # wrote or read an SRS for their own project (data: source, gaps)
     KIND_CHOICES = [
         (RUN, 'Ran the tests'),
         (TEST_RUN, 'Ran one test'),
@@ -141,6 +142,7 @@ class LearningEvent(models.Model):
         (PATH_GENERATED, 'Generated a skill path'),
         (CARDS_ADDED, 'Added flashcards'),
         (CARD_REVIEWED, 'Reviewed a flashcard'),
+        (PROJECT_SRS, 'Set up their own project'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_events')
@@ -344,3 +346,27 @@ class CardReview(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.card}'
+
+
+class Project(models.Model):
+    """A learner's own project: its SRS (requirements) and the milestone walkthrough made from it."""
+
+    DESCRIBED = 'described'  # the learner described it and the AI wrote the SRS
+    UPLOADED = 'uploaded'    # the learner uploaded an SRS and the AI mapped it into the same shape
+    SOURCE_CHOICES = [(DESCRIBED, 'Described'), (UPLOADED, 'Uploaded SRS')]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learner_projects')
+    title = models.CharField(max_length=120)
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES)
+    brief = models.JSONField(default=dict, blank=True)  # what the learner wrote, or the uploaded file's name
+    srs = models.JSONField(default=dict)                # see learn/projects.py for the shape
+    done = models.JSONField(default=list, blank=True)   # ids of ticked milestone tasks, like "m2-t1"
+    language = models.CharField(max_length=5, default='en')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+
+    def __str__(self):
+        return f'{self.user} · {self.title}'

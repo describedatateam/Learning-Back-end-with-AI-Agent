@@ -1561,3 +1561,140 @@ class GeneratedTabTests(SignedInTestCase):
         home = self.client.get('/')
         self.assertContains(home, 'href="/learn/paths/generate/"')
         self.assertContains(home, 'My generated path (1)')
+
+
+SAMPLE_SRS = {
+    'title': 'Tool library', 'summary': 'Neighbours lend each other tools. Built for one building.',
+    'goals': ['List tools', 'Book a tool for a day', 'See who has what'],
+    'users': [{'name': 'Neighbour', 'needs': 'borrow a drill without buying one'}],
+    'stories': [{'role': 'a neighbour', 'want': 'to book a drill', 'benefit': 'I can fix my shelf', 'priority': 'must'},
+                {'role': 'an owner', 'want': 'to list my tools', 'benefit': '', 'priority': 'should'}],
+    'data_models': [{'name': 'Tool', 'fields': ['name: CharField', 'owner: ForeignKey(User)'], 'relations': ''}],
+    'endpoints': [{'method': 'GET', 'path': '/api/tools/', 'purpose': 'List tools'}],
+    'done_checks': ['A booked tool shows as taken'],
+    'gaps': [],
+    'milestones': [
+        {'title': 'Set up', 'goal': 'The site runs', 'tasks': ['Start a Django project', 'Add an app'], 'chapters': ['nope']},
+        {'title': 'Models', 'goal': 'Tools are stored', 'tasks': ['Write the Tool model'], 'chapters': []},
+    ],
+}
+
+
+class ProjectSrsTests(SignedInTestCase):
+    """Day 7: a described or uploaded project becomes an SRS and a checklist."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'test'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_clean_srs_numbers_tasks_and_drops_unknown_chapters(self):
+        from .projects import clean_srs
+        srs, errors = clean_srs(SAMPLE_SRS, valid_chapters={'real'})
+        self.assertEqual(errors, [])
+        self.assertEqual([t['id'] for t in srs['milestones'][0]['tasks']], ['m1-t1', 'm1-t2'])
+        self.assertEqual(srs['milestones'][0]['chapters'], [])
+
+    def test_clean_srs_reports_problems(self):
+        from .projects import clean_srs
+        _, errors = clean_srs({**SAMPLE_SRS, 'stories': [{'role': 'x', 'want': 'y', 'priority': 'maybe'}], 'milestones': []})
+        self.assertTrue(any('priority' in e for e in errors))
+        self.assertTrue(any('milestones' in e for e in errors))
+
+    def test_describe_writes_srs_and_walkthrough(self):
+        with mock.patch('learn.generator.ask', return_value=json.dumps(SAMPLE_SRS)) as ask:
+            response = self.client.post('/learn/project/', {'mode': 'describe', 'what': 'A site where neighbours lend tools to each other.'})
+        from .models import Project
+        project = Project.objects.get(user=self.user)
+        self.assertRedirects(response, f'/learn/project/{project.id}/')
+        self.assertIn('neighbours lend tools', ask.call_args[0][1][0]['content'])
+        page = self.client.get(f'/learn/project/{project.id}/')
+        self.assertContains(page, 'Write the Tool model')
+        self.assertContains(page, '/api/tools/')
+        self.assertTrue(LearningEvent.objects.filter(user=self.user, kind=LearningEvent.PROJECT_SRS).exists())
+
+    def test_upload_markdown_lists_missing_sections_as_gaps(self):
+        srs = {**SAMPLE_SRS, 'data_models': [], 'done_checks': []}
+        upload = io.BytesIO(b'# Tool library\n\nNeighbours can list tools and book them for a day. ' * 3)
+        upload.name = 'srs.md'
+        with mock.patch('learn.generator.ask', return_value=json.dumps(srs)) as ask:
+            self.client.post('/learn/project/', {'mode': 'upload', 'srs': upload})
+        from .models import Project
+        project = Project.objects.get(user=self.user)
+        self.assertEqual(project.source, Project.UPLOADED)
+        self.assertIn('<srs>', ask.call_args[0][1][0]['content'])
+        self.assertEqual({g['section'] for g in project.srs['gaps']}, {'data_models', 'done_checks'})
+        self.assertContains(self.client.get(f'/learn/project/{project.id}/'), 'Gaps to fill')
+
+    def test_upload_docx_and_pdf_text(self):
+        import zipfile
+        from .projects import read_upload
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive:
+            archive.writestr('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                             '<w:body><w:p><w:r><w:t>Users can book tools for a day and return them the next morning.</w:t></w:r></w:p>'
+                             '<w:p><w:r><w:t>Owners list their tools with a photo and a short description.</w:t></w:r></w:p></w:body></w:document>')
+        docx = io.BytesIO(buffer.getvalue())
+        docx.name, docx.size = 'srs.docx', len(buffer.getvalue())
+        self.assertIn('Owners list their tools', read_upload(docx))
+        from pypdf import PdfWriter
+        pdf_buffer = io.BytesIO()
+        writer = PdfWriter()
+        writer.add_blank_page(200, 200)
+        writer.write(pdf_buffer)
+        pdf = io.BytesIO(pdf_buffer.getvalue())
+        pdf.name, pdf.size = 'scan.pdf', len(pdf_buffer.getvalue())
+        from .projects import UploadError
+        with self.assertRaisesMessage(UploadError, 'scanned PDF'):
+            read_upload(pdf)
+
+    def test_upload_rejects_other_types(self):
+        upload = io.BytesIO(b'x' * 200)
+        upload.name = 'srs.exe'
+        response = self.client.post('/learn/project/', {'mode': 'upload', 'srs': upload})
+        self.assertContains(response, 'Upload a PDF, Word')
+
+    def _project(self, user=None):
+        from .models import Project
+        from .projects import clean_srs
+        srs, _ = clean_srs(SAMPLE_SRS)
+        return Project.objects.create(user=user or self.user, title='Tool library', source=Project.DESCRIBED, srs=srs)
+
+    def test_ticking_tasks_tracks_progress_and_awards_milestone_xp(self):
+        project = self._project()
+        url = f'/learn/project/{project.id}/check/'
+        data = self.client.post(url, {'task': 'm2-t1', 'done': True}, content_type='application/json').json()
+        self.assertEqual(data['progress'], {'done': 1, 'total': 3, 'percent': 33})
+        self.assertEqual(data['finished'], ['m2'])
+        self.assertTrue(XPEvent.objects.filter(user=self.user, key=f'project:{project.id}:m2').exists())
+        self.assertEqual(self.client.post(url, {'task': 'm9-t9', 'done': True}, content_type='application/json').status_code, 400)
+
+    def test_other_learners_cannot_open_a_project(self):
+        other = User.objects.create_user('other', password='pw')
+        project = self._project(other)
+        self.assertEqual(self.client.get(f'/learn/project/{project.id}/').status_code, 404)
+        self.assertEqual(self.client.post(f'/learn/tutor/project-{project.id}/ask/', {'question': 'hi'},
+                                          content_type='application/json').status_code, 404)
+
+    def test_tutor_knows_the_project(self):
+        project = self._project()
+        project.done = ['m1-t1']
+        from .projects import tutor_context
+        context = tutor_context(project)
+        self.assertIn('[x] Start a Django project', context)
+        self.assertIn('[ ] Add an app', context)
+        self.assertIn('Tool: name: CharField', context)
+
+    def test_update_answers_keeps_ticks_on_tasks_that_remain(self):
+        project = self._project()
+        project.done = ['m1-t1', 'm2-t1']
+        project.save()
+        new = {**SAMPLE_SRS, 'milestones': [{'title': 'Plan', 'tasks': ['Sketch the pages']}, SAMPLE_SRS['milestones'][0],
+                                            {'title': 'Pages', 'tasks': ['Tool list page']}]}
+        with mock.patch('learn.generator.ask', return_value=json.dumps(new)):
+            response = self.client.post(f'/learn/project/{project.id}/update/', {'answers': 'Only my building.'})
+        self.assertRedirects(response, f'/learn/project/{project.id}/?updated=1')
+        project.refresh_from_db()
+        self.assertEqual(project.done, ['m2-t1'])  # "Start a Django project" moved to m2; the Tool model task is gone
+        self.assertEqual(project.srs['milestones'][2]['title'], 'Pages')
