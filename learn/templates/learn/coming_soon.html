@@ -1,16 +1,12 @@
 {% extends "learn/base.html" %}
 {% load i18n ui %}
 
-{% block title %}{% if section == 'flashcards' %}{% translate "Flashcards" %}{% elif section == 'project' %}{% translate "My project" %}{% else %}{% translate "Portfolio" %}{% endif %} · Describe{% endblock %}
+{% block title %}{% if section == 'project' %}{% translate "My project" %}{% else %}{% translate "Portfolio" %}{% endif %} · Describe{% endblock %}
 
 {% block content %}
 <main class="narrow">
   <section class="card empty-state">
-    {% if section == 'flashcards' %}
-      {% icon 'layers' css='icon-lg' %}
-      <h1>{% translate "Flashcards" %}</h1>
-      <p>{% translate "No cards due. Nice. New cards arrive as you finish chapters." %}</p>
-    {% elif section == 'project' %}
+    {% if section == 'project' %}
       {% icon 'file-text' css='icon-lg' %}
       <h1>{% translate "My project" %}</h1>
       <p>{% translate "Working on something? Describe it or upload its SRS (requirements), and we'll walk you through it." %}</p>

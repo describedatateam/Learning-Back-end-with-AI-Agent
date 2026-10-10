@@ -123,6 +123,8 @@ class LearningEvent(models.Model):
     PATH_CHOSEN = 'path_chosen'
     PLACEMENT = 'placement'           # took a placement test (data: correct, total, tasks_passed, tasks_total, passed)
     PATH_GENERATED = 'path_generated'  # generated a skill path with AI (data: skill, level, hours_per_week)
+    CARDS_ADDED = 'cards_added'        # added a chapter's flashcards to the review queue (data: cards, written)
+    CARD_REVIEWED = 'card_reviewed'    # answered one flashcard (data: rating, box)
     KIND_CHOICES = [
         (RUN, 'Ran the tests'),
         (TEST_RUN, 'Ran one test'),
@@ -137,6 +139,8 @@ class LearningEvent(models.Model):
         (PATH_CHOSEN, 'Chose a job path'),
         (PLACEMENT, 'Took a placement test'),
         (PATH_GENERATED, 'Generated a skill path'),
+        (CARDS_ADDED, 'Added flashcards'),
+        (CARD_REVIEWED, 'Reviewed a flashcard'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='learning_events')
@@ -288,3 +292,46 @@ class PlacementAttempt(models.Model):
 
     def __str__(self):
         return f'{self.user} {self.path} {self.correct}/{self.total}'
+
+
+class Flashcard(models.Model):
+    """One card of a chapter's deck. Written once per chapter and shared by every learner who adds it."""
+
+    AI = 'ai'      # written by the AI from the chapter
+    QUIZ = 'quiz'  # made from the chapter's quiz when no AI was reachable
+    SOURCE_CHOICES = [(AI, 'Written by AI'), (QUIZ, 'From the quiz')]
+
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='flashcards')
+    order = models.PositiveSmallIntegerField()
+    front = models.TextField()            # the question
+    code = models.TextField(blank=True)   # optional short snippet shown under the question
+    back = models.TextField()             # the answer
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=AI)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['chapter', 'order']
+
+    def __str__(self):
+        return self.front[:60]
+
+
+class CardReview(models.Model):
+    """Where one card is in one learner's schedule. Right answers move it to a later box, wrong ones back to the start."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='card_reviews')
+    card = models.ForeignKey(Flashcard, on_delete=models.CASCADE, related_name='reviews')
+    box = models.PositiveSmallIntegerField(default=0)  # index into flashcards.BOX_DAYS
+    due_at = models.DateTimeField()
+    reviews = models.PositiveIntegerField(default=0)
+    lapses = models.PositiveIntegerField(default=0)    # times answered "Again" after being learned
+    last_reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['due_at', 'id']
+        constraints = [models.UniqueConstraint(fields=['user', 'card'], name='one_review_per_card')]
+        indexes = [models.Index(fields=['user', 'due_at'])]
+
+    def __str__(self):
+        return f'{self.user} · {self.card}'

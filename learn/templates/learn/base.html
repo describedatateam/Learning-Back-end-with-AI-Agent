@@ -20,7 +20,7 @@
       <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %} title="{% translate 'Home' %}">{% icon 'house' %}<span class="rail-hide">{% translate 'Home' %}</span></a>
       <a href="{% url 'learn:catalog' %}"{% if here in 'learn:catalog learn:path learn:dashboard learn:exercise' %} aria-current="page"{% endif %} title="{% translate 'Paths' %}">{% icon 'compass' %}<span class="rail-hide">{% translate 'Paths' %}</span></a>
       <a href="{% url 'learn:project' %}"{% if here == 'learn:project' %} aria-current="page"{% endif %} title="{% translate 'My project' %}">{% icon 'file-text' %}<span class="rail-hide">{% translate 'My project' %}</span></a>
-      <a href="{% url 'learn:flashcards' %}"{% if here == 'learn:flashcards' %} aria-current="page"{% endif %} title="{% translate 'Flashcards' %}">{% icon 'layers' %}<span class="rail-hide">{% translate 'Flashcards' %}</span></a>
+      <a href="{% url 'learn:flashcards' %}"{% if here in 'learn:flashcards learn:flashcards_review' %} aria-current="page"{% endif %} title="{% translate 'Flashcards' %}">{% icon 'layers' %}<span class="rail-hide">{% translate 'Flashcards' %}</span></a>
       <a href="{% url 'learn:portfolio' %}"{% if here == 'learn:portfolio' %} aria-current="page"{% endif %} title="{% translate 'Portfolio' %}">{% icon 'briefcase' %}<span class="rail-hide">{% translate 'Portfolio' %}</span></a>
       <span class="nav-label rail-hide">{% translate 'Study tools' %}</span>
       <a href="{% url 'learn:tutor' %}"{% if here == 'learn:tutor' %} aria-current="page"{% endif %} title="{% translate 'AI tutor' %}">{% icon 'bot' %}<span class="rail-hide">{% translate 'AI tutor' %}</span></a>
@@ -77,7 +77,7 @@
   <nav class="bottom-nav" aria-label="{% translate 'Main' %}">
     <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %}>{% icon 'house' %}{% translate 'Home' %}</a>
     <a href="{% url 'learn:catalog' %}"{% if here in 'learn:catalog learn:path learn:dashboard learn:exercise' %} aria-current="page"{% endif %}>{% icon 'compass' %}{% translate 'Paths' %}</a>
-    <a href="{% url 'learn:flashcards' %}"{% if here == 'learn:flashcards' %} aria-current="page"{% endif %}>{% icon 'layers' %}{% translate 'Flashcards' %}</a>
+    <a href="{% url 'learn:flashcards' %}"{% if here in 'learn:flashcards learn:flashcards_review' %} aria-current="page"{% endif %}>{% icon 'layers' %}{% translate 'Flashcards' %}</a>
     <a href="{% url 'learn:project' %}"{% if here == 'learn:project' %} aria-current="page"{% endif %}>{% icon 'file-text' %}{% translate 'Project' %}</a>
     <a href="{% url 'learn:portfolio' %}"{% if here == 'learn:portfolio' %} aria-current="page"{% endif %}>{% icon 'briefcase' %}{% translate 'Portfolio' %}</a>
   </nav>

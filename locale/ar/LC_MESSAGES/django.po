@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-09 19:59+0000\n"
+"POT-Creation-Date: 2026-10-10 07:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -28,6 +28,22 @@ msgstr "رمز الدعوة هذا غير صالح. اطلب رمزًا جديد
 #: learn/accounts.py:29
 msgid "This invite code has just been used up."
 msgstr "استُخدم رمز الدعوة هذا للتو بالكامل."
+
+#: learn/flashcards.py:190
+msgid "The AI's cards didn't pass the checks. Please try again."
+msgstr "لم تجتز البطاقات التي كتبها الذكاء الاصطناعي الفحوص. حاول مرة أخرى."
+
+#: learn/flashcards.py:225
+msgid "You have added a lot of new decks today. Please come back tomorrow."
+msgstr "أضفت مجموعات جديدة كثيرة اليوم. عُد غدًا من فضلك."
+
+#: learn/flashcards.py:235
+msgid "No AI service is set up on this server."
+msgstr "لا توجد خدمة ذكاء اصطناعي مُعدّة على هذا الخادم."
+
+#: learn/flashcards.py:239
+msgid "This chapter has nothing to make cards from yet."
+msgstr "لا يحتوي هذا الفصل بعد على ما نصنع منه بطاقات."
 
 #: learn/generator.py:138
 msgid "The AI declined to write this path. Try wording the skill differently."
@@ -57,7 +73,8 @@ msgstr "دروس وشرائح واختبارات قصيرة"
 msgid "AI-generated"
 msgstr "من إنشاء الذكاء الاصطناعي"
 
-#: learn/templates/learn/_chapters.html:7 learn/templates/learn/base.html:81 learn/templates/learn/path.html:135
+#: learn/templates/learn/_chapters.html:7 learn/templates/learn/base.html:81
+#: learn/templates/learn/path.html:135
 msgid "Project"
 msgstr "المشروع"
 
@@ -76,11 +93,13 @@ msgstr[5] "%(hours)s ساعة"
 msgid "You are here"
 msgstr "أنت هنا"
 
-#: learn/templates/learn/_course.html:12 learn/templates/learn/exercise.html:111
+#: learn/templates/learn/_course.html:12
+#: learn/templates/learn/exercise.html:111
 msgid "Lesson"
 msgstr "الدرس"
 
-#: learn/templates/learn/_course.html:12 learn/templates/learn/chapter.html:34 learn/templates/learn/exercise.html:103
+#: learn/templates/learn/_course.html:12 learn/templates/learn/chapter.html:34
+#: learn/templates/learn/exercise.html:103
 msgid "Slides"
 msgstr "الشرائح"
 
@@ -88,7 +107,11 @@ msgstr "الشرائح"
 msgid "Quiz"
 msgstr "اختبار قصير"
 
-#: learn/templates/learn/_course.html:16 learn/templates/learn/dashboard.html:88 learn/templates/learn/exercise.html:98 learn/templates/learn/exercise.html:219 learn/templates/learn/notebook.html:86 learn/templates/learn/path.html:72
+#: learn/templates/learn/_course.html:16
+#: learn/templates/learn/dashboard.html:88
+#: learn/templates/learn/exercise.html:98
+#: learn/templates/learn/exercise.html:219
+#: learn/templates/learn/notebook.html:86 learn/templates/learn/path.html:72
 msgid "Passed"
 msgstr "ناجح"
 
@@ -144,7 +167,9 @@ msgstr "اختر مسارًا أو أنشئ مسارك الخاص."
 msgid "Job paths take you toward a role. Skill paths teach one thing well."
 msgstr "المسارات الوظيفية تقودك نحو وظيفة، ومسارات المهارات تعلّمك شيئًا واحدًا بإتقان."
 
-#: learn/templates/learn/_promise.html:10 learn/templates/learn/coming_soon.html:23
+#: learn/templates/learn/_promise.html:10
+#: learn/templates/learn/coming_soon.html:19
+#: learn/templates/learn/flashcards.html:83
 msgid "Explore paths"
 msgstr "استكشف المسارات"
 
@@ -156,7 +181,9 @@ msgstr "تعلّم بالبناء."
 msgid "Each chapter ends in real code that is checked automatically."
 msgstr "ينتهي كل فصل بكود حقيقي يُفحص تلقائيًا."
 
-#: learn/templates/learn/_promise.html:17 learn/templates/learn/home.html:45 learn/templates/learn/path.html:27 learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
+#: learn/templates/learn/_promise.html:17 learn/templates/learn/home.html:45
+#: learn/templates/learn/path.html:27 learn/templates/learn/path.html:100
+#: learn/templates/learn/path.html:101
 msgid "Continue learning"
 msgstr "تابع التعلّم"
 
@@ -164,7 +191,10 @@ msgstr "تابع التعلّم"
 msgid "See the exercises"
 msgstr "اعرض التمارين"
 
-#: learn/templates/learn/_promise.html:21 learn/templates/learn/_promise.html:28 learn/templates/learn/_promise.html:35 learn/templates/learn/coming_soon.html:22
+#: learn/templates/learn/_promise.html:21
+#: learn/templates/learn/_promise.html:28
+#: learn/templates/learn/_promise.html:35
+#: learn/templates/learn/coming_soon.html:18
 msgid "Coming soon"
 msgstr "قريبًا"
 
@@ -204,24 +234,31 @@ msgstr "كل مسار تكمله يضيف مشروعًا إلى معرض أعم�
 msgid "Open my portfolio"
 msgstr "افتح معرض أعمالي"
 
-#: learn/templates/learn/_skill_card.html:5 learn/templates/learn/path.html:8 learn/templates/learn/path.html:87
+#: learn/templates/learn/_skill_card.html:5 learn/templates/learn/path.html:8
+#: learn/templates/learn/path.html:87
 msgid "Skill path"
 msgstr "مسار مهارة"
 
-#: learn/templates/learn/_skill_card.html:5 learn/templates/learn/home.html:118 learn/templates/learn/path.html:40 learn/templates/learn/path.html:87
+#: learn/templates/learn/_skill_card.html:5 learn/templates/learn/home.html:118
+#: learn/templates/learn/path.html:40 learn/templates/learn/path.html:87
 msgid "Prerequisite"
 msgstr "متطلب سابق"
 
-#: learn/templates/learn/_skill_card.html:5 learn/templates/learn/_status.html:1
+#: learn/templates/learn/_skill_card.html:5
+#: learn/templates/learn/_status.html:1
 msgid "Already known"
 msgstr "معروف مسبقًا"
 
-#: learn/templates/learn/_skill_card.html:8 learn/templates/learn/catalog.html:29 learn/templates/learn/home.html:39 learn/templates/learn/path.html:17 learn/templates/learn/path.html:57 learn/templates/learn/path.html:91
+#: learn/templates/learn/_skill_card.html:8
+#: learn/templates/learn/catalog.html:29 learn/templates/learn/home.html:39
+#: learn/templates/learn/path.html:17 learn/templates/learn/path.html:57
+#: learn/templates/learn/path.html:91
 #, python-format
 msgid "About %(hours)s hours"
 msgstr "حوالي %(hours)s ساعة"
 
-#: learn/templates/learn/_skill_card.html:12 learn/templates/learn/home.html:83 learn/templates/learn/path.html:57
+#: learn/templates/learn/_skill_card.html:12 learn/templates/learn/home.html:83
+#: learn/templates/learn/path.html:57
 #, python-format
 msgid "%(n)s chapter"
 msgid_plural "%(n)s chapters"
@@ -243,7 +280,9 @@ msgstr[3] "%(n)s تمارين"
 msgstr[4] "%(n)s تمرينًا"
 msgstr[5] "%(n)s تمرين"
 
-#: learn/templates/learn/_skill_card.html:15 learn/templates/learn/chapter.html:15 learn/templates/learn/home.html:115 learn/templates/learn/path.html:95
+#: learn/templates/learn/_skill_card.html:15
+#: learn/templates/learn/chapter.html:15 learn/templates/learn/home.html:115
+#: learn/templates/learn/path.html:95
 msgid "Skill path progress"
 msgstr "التقدّم في مسارات المهارات"
 
@@ -263,7 +302,9 @@ msgstr "أو خذ اختبار تحديد المستوى"
 msgid "Completed"
 msgstr "مكتمل"
 
-#: learn/templates/learn/_status.html:1 learn/templates/learn/dashboard.html:89 learn/templates/learn/exercise.html:99 learn/templates/learn/exercise.html:220
+#: learn/templates/learn/_status.html:1 learn/templates/learn/dashboard.html:89
+#: learn/templates/learn/exercise.html:99
+#: learn/templates/learn/exercise.html:220
 msgid "In progress"
 msgstr "قيد التقدّم"
 
@@ -271,7 +312,8 @@ msgstr "قيد التقدّم"
 msgid "Exercises coming soon"
 msgstr "التمارين قريبًا"
 
-#: learn/templates/learn/_status.html:1 learn/templates/learn/dashboard.html:90 learn/templates/learn/exercise.html:100
+#: learn/templates/learn/_status.html:1 learn/templates/learn/dashboard.html:90
+#: learn/templates/learn/exercise.html:100
 msgid "Not started"
 msgstr "لم يبدأ"
 
@@ -373,23 +415,34 @@ msgstr "القائمة الرئيسية"
 msgid "Open menu"
 msgstr "افتح القائمة"
 
-#: learn/templates/learn/base.html:20 learn/templates/learn/base.html:78 learn/templates/learn/home.html:4 learn/templates/learn/placement.html:29
+#: learn/templates/learn/base.html:20 learn/templates/learn/base.html:78
+#: learn/templates/learn/home.html:4 learn/templates/learn/placement.html:29
 msgid "Home"
 msgstr "الرئيسية"
 
-#: learn/templates/learn/base.html:21 learn/templates/learn/base.html:79 learn/templates/learn/catalog.html:4 learn/templates/learn/catalog.html:10 learn/templates/learn/chapter.html:8 learn/templates/learn/generate.html:8 learn/templates/learn/languages.html:8 learn/templates/learn/path.html:8 learn/templates/learn/placement.html:8
+#: learn/templates/learn/base.html:21 learn/templates/learn/base.html:79
+#: learn/templates/learn/catalog.html:4 learn/templates/learn/catalog.html:10
+#: learn/templates/learn/chapter.html:8 learn/templates/learn/generate.html:8
+#: learn/templates/learn/languages.html:8 learn/templates/learn/path.html:8
+#: learn/templates/learn/placement.html:8
 msgid "Paths"
 msgstr "المسارات"
 
-#: learn/templates/learn/base.html:22 learn/templates/learn/coming_soon.html:4 learn/templates/learn/coming_soon.html:15
+#: learn/templates/learn/base.html:22 learn/templates/learn/coming_soon.html:4
+#: learn/templates/learn/coming_soon.html:11
 msgid "My project"
 msgstr "مشروعي"
 
-#: learn/templates/learn/base.html:23 learn/templates/learn/base.html:80 learn/templates/learn/coming_soon.html:4 learn/templates/learn/coming_soon.html:11
+#: learn/templates/learn/base.html:23 learn/templates/learn/base.html:80
+#: learn/templates/learn/flashcards.html:4
+#: learn/templates/learn/flashcards.html:9 learn/templates/learn/home.html:131
+#: learn/templates/learn/review.html:4 learn/templates/learn/review.html:10
 msgid "Flashcards"
 msgstr "البطاقات التعليمية"
 
-#: learn/templates/learn/base.html:24 learn/templates/learn/base.html:82 learn/templates/learn/coming_soon.html:4 learn/templates/learn/coming_soon.html:19
+#: learn/templates/learn/base.html:24 learn/templates/learn/base.html:82
+#: learn/templates/learn/coming_soon.html:4
+#: learn/templates/learn/coming_soon.html:15
 msgid "Portfolio"
 msgstr "معرض الأعمال"
 
@@ -421,11 +474,14 @@ msgstr "أيام التعلّم المتتالية"
 msgid "Sign out"
 msgstr "تسجيل الخروج"
 
-#: learn/templates/learn/base.html:55 learn/templates/learn/signup.html:16 learn/templates/registration/login.html:4 learn/templates/registration/login.html:10 learn/templates/registration/login.html:14
+#: learn/templates/learn/base.html:55 learn/templates/learn/signup.html:16
+#: learn/templates/registration/login.html:4
+#: learn/templates/registration/login.html:10
+#: learn/templates/registration/login.html:14
 msgid "Sign in"
 msgstr "تسجيل الدخول"
 
-#: learn/templates/learn/base.html:73 learn/templates/learn/home.html:137
+#: learn/templates/learn/base.html:73 learn/templates/learn/home.html:147
 msgid "How this works"
 msgstr "كيف تعمل المنصة"
 
@@ -449,7 +505,9 @@ msgstr "ارتقيت مستوى!"
 msgid "New rank"
 msgstr "الرتبة الجديدة"
 
-#: learn/templates/learn/catalog.html:13 learn/templates/learn/generate.html:4 learn/templates/learn/generate.html:10 learn/templates/learn/languages.html:24
+#: learn/templates/learn/catalog.html:13 learn/templates/learn/generate.html:4
+#: learn/templates/learn/generate.html:10
+#: learn/templates/learn/languages.html:24
 msgid "Generate a skill path"
 msgstr "أنشئ مسار مهارة"
 
@@ -461,11 +519,13 @@ msgstr "الكتالوج فارغ. شغّل: python manage.py load_catalog"
 msgid "Job paths"
 msgstr "المسارات الوظيفية"
 
-#: learn/templates/learn/catalog.html:25 learn/templates/learn/path.html:8 learn/templates/learn/path.html:13
+#: learn/templates/learn/catalog.html:25 learn/templates/learn/path.html:8
+#: learn/templates/learn/path.html:13
 msgid "Job path"
 msgstr "مسار وظيفي"
 
-#: learn/templates/learn/catalog.html:25 learn/templates/learn/home.html:29 learn/templates/learn/path.html:13
+#: learn/templates/learn/catalog.html:25 learn/templates/learn/home.html:29
+#: learn/templates/learn/path.html:13
 msgid "Your path"
 msgstr "مسارك"
 
@@ -480,7 +540,8 @@ msgstr[3] "%(n)s مسارات مهارات"
 msgstr[4] "%(n)s مسار مهارة"
 msgstr[5] "%(n)s مسار مهارة"
 
-#: learn/templates/learn/catalog.html:35 learn/templates/learn/home.html:35 learn/templates/learn/path.html:22
+#: learn/templates/learn/catalog.html:35 learn/templates/learn/home.html:35
+#: learn/templates/learn/path.html:22
 msgid "Path progress"
 msgstr "التقدّم في المسار"
 
@@ -504,7 +565,7 @@ msgstr "اختر مهارة ومستواك وساعاتك في الأسبوع، 
 msgid "All back-end exercises, XP and badges"
 msgstr "كل تمارين الواجهة الخلفية (back end) ونقاط XP والشارات"
 
-#: learn/templates/learn/catalog.html:63 learn/templates/learn/home.html:139
+#: learn/templates/learn/catalog.html:63 learn/templates/learn/home.html:149
 msgid "What you can practise in each language"
 msgstr "ما يمكنك التدرب عليه في كل لغة"
 
@@ -557,12 +618,14 @@ msgstr "أجب عن %(needed)s إجابات صحيحة لتُنهي الفصل. 
 msgid "Get %(needed)s of %(total)s right to finish this chapter."
 msgstr "أجب إجابة صحيحة عن %(needed)s من %(total)s لتُنهي هذا الفصل."
 
-#: learn/templates/learn/chapter.html:66 learn/templates/learn/placement.html:39
+#: learn/templates/learn/chapter.html:66
+#: learn/templates/learn/placement.html:39
 #, python-format
 msgid "Question %(n)s"
 msgstr "السؤال %(n)s"
 
-#: learn/templates/learn/chapter.html:72 learn/templates/learn/placement.html:45
+#: learn/templates/learn/chapter.html:72
+#: learn/templates/learn/placement.html:45
 msgid "Right"
 msgstr "صحيح"
 
@@ -570,7 +633,8 @@ msgstr "صحيح"
 msgid "Not quite"
 msgstr "ليس تمامًا"
 
-#: learn/templates/learn/chapter.html:77 learn/templates/learn/placement.html:67
+#: learn/templates/learn/chapter.html:77
+#: learn/templates/learn/placement.html:67
 msgid "Check my answers"
 msgstr "تحقّق من إجاباتي"
 
@@ -578,27 +642,49 @@ msgstr "تحقّق من إجاباتي"
 msgid "Sign in to take the quiz"
 msgstr "سجّل الدخول لتأخذ الاختبار القصير"
 
-#: learn/templates/learn/chapter.html:83
+#: learn/templates/learn/chapter.html:87
+msgid "Remember it with flashcards"
+msgstr "ثبّته في ذاكرتك بالبطاقات"
+
+#: learn/templates/learn/chapter.html:88
+msgid "This chapter's cards are in your review queue."
+msgstr "بطاقات هذا الفصل في قائمة مراجعتك."
+
+#: learn/templates/learn/chapter.html:88
+msgid "Short cards come back over the next weeks, sooner when you get one wrong."
+msgstr "بطاقات قصيرة تعود إليك خلال الأسابيع القادمة، وأسرع إذا أخطأت في إحداها."
+
+#: learn/templates/learn/chapter.html:90
+msgid "Review now"
+msgstr "راجع الآن"
+
+#: learn/templates/learn/chapter.html:95
+#: learn/templates/learn/flashcards.html:75
+msgid "Writing cards…"
+msgstr "نكتب البطاقات…"
+
+#: learn/templates/learn/chapter.html:95
+msgid "Add to my flashcards"
+msgstr "أضفها إلى بطاقاتي"
+
+#: learn/templates/learn/chapter.html:101
 msgid "Ask the tutor"
 msgstr "اسأل المعلم"
 
-#: learn/templates/learn/chapter.html:87
+#: learn/templates/learn/chapter.html:105
 msgid "Sign in to ask the tutor"
 msgstr "سجّل الدخول لتسأل المعلم"
 
-#: learn/templates/learn/chapter.html:93 learn/templates/learn/placement.html:28
+#: learn/templates/learn/chapter.html:111
+#: learn/templates/learn/placement.html:28
 msgid "Back to the path"
 msgstr "عُد إلى المسار"
 
 #: learn/templates/learn/coming_soon.html:12
-msgid "No cards due. Nice. New cards arrive as you finish chapters."
-msgstr "لا توجد بطاقات مستحقة. أحسنت. تصلك بطاقات جديدة كلما أنهيت فصولًا."
-
-#: learn/templates/learn/coming_soon.html:16
 msgid "Working on something? Describe it or upload its SRS (requirements), and we'll walk you through it."
 msgstr "تعمل على مشروع؟ صِفه أو ارفع وثيقة متطلباته (SRS)، وسنرشدك خطوة بخطوة."
 
-#: learn/templates/learn/coming_soon.html:20
+#: learn/templates/learn/coming_soon.html:16
 msgid "Your finished projects will live here. Finish your first path to add one."
 msgstr "ستظهر مشاريعك المكتملة هنا. أكمل مسارك الأول لتضيف أول مشروع."
 
@@ -644,7 +730,8 @@ msgstr "نجحت في <b>%(done)s</b>/%(total)s"
 msgid "<b>%(earned)s</b>/%(total)s badges"
 msgstr "الشارات: <b>%(earned)s</b>/%(total)s"
 
-#: learn/templates/learn/dashboard.html:81 learn/templates/learn/exercise.html:96
+#: learn/templates/learn/dashboard.html:81
+#: learn/templates/learn/exercise.html:96
 #, python-format
 msgid "Week %(week)s"
 msgstr "الأسبوع %(week)s"
@@ -778,7 +865,8 @@ msgstr "<b>Shift+Enter</b> شغّل التحديد · <b>Ctrl+Enter</b> شغّل
 msgid "Reset"
 msgstr "إعادة الضبط"
 
-#: learn/templates/learn/exercise.html:164 learn/templates/learn/exercise.html:165
+#: learn/templates/learn/exercise.html:164
+#: learn/templates/learn/exercise.html:165
 msgid "Open this page from localhost to run code"
 msgstr "افتح هذه الصفحة من localhost لتشغّل الكود"
 
@@ -786,11 +874,13 @@ msgstr "افتح هذه الصفحة من localhost لتشغّل الكود"
 msgid "Run the highlighted code (or the current line)"
 msgstr "شغّل الكود المحدد (أو السطر الحالي)"
 
-#: learn/templates/learn/exercise.html:164 learn/templates/learn/exercise.html:211
+#: learn/templates/learn/exercise.html:164
+#: learn/templates/learn/exercise.html:211
 msgid "Run selection"
 msgstr "شغّل التحديد"
 
-#: learn/templates/learn/exercise.html:165 learn/templates/learn/exercise.html:210
+#: learn/templates/learn/exercise.html:165
+#: learn/templates/learn/exercise.html:210
 msgid "Run tests"
 msgstr "شغّل الاختبارات"
 
@@ -935,6 +1025,128 @@ msgstr "هل تريد عرض الحل المرجعي؟"
 msgid "Replace your code with the starter code?"
 msgstr "هل تريد استبدال الكود الخاص بك بكود البداية؟"
 
+#: learn/templates/learn/flashcards.html:10
+msgid "Cards come back right before you'd forget them. Get one wrong and it returns sooner."
+msgstr "تعود البطاقات قبل أن تنساها بقليل. وإذا أخطأت في بطاقة تعود إليك أسرع."
+
+#: learn/templates/learn/flashcards.html:14
+msgid "Deck added. Its cards are in today's review."
+msgstr "أُضيفت المجموعة. بطاقاتها في مراجعة اليوم."
+
+#: learn/templates/learn/flashcards.html:19
+msgid "Today's review"
+msgstr "مراجعة اليوم"
+
+#: learn/templates/learn/flashcards.html:21
+#, python-format
+msgid "%(n)s card due"
+msgid_plural "%(n)s cards due"
+msgstr[0] "لا بطاقات مستحقة"
+msgstr[1] "بطاقة واحدة مستحقة"
+msgstr[2] "بطاقتان مستحقتان"
+msgstr[3] "%(n)s بطاقات مستحقة"
+msgstr[4] "%(n)s بطاقة مستحقة"
+msgstr[5] "%(n)s بطاقة مستحقة"
+
+#: learn/templates/learn/flashcards.html:22
+msgid "All caught up"
+msgstr "أنهيت كل شيء"
+
+#: learn/templates/learn/flashcards.html:23
+msgid "No cards yet"
+msgstr "لا توجد بطاقات بعد"
+
+#: learn/templates/learn/flashcards.html:26
+msgid "About 10 seconds a card."
+msgstr "نحو 10 ثوانٍ لكل بطاقة."
+
+#: learn/templates/learn/flashcards.html:27
+#: learn/templates/learn/review.html:42
+#, python-format
+msgid "Next cards come back on %(when)s."
+msgstr "تعود البطاقات التالية يوم %(when)s."
+
+#: learn/templates/learn/flashcards.html:28
+msgid "Add a deck from a chapter you've studied to start."
+msgstr "للبدء، أضف مجموعة من فصل درسته."
+
+#: learn/templates/learn/flashcards.html:29
+#, python-format
+msgid "%(n)s answer today"
+msgid_plural "%(n)s answers today"
+msgstr[0] "لا إجابات اليوم"
+msgstr[1] "إجابة واحدة اليوم"
+msgstr[2] "إجابتان اليوم"
+msgstr[3] "%(n)s إجابات اليوم"
+msgstr[4] "%(n)s إجابة اليوم"
+msgstr[5] "%(n)s إجابة اليوم"
+
+#: learn/templates/learn/flashcards.html:32
+msgid "Start review"
+msgstr "ابدأ المراجعة"
+
+#: learn/templates/learn/flashcards.html:33
+#: learn/templates/learn/flashcards.html:62
+msgid "Add a deck"
+msgstr "أضف مجموعة"
+
+#: learn/templates/learn/flashcards.html:37
+msgid "Your decks"
+msgstr "مجموعاتك"
+
+#: learn/templates/learn/flashcards.html:46
+msgid "Remove this deck and its review history?"
+msgstr "هل تريد حذف هذه المجموعة وسجل مراجعتها؟"
+
+#: learn/templates/learn/flashcards.html:48
+msgid "Remove deck"
+msgstr "احذف المجموعة"
+
+#: learn/templates/learn/flashcards.html:51
+msgid "Cards learned"
+msgstr "البطاقات المحفوظة"
+
+#: learn/templates/learn/flashcards.html:53
+#, python-format
+msgid "%(n)s card"
+msgid_plural "%(n)s cards"
+msgstr[0] "لا بطاقات"
+msgstr[1] "بطاقة واحدة"
+msgstr[2] "بطاقتان"
+msgstr[3] "%(n)s بطاقات"
+msgstr[4] "%(n)s بطاقة"
+msgstr[5] "%(n)s بطاقة"
+
+#: learn/templates/learn/flashcards.html:54
+#, python-format
+msgid "%(n)s learned"
+msgstr "%(n)s محفوظة"
+
+#: learn/templates/learn/flashcards.html:55
+#, python-format
+msgid "%(n)s due"
+msgstr "%(n)s مستحقة"
+
+#: learn/templates/learn/flashcards.html:63
+msgid "Each chapter has one deck of 6 to 10 cards. The first time a chapter is added, the AI writes its cards, which takes a few seconds."
+msgstr "لكل فصل مجموعة واحدة من 6 إلى 10 بطاقات. عند إضافة الفصل أول مرة يكتب الذكاء الاصطناعي بطاقاته، وذلك يستغرق بضع ثوانٍ."
+
+#: learn/templates/learn/flashcards.html:70
+msgid "Studied"
+msgstr "درسته"
+
+#: learn/templates/learn/flashcards.html:71
+msgid "Added"
+msgstr "أُضيفت"
+
+#: learn/templates/learn/flashcards.html:75
+msgid "Add"
+msgstr "أضف"
+
+#: learn/templates/learn/flashcards.html:83
+msgid "Choose a path first, then add decks from its chapters."
+msgstr "اختر مسارًا أولًا، ثم أضف مجموعات من فصوله."
+
 #: learn/templates/learn/generate.html:8
 msgid "Generate"
 msgstr "إنشاء"
@@ -995,7 +1207,9 @@ msgstr[3] "بقيت %(n)s عمليات إنشاء اليوم"
 msgstr[4] "بقيت %(n)s عملية إنشاء اليوم"
 msgstr[5] "بقيت %(n)s عملية إنشاء اليوم"
 
-#: learn/templates/learn/generate.html:53 learn/templates/learn/languages.html:4 learn/templates/learn/languages.html:10
+#: learn/templates/learn/generate.html:53
+#: learn/templates/learn/languages.html:4
+#: learn/templates/learn/languages.html:10
 msgid "What you can practise"
 msgstr "ما يمكنك التدرب عليه"
 
@@ -1068,7 +1282,8 @@ msgstr "الوقت المتبقي"
 msgid "Next milestone"
 msgstr "المحطة القادمة"
 
-#: learn/templates/learn/home.html:45 learn/templates/learn/path.html:27 learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
+#: learn/templates/learn/home.html:45 learn/templates/learn/path.html:27
+#: learn/templates/learn/path.html:100 learn/templates/learn/path.html:101
 msgid "Start"
 msgstr "ابدأ"
 
@@ -1112,7 +1327,8 @@ msgstr "الأفضل: %(best)s"
 msgid "Total XP"
 msgstr "مجموع XP"
 
-#: learn/templates/learn/home.html:76 learn/templates/learn/path.html:49 learn/templates/learn/path.html:120
+#: learn/templates/learn/home.html:76 learn/templates/learn/path.html:49
+#: learn/templates/learn/path.html:120
 msgid "Your learning journey"
 msgstr "رحلتك التعليمية"
 
@@ -1184,11 +1400,26 @@ msgstr "ستظهر هنا محاولاتك واختباراتك القصيرة �
 msgid "All paths"
 msgstr "كل المسارات"
 
-#: learn/templates/learn/home.html:129
+#: learn/templates/learn/home.html:132
+#, python-format
+msgid "%(n)s card due today"
+msgid_plural "%(n)s cards due today"
+msgstr[0] "لا بطاقات مستحقة اليوم"
+msgstr[1] "بطاقة واحدة مستحقة اليوم"
+msgstr[2] "بطاقتان مستحقتان اليوم"
+msgstr[3] "%(n)s بطاقات مستحقة اليوم"
+msgstr[4] "%(n)s بطاقة مستحقة اليوم"
+msgstr[5] "%(n)s بطاقة مستحقة اليوم"
+
+#: learn/templates/learn/home.html:132
+msgid "Nothing due. Add a deck."
+msgstr "لا شيء مستحق. أضف مجموعة."
+
+#: learn/templates/learn/home.html:139
 msgid "You're building something real."
 msgstr "أنت تبني شيئًا حقيقيًا."
 
-#: learn/templates/learn/home.html:130
+#: learn/templates/learn/home.html:140
 msgid "Every exercise you pass is code you wrote and tests that prove it works."
 msgstr "كل تمرين تجتازه هو كود كتبته بنفسك واختبارات تثبت أنه يعمل."
 
@@ -1383,7 +1614,9 @@ msgstr "احذف المسار"
 msgid "Course progress"
 msgstr "تقدم الدورة"
 
-#: learn/templates/learn/placement.html:4 learn/templates/learn/placement.html:8 learn/templates/learn/placement.html:10
+#: learn/templates/learn/placement.html:4
+#: learn/templates/learn/placement.html:8
+#: learn/templates/learn/placement.html:10
 msgid "Placement test"
 msgstr "اختبار تحديد المستوى"
 
@@ -1473,7 +1706,85 @@ msgstr "تحقّق مرة أخرى"
 msgid "Cancel"
 msgstr "إلغاء"
 
-#: learn/templates/learn/signup.html:4 learn/templates/learn/signup.html:10 learn/templates/registration/login.html:16
+#: learn/templates/learn/review.html:4
+msgid "Review"
+msgstr "المراجعة"
+
+#: learn/templates/learn/review.html:11
+#, python-format
+msgid "%(n)s card left"
+msgid_plural "%(n)s cards left"
+msgstr[0] "لم تبقَ بطاقات"
+msgstr[1] "بقيت بطاقة واحدة"
+msgstr[2] "بقيت بطاقتان"
+msgstr[3] "بقيت %(n)s بطاقات"
+msgstr[4] "بقيت %(n)s بطاقة"
+msgstr[5] "بقيت %(n)s بطاقة"
+
+#: learn/templates/learn/review.html:20
+msgid "Show answer"
+msgstr "أظهر الإجابة"
+
+#: learn/templates/learn/review.html:26
+msgid "Did you know it?"
+msgstr "هل كنت تعرفها؟"
+
+#: learn/templates/learn/review.html:28
+msgid "Again"
+msgstr "مرة أخرى"
+
+#: learn/templates/learn/review.html:28
+msgid "later today"
+msgstr "لاحقًا اليوم"
+
+#: learn/templates/learn/review.html:29
+msgid "Got it"
+msgstr "عرفتها"
+
+#: learn/templates/learn/review.html:29 learn/templates/learn/review.html:30
+#, python-format
+msgid "in %(n)s day"
+msgid_plural "in %(n)s days"
+msgstr[0] "بعد %(n)s يوم"
+msgstr[1] "بعد يوم"
+msgstr[2] "بعد يومين"
+msgstr[3] "بعد %(n)s أيام"
+msgstr[4] "بعد %(n)s يومًا"
+msgstr[5] "بعد %(n)s يوم"
+
+#: learn/templates/learn/review.html:30
+msgid "Easy"
+msgstr "سهلة"
+
+#: learn/templates/learn/review.html:35
+msgid "On a keyboard: Space shows the answer, then 1, 2 or 3."
+msgstr "على لوحة المفاتيح: المسافة تُظهر الإجابة، ثم 1 أو 2 أو 3."
+
+#: learn/templates/learn/review.html:39
+msgid "Done for today"
+msgstr "انتهيت لليوم"
+
+#: learn/templates/learn/review.html:39
+msgid "Nothing to review"
+msgstr "لا شيء للمراجعة"
+
+#: learn/templates/learn/review.html:41
+#, python-format
+msgid "You answered %(n)s card today."
+msgid_plural "You answered %(n)s cards today."
+msgstr[0] "لم تُجب عن أي بطاقة اليوم."
+msgstr[1] "أجبت عن بطاقة واحدة اليوم."
+msgstr[2] "أجبت عن بطاقتين اليوم."
+msgstr[3] "أجبت عن %(n)s بطاقات اليوم."
+msgstr[4] "أجبت عن %(n)s بطاقة اليوم."
+msgstr[5] "أجبت عن %(n)s بطاقة اليوم."
+
+#: learn/templates/learn/review.html:45
+msgid "Back to flashcards"
+msgstr "العودة إلى البطاقات"
+
+#: learn/templates/learn/signup.html:4 learn/templates/learn/signup.html:10
+#: learn/templates/registration/login.html:16
 msgid "Create an account"
 msgstr "إنشاء حساب"
 
@@ -1512,6 +1823,9 @@ msgstr "اختر مستوى."
 #: learn/views.py:255
 msgid "You have generated the most paths allowed today. Try again tomorrow."
 msgstr "أنشأت أقصى عدد مسموح به من المسارات اليوم. حاول مرة أخرى غدًا."
+
+#~ msgid "No cards due. Nice. New cards arrive as you finish chapters."
+#~ msgstr "لا توجد بطاقات مستحقة. أحسنت. تصلك بطاقات جديدة كلما أنهيت فصولًا."
 
 #~ msgid "A placement test is coming soon, so you can prove it instead."
 #~ msgstr "قريبًا: اختبار تحديد مستوى لتثبت معرفتك به."
