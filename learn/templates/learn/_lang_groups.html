@@ -4,7 +4,7 @@
   {% for mode, label, langs in lang_groups %}
   <section class="lang-group">
     <h3>{% if mode == 'server' %}{% icon 'code' %}{% elif mode == 'browser' %}{% icon 'play' %}{% else %}{% icon 'book-open' %}{% endif %}{{ label }}</h3>
-    <p class="meta">{% if mode == 'server' %}{% translate "You write code in the editor and tests on the server check it. The featured Back-end path has these exercises today." %}{% elif mode == 'browser' %}{% translate "Code will run in your browser with a live preview or console. Until that arrives, these paths have lessons, slides and quizzes." %}{% else %}{% translate "No code runner yet. You still get lessons, slides, quizzes and the tutor, and you practise in your own editor." %}{% endif %}</p>
+    <p class="meta">{% if mode == 'server' %}{% translate "You write code in the editor and tests on the server check it. The featured Back-end path has these exercises today." %}{% elif mode == 'browser' %}{% translate "Code runs in your browser with a live preview, a console and tests. The featured Front end path has the first of these exercises today." %}{% else %}{% translate "No code runner yet. You still get lessons, slides, quizzes and the tutor, and you practise in your own editor." %}{% endif %}</p>
     <ul class="chips" dir="ltr">{% for lang in langs %}<li{% if lang.ready %} class="ready"{% endif %}>{{ lang.name }}</li>{% endfor %}</ul>
   </section>
   {% endfor %}

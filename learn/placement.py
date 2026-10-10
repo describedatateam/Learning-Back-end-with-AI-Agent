@@ -3,17 +3,21 @@
 The test lives in the path's `placement_test` (from catalog.json): multiple-choice
 questions and coding tasks, each tagged with the chapter it checks. Coding tasks
 are graded by the same runner as the exercises, with tests in
-learn/placement_tasks/<path slug>/<task id>/.
+learn/placement_tasks/<path slug>/<task id>/. JavaScript tasks (starter.js,
+tests.js, tests.json) run in the learner's browser with learn/js/web-runner.js,
+which posts its results with the form.
 
 Passing (enough questions right and every coding task passing) marks the whole
 path as known. Otherwise each chapter whose questions and tasks were all right
 is skipped, so the learner only studies what they missed.
 """
+import json
 import math
 from dataclasses import dataclass
 from pathlib import Path as FilePath
 
 from django.db import transaction
+from django.utils.translation import get_language
 from django.utils.text import slugify
 
 from .exercises import list_tests, run_tests
@@ -31,14 +35,33 @@ class Task:
     chapter: str
     path: FilePath
     file: str = 'task.py'
+    language: str = 'python'
 
     @property
     def starter(self):
-        return (self.path / 'starter.py').read_text(encoding='utf-8')
+        name = 'starter.js' if self.language == 'javascript' else 'starter.py'
+        return (self.path / name).read_text(encoding='utf-8')
 
     @property
     def tests(self):
-        return list_tests(self)
+        if self.language != 'javascript':
+            return list_tests(self)
+        arabic = get_language() == 'ar'
+        from .web_exercises import code_spans
+        found = []
+        for t in json.loads((self.path / 'tests.json').read_text(encoding='utf-8')):
+            description = (arabic and t.get('description_ar')) or t['description']
+            found.append({'id': t['id'], 'description': description, 'html': code_spans(description)})
+        return found
+
+    @property
+    def json_id(self):
+        return f'task-tests-{self.id}'
+
+    @property
+    def browser_tests(self):
+        """The JavaScript tests the browser runs (JavaScript tasks only)."""
+        return (self.path / 'tests.js').read_text(encoding='utf-8')
 
 
 def has_test(path):
@@ -58,7 +81,27 @@ def tasks(path):
         folder = TASKS_DIR / path.slug / str(task['id'])
         if (folder / 'grader_tests.py').exists():
             found.append(Task(task['id'], task['prompt'], task.get('chapter_tagged', ''), folder))
+        elif (folder / 'tests.js').exists():
+            found.append(Task(task['id'], task['prompt'], task.get('chapter_tagged', ''), folder, 'script.js', 'javascript'))
     return found
+
+
+def browser_result(task, reported):
+    """Score a JavaScript task from the results its tests posted from the learner's browser.
+
+    The test is a self-check that only lets a learner skip chapters, so the
+    browser's word is taken; unknown test ids and missing tests count as failed.
+    """
+    try:
+        reported = json.loads(reported or '{}')
+    except ValueError:
+        reported = {}
+    outcomes = {str(t.get('id')): t.get('outcome') for t in reported.get('tests', []) if isinstance(t, dict)} \
+        if isinstance(reported, dict) else {}
+    ids = [t['id'] for t in task.tests]
+    passed = sum(outcomes.get(i) == 'passed' for i in ids)
+    error = str(reported.get('error') or '')[:300] if isinstance(reported, dict) else ''
+    return {'passed': passed, 'total': len(ids), 'all_passed': bool(ids) and passed == len(ids), 'error': error}
 
 
 def pass_mark(path):
@@ -66,8 +109,9 @@ def pass_mark(path):
     return path.placement_test.get('pass_correct') or math.ceil(0.8 * total)
 
 
-def grade(path, answers, code):
-    """Mark one attempt. `answers` maps question id to the chosen option text, `code` maps task id to code."""
+def grade(path, answers, code, browser=None):
+    """Mark one attempt. `answers` maps question id to the chosen option text, `code` maps task id to code,
+    `browser` maps a JavaScript task's id to the test results its page posted."""
     test = path.placement_test
     results, by_chapter = [], {}
     for q in test.get('multiple_choice_questions', []):
@@ -78,7 +122,10 @@ def grade(path, answers, code):
         by_chapter.setdefault(slugify(q.get('chapter_tagged', '')), []).append(right)
     task_results = []
     for task in tasks(path):
-        result = run_tests(task, str(code.get(str(task.id), ''))[:MAX_CODE_CHARS])
+        if task.language == 'javascript':
+            result = browser_result(task, (browser or {}).get(str(task.id)))
+        else:
+            result = run_tests(task, str(code.get(str(task.id), ''))[:MAX_CODE_CHARS])
         task_results.append({'task': task, 'passed': result['passed'], 'total': result['total'],
                              'all_passed': result['all_passed'], 'error': result.get('error', '')})
         by_chapter.setdefault(slugify(task.chapter), []).append(result['all_passed'])

@@ -1,0 +1,34 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.site-nav {
+  background: #1e1b4b;
+  padding: 12px 20px;
+  /* 1. Make the bar a flex container. */
+  /* 2. Push the logo and the links to opposite ends. */
+  /* 3. Centre them vertically. */
+  /* 4. Let the links drop to a new line on narrow screens. */
+}
+
+.site-nav a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.links {
+  margin: 0;
+  padding: 0;
+  /* 5. Remove the bullets. */
+  /* 6. Put the links in a row with 16px between them. */
+}
+
+main {
+  padding: 20px;
+}

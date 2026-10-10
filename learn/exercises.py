@@ -43,6 +43,15 @@ class Exercise:
     hints: list = field(default_factory=list)
     quiz: list = field(default_factory=list)
     path: Path = None
+    kind = 'python'
+    code_language = 'python'
+
+    def localized(self, language):
+        return self
+
+    @property
+    def grader_source(self):
+        return (self.path / 'grader_tests.py').read_text(encoding='utf-8')
 
     @property
     def starter(self):
@@ -71,10 +80,12 @@ def load_exercises():
 
 
 def get_exercise(slug):
+    """A Python exercise (learn/content/) or a browser one (learn/web_content/)."""
     for exercise in load_exercises():
         if exercise.slug == slug:
             return exercise
-    return None
+    from .web_exercises import get_web_exercise
+    return get_web_exercise(slug)
 
 
 def list_tests(exercise):

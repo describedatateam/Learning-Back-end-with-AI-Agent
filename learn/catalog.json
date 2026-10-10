@@ -466,7 +466,7 @@
    "placement_test": {
     "title": "JavaScript Fundamentals Placement Test",
     "summary": "Check readiness for Dynamic JavaScript and the Full stack path by testing core JavaScript knowledge across all 6 prerequisite chapters.",
-    "pass_mark": "8 out of 10 multiple-choice questions correct. Coding tasks are added when the browser code runner arrives.",
+    "pass_mark": "8 out of 10 multiple-choice questions correct AND both short coding tasks fully passing. The coding tasks run in the learner's browser.",
     "pass_correct": 8,
     "coding_tasks_required": true,
     "draft_note": "Drafted by Claude on 2026-10-09 in the Python test's format; replace with the Gem's version if you prefer.",
@@ -602,7 +602,20 @@
       "explanation": "`JSON.parse` turns JSON text into a JavaScript object, so `.name` reads its property."
      }
     ],
-    "coding_tasks": []
+    "coding_tasks": [
+     {
+      "id": 1,
+      "chapter_tagged": "Higher-order array methods",
+      "prompt": "Write a function `cheapTitles(items, maxPrice)` that takes an array of objects like `{ title: 'Pen', price: 2.5 }` and returns an array of the titles whose price is less than or equal to `maxPrice`, in the same order. Use `filter` and `map`.",
+      "test_case_idea": "cheapTitles([{title:'Pen',price:2.5},{title:'Lamp',price:30}], 10) returns ['Pen']."
+     },
+     {
+      "id": 2,
+      "chapter_tagged": "Objects and JSON",
+      "prompt": "Write a function `bumpVersion(json)` that takes a JSON string like `'{\"name\":\"app\",\"version\":1}'`, adds 1 to its `version` property, and returns the result as a JSON string. Other properties must stay as they were.",
+      "test_case_idea": "JSON.parse(bumpVersion('{\"name\":\"app\",\"version\":1}')) equals {name:'app', version:2}."
+     }
+    ]
    }
   },
   {
@@ -1045,7 +1058,9 @@
        "title": "Flexbox layouts",
        "learning_goal": "you can align and distribute page elements dynamically using CSS Flexbox",
        "exercise_idea": "Build a navigation bar and flex child items using justify-content, align-items, and flex-wrap properties.",
-       "exercises": []
+       "exercises": [
+        "flexbox-navbar"
+       ]
       },
       {
        "title": "CSS grid layouts",
@@ -1146,7 +1161,9 @@
        "title": "Fetching data with Fetch API",
        "learning_goal": "you can make GET requests to external APIs using fetch and async/await",
        "exercise_idea": "Fetch a list of user profiles from a JSON API using async/await and render the output as HTML cards.",
-       "exercises": []
+       "exercises": [
+        "fetch-user-cards"
+       ]
       },
       {
        "title": "Error handling and loading states",

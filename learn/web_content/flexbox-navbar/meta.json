@@ -1,0 +1,127 @@
+{
+  "title": "Lay out a navigation bar with Flexbox",
+  "concept": "Flexbox",
+  "summary": "Turn a stacked logo and link list into a responsive navigation bar.",
+  "files": [
+    "index.html",
+    "style.css"
+  ],
+  "tests": [
+    {
+      "id": "nav-flex",
+      "description": "The bar is a flex container",
+      "description_ar": "الشريط حاوية Flexbox"
+    },
+    {
+      "id": "nav-ends",
+      "description": "The logo and the links sit at opposite ends",
+      "description_ar": "الشعار والروابط في طرفين متقابلين"
+    },
+    {
+      "id": "nav-center",
+      "description": "Items are centred vertically",
+      "description_ar": "العناصر في المنتصف عمودياً"
+    },
+    {
+      "id": "nav-wrap",
+      "description": "The links can wrap on narrow screens",
+      "description_ar": "الروابط تنتقل لسطر جديد على الشاشات الضيقة"
+    },
+    {
+      "id": "no-bullets",
+      "description": "The list has no bullets",
+      "description_ar": "القائمة بلا نقاط"
+    },
+    {
+      "id": "links-row",
+      "description": "The links sit in one row, `16px` apart",
+      "description_ar": "الروابط في صف واحد بينها `16px`"
+    }
+  ],
+  "hints": [
+    "Flexbox starts with <code>display: flex</code> on the <em>parent</em>. Here there are two parents: <code>.site-nav</code> holds the logo and the list, and <code>.links</code> holds the list items.",
+    "<code>justify-content</code> works along the row (left to right). <code>align-items</code> works across it (top to bottom).",
+    "<code>gap: 16px</code> puts space between flex items without margins on the first or last one.",
+    "Bullets come from <code>list-style</code>. Set it to <code>none</code> on the list."
+  ],
+  "quiz": [
+    {
+      "question": "Which property turns an element into a flex container?",
+      "options": [
+        "<code>flex: 1</code>",
+        "<code>display: flex</code>",
+        "<code>position: flex</code>",
+        "<code>align-items: flex</code>"
+      ],
+      "answer": 1,
+      "explanation": "<code>display: flex</code> on a parent lays out its direct children as flex items."
+    },
+    {
+      "question": "In a row, which property spreads items along the row?",
+      "options": [
+        "<code>align-items</code>",
+        "<code>justify-content</code>",
+        "<code>flex-wrap</code>",
+        "<code>gap</code>"
+      ],
+      "answer": 1,
+      "explanation": "<code>justify-content</code> works along the main axis, which is the row by default."
+    },
+    {
+      "question": "What does <code>flex-wrap: wrap</code> do?",
+      "options": [
+        "Hides items that don't fit",
+        "Shrinks text",
+        "Lets items move to a new line when the row is too narrow",
+        "Reverses the order"
+      ],
+      "answer": 2,
+      "explanation": "Without wrapping, items squeeze onto one line. With it, they flow to the next line, which matters on phones."
+    }
+  ],
+  "ar": {
+    "title": "نسّق شريط تنقل باستخدام Flexbox",
+    "summary": "حوّل شعاراً وقائمة روابط فوق بعضها إلى شريط تنقل متجاوب.",
+    "hints": [
+      "يبدأ Flexbox بكتابة <code>display: flex</code> على العنصر <em>الأب</em>. هنا يوجد أبوان: <code>.site-nav</code> يحتوي الشعار والقائمة، و<code>.links</code> يحتوي عناصر القائمة.",
+      "<code>justify-content</code> يعمل على امتداد الصف. و<code>align-items</code> يعمل بشكل عمودي عليه.",
+      "<code>gap: 16px</code> يضع مسافة بين العناصر دون هوامش على العنصر الأول أو الأخير.",
+      "النقاط تأتي من <code>list-style</code>. اجعلها <code>none</code> على القائمة."
+    ],
+    "quiz": [
+      {
+        "question": "أي خاصية تحوّل العنصر إلى حاوية Flexbox؟",
+        "options": [
+          "<code>flex: 1</code>",
+          "<code>display: flex</code>",
+          "<code>position: flex</code>",
+          "<code>align-items: flex</code>"
+        ],
+        "answer": 1,
+        "explanation": "<code>display: flex</code> على الأب يرتّب أبناءه المباشرين كعناصر مرنة."
+      },
+      {
+        "question": "في الصف، أي خاصية توزّع العناصر على امتداده؟",
+        "options": [
+          "<code>align-items</code>",
+          "<code>justify-content</code>",
+          "<code>flex-wrap</code>",
+          "<code>gap</code>"
+        ],
+        "answer": 1,
+        "explanation": "<code>justify-content</code> يعمل على المحور الرئيسي، وهو الصف افتراضياً."
+      },
+      {
+        "question": "ماذا يفعل <code>flex-wrap: wrap</code>؟",
+        "options": [
+          "يخفي العناصر التي لا تتسع",
+          "يصغّر النص",
+          "يسمح للعناصر بالانتقال إلى سطر جديد عندما يضيق الصف",
+          "يعكس الترتيب"
+        ],
+        "answer": 2,
+        "explanation": "بدون الالتفاف تنضغط العناصر في سطر واحد. ومعه تنتقل للسطر التالي، وهذا مهم على الهاتف."
+      }
+    ]
+  }
+}
