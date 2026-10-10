@@ -60,6 +60,8 @@
             </ul>
             {% if m.links %}
             <p class="milestone-links meta" dir="auto">{% icon 'book-open' %}{% translate "Learn it:" %} {% for link in m.links %}<a href="{{ link.url }}"><bdi>{{ link.title }}</bdi></a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+            {% else %}
+            <p class="milestone-links meta">{% translate "No course on the site covers this step yet." %} <a class="gen-course" href="{% url 'learn:generate' %}?skill={{ m.skill|default:m.title|urlencode }}" title="{% translate 'Generate a course for this step' %}">{% icon 'sparkles' %}{% translate "Generate a course" %}</a></p>
             {% endif %}
           </li>
           {% endfor %}

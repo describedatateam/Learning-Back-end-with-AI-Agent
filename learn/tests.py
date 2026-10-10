@@ -1575,7 +1575,7 @@ SAMPLE_SRS = {
     'gaps': [],
     'milestones': [
         {'title': 'Set up', 'goal': 'The site runs', 'tasks': ['Start a Django project', 'Add an app'], 'chapters': ['nope']},
-        {'title': 'Models', 'goal': 'Tools are stored', 'tasks': ['Write the Tool model'], 'chapters': []},
+        {'title': 'Models', 'goal': 'Tools are stored', 'tasks': ['Write the Tool model'], 'chapters': [], 'skill': 'Django models'},
     ],
 }
 
@@ -1698,3 +1698,10 @@ class ProjectSrsTests(SignedInTestCase):
         project.refresh_from_db()
         self.assertEqual(project.done, ['m2-t1'])  # "Start a Django project" moved to m2; the Tool model task is gone
         self.assertEqual(project.srs['milestones'][2]['title'], 'Pages')
+
+    def test_steps_without_a_course_offer_to_generate_one(self):
+        project = self._project()
+        page = self.client.get(f'/learn/project/{project.id}/')
+        self.assertContains(page, '/learn/paths/generate/?skill=Django%20models')
+        self.assertContains(page, '/learn/paths/generate/?skill=Set%20up')  # no skill given: the title
+        self.assertContains(self.client.get('/learn/paths/generate/?skill=Django%20models'), 'value="Django models"')

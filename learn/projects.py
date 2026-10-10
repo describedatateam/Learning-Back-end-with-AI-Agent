@@ -57,7 +57,8 @@ Reply with a single JSON object and nothing else, in exactly this shape:
             "note": "one sentence on what is missing or unclear and the question the learner should answer"}],
   "milestones": [{"title": "...", "goal": "one sentence on what works at the end of this step",
                   "tasks": ["a small task of 1 to 3 hours", "..."],
-                  "chapters": ["chapter slugs from the list below that teach what this step needs"]}]
+                  "chapters": ["chapter slugs from the list below that teach what this step needs"],
+                  "skill": "the main skill this step needs, 2 to 5 words in English, e.g. Django models"}]
 }
 
 Rules:
@@ -286,6 +287,8 @@ def clean_srs(data, valid_chapters=()):
                       for n, t in enumerate(tasks, 1)],
             # Unknown slugs are dropped rather than sent back: a missing link is better than a retry.
             'chapters': [c for c in dict.fromkeys(chapters) if isinstance(c, str) and c in valid_chapters][:3],
+            # Offered to the generator when no chapter fits; older SRS documents have none.
+            'skill': _text(m.get('skill'), f'milestones[{i}].skill', errors, 80, False),
         })
     return srs, errors
 

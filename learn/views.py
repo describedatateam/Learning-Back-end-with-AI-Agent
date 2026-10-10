@@ -233,7 +233,8 @@ def placement_test(request, slug):
 @login_required
 def generate_path(request):
     """Generate a skill path with AI for a topic outside the course map."""
-    form = {'skill': '', 'level': 'beginner', 'hours': 5}
+    form = {'skill': ' '.join(request.GET.get('skill', '').split())[:generator.MAX_SKILL_CHARS],  # from My project
+            'level': 'beginner', 'hours': 5}
     context = {'levels': generator.LEVELS, 'ai_available': generator.ai_available(),
                'left_today': max(0, generator.DAILY_LIMIT - generator.generated_today(request.user)),
                'mine': Path.objects.filter(owner=request.user).order_by('-created_at'),

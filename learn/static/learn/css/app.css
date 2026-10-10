@@ -689,3 +689,6 @@ a.flash-cta { color: inherit; }
   .proj-head { flex-direction: column; align-items: flex-start; }
   .proj-tutor { height: 70vh; }
 }
+.gen-course { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.gen-course:hover { color: var(--accent); }
+.gen-course .icon { width: 14px; height: 14px; }
