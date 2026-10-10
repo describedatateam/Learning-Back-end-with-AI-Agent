@@ -80,6 +80,24 @@
   </form>
   {% endif %}
 
+  {% if user.is_authenticated %}
+  <section class="card flash-cta" id="flashcards">
+    <span class="metric-icon" aria-hidden="true">{% icon 'layers' css='icon-lg' %}</span>
+    <div>
+      <h3>{% translate "Remember it with flashcards" %}</h3>
+      <p class="meta">{% if deck_added %}{% translate "This chapter's cards are in your review queue." %}{% else %}{% translate "Short cards come back over the next weeks, sooner when you get one wrong." %}{% endif %}</p>
+    </div>
+    {% if deck_added %}<a class="btn secondary push" href="{% url 'learn:flashcards_review' %}">{% icon 'play' %}{% translate "Review now" %}</a>
+    {% else %}
+    <form method="post" action="{% url 'learn:flashcards_add' chapter.slug %}" class="push add-deck">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}#flashcards">
+      <button class="btn secondary" type="submit" data-busy="{% translate 'Writing cards…' %}">{% icon 'plus' %}{% translate "Add to my flashcards" %}</button>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <h2 id="tutor-section">{% translate "Ask the tutor" %}</h2>
   {% if user.is_authenticated %}
   <section class="card tutor-box">{% include "learn/_tutor.html" with tutor_chapter=True %}</section>
@@ -105,6 +123,11 @@
       slides[at].hidden = false;
     }));
   }
+  document.querySelectorAll('.add-deck').forEach((form) => form.addEventListener('submit', () => {
+    const button = form.querySelector('button');
+    button.disabled = true;
+    button.textContent = button.dataset.busy;
+  }));
   // Time on the page goes with the quiz answers into the activity log.
   const started = Date.now();
   document.querySelectorAll('input[name=seconds]').forEach((input) => input.form.addEventListener('submit', () => {

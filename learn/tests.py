@@ -944,7 +944,7 @@ class CatalogTests(SignedInTestCase):
         self.assertEqual(self.client.post('/learn/paths/sql-basics/skip/', {'skip': '1'}).status_code, 404)
 
     def test_coming_soon_sections_and_arabic_shell(self):
-        for url in ('/learn/flashcards/', '/learn/project/', '/learn/portfolio/'):
+        for url in ('/learn/flashcards/', '/learn/flashcards/review/', '/learn/project/', '/learn/portfolio/'):
             self.assertEqual(self.client.get(url).status_code, 200)
         self.client.cookies['django_language'] = 'ar'
         response = self.client.get('/learn/paths/')
@@ -1335,3 +1335,150 @@ class HowThisWorksTests(SignedInTestCase):
         for url in ('/learn/paths/', '/learn/flashcards/', '/learn/project/', '/learn/portfolio/'):
             self.assertContains(page, f'class="how-step" href="{url}"')
         self.assertContains(page, 'Five steps, in any order')
+
+
+def sample_cards(n=6):
+    return {'cards': [{'front': f'What does `step{i}` do?', 'code': 'print(1)' if i == 0 else '', 'back': f'It runs step {i}.'}
+                      for i in range(n)]}
+
+
+class FlashcardTests(SignedInTestCase):
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        load_catalog()
+        patcher = mock.patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        from .models import Chapter
+        self.chapter = Chapter.objects.get(slug=Chapter.objects.filter(course__path__slug='python-basics')
+                                           .order_by('course__order', 'order').first().slug)
+
+    def add(self, chapter=None, replies=None, **data):
+        replies = list(replies if replies is not None else [json.dumps(sample_cards())])
+        with mock.patch('learn.generator._ask_gemini', side_effect=lambda system, messages: replies.pop(0)) as ask:
+            response = self.client.post(f'/learn/flashcards/add/{(chapter or self.chapter).slug}/', data)
+        return response, ask
+
+    def test_clean_cards_lists_problems(self):
+        from .flashcards import clean_cards
+        cards, errors = clean_cards(sample_cards())
+        self.assertEqual((len(cards), errors), (6, []))
+        bad = sample_cards(3)
+        bad['cards'].append({'front': 'What does `step0` do?', 'back': 'again'})
+        bad['cards'].append({'front': '', 'back': 'x'})
+        _, errors = clean_cards(bad)
+        self.assertEqual(len(errors), 3, errors)
+        self.assertEqual(clean_cards([])[1], ['The reply must be a JSON object with a "cards" list.'])
+
+    def test_adding_a_deck_writes_it_once_and_queues_it(self):
+        from .models import CardReview, Flashcard, LearningEvent
+        response, ask = self.add()
+        self.assertRedirects(response, f'/learn/flashcards/?added={self.chapter.slug}', fetch_redirect_response=False)
+        system, messages = ask.call_args.args
+        self.assertIn('flashcards', system)
+        self.assertIn(self.chapter.title, messages[0]['content'])
+        self.assertEqual(Flashcard.objects.filter(chapter=self.chapter, source=Flashcard.AI).count(), 6)
+        self.assertEqual(CardReview.objects.filter(user=self.user).count(), 6)
+        self.assertTrue(LearningEvent.objects.filter(kind=LearningEvent.CARDS_ADDED, data__written=True).exists())
+        # A second learner gets the same deck without asking the AI again.
+        other = User.objects.create_user('other', password='pw')
+        self.client.force_login(other)
+        _, ask = self.add()
+        ask.assert_not_called()
+        self.assertEqual(CardReview.objects.filter(user=other).count(), 6)
+        page = self.client.get('/learn/flashcards/')
+        self.assertContains(page, '6 cards due')
+        self.assertContains(page, self.chapter.title)
+
+    def test_bad_reply_is_retried_then_refused(self):
+        from .models import Flashcard
+        response, ask = self.add(replies=['not json', json.dumps(sample_cards(2))])
+        self.assertEqual(ask.call_count, 2)
+        self.assertFalse(Flashcard.objects.exists())
+        page = self.client.get(response.url)
+        self.assertContains(page, "didn&#x27;t pass the checks")
+
+    def test_quiz_cards_when_no_ai(self):
+        from .flashcards import ensure_deck
+        from .generator import save_path, clean_path
+        from .models import Flashcard
+        path = save_path(self.user, clean_path(sample_generated_path())[0], {'skill': 'Tailwind'})
+        chapter = path.courses.first().chapters.first()
+        with mock.patch('learn.generator.ai_available', return_value=False):
+            cards, written = ensure_deck(chapter, self.user)
+        self.assertTrue(written)
+        self.assertEqual({c.source for c in cards}, {Flashcard.QUIZ})
+        self.assertEqual(len(cards), len(chapter.content['quiz']))
+        # The chapter page offers the deck, then links to the review.
+        page = self.client.get(f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
+        self.assertContains(page, 'Add to my flashcards')
+        self.add(chapter=chapter, next=f'/learn/paths/{path.slug}/chapters/{chapter.slug}/#flashcards')
+        page = self.client.get(f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
+        self.assertContains(page, 'Review now')
+
+    def test_other_learners_generated_chapters_are_hidden(self):
+        from .generator import save_path, clean_path
+        other = User.objects.create_user('other', password='pw')
+        path = save_path(other, clean_path(sample_generated_path())[0], {'skill': 'Tailwind'})
+        response, _ = self.add(chapter=path.courses.first().chapters.first())
+        self.assertEqual(response.status_code, 404)
+
+    def test_schedule_moves_wrong_cards_back_and_right_ones_later(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .flashcards import AGAIN, EASY, GOOD, schedule
+        from .models import CardReview
+        self.add()
+        review = CardReview.objects.filter(user=self.user).first()
+        now = timezone.now()
+        today = timezone.localdate(now)
+        schedule(review, GOOD, now)
+        self.assertEqual((review.box, timezone.localdate(review.due_at)), (1, today + timedelta(days=1)))
+        schedule(review, EASY, now)
+        self.assertEqual((review.box, timezone.localdate(review.due_at)), (3, today + timedelta(days=7)))
+        schedule(review, AGAIN, now)
+        self.assertEqual((review.box, review.due_at, review.lapses, review.reviews), (0, now, 1, 3))
+
+    def test_review_queue_across_days(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import CardReview, LearningEvent, XPEvent
+        self.add()
+        page = self.client.get('/learn/flashcards/review/')
+        self.assertContains(page, '6 cards left')
+        self.assertContains(page, 'Show answer')
+        first = page.context['review']
+        self.client.post('/learn/flashcards/review/', {'review': first.id, 'rating': 'again', 'seconds': '4'})
+        # A wrong card goes to the back of today's queue.
+        page = self.client.get('/learn/flashcards/review/')
+        self.assertNotEqual(page.context['review'].id, first.id)
+        self.assertEqual(page.context['left'], 6)
+        for _ in range(6):
+            review = self.client.get('/learn/flashcards/review/').context['review']
+            self.client.post('/learn/flashcards/review/', {'review': review.id, 'rating': 'good'})
+        page = self.client.get('/learn/flashcards/review/')
+        self.assertContains(page, 'Done for today')
+        self.assertTrue(XPEvent.objects.filter(user=self.user, key__startswith='cards:').exists())
+        self.assertEqual(LearningEvent.objects.filter(kind=LearningEvent.CARD_REVIEWED).count(), 7)
+        # Answering a card that isn't due changes nothing.
+        before = CardReview.objects.get(id=first.id).due_at
+        self.client.post('/learn/flashcards/review/', {'review': first.id, 'rating': 'easy'})
+        self.assertEqual(CardReview.objects.get(id=first.id).due_at, before)
+        # Tomorrow every card is due again.
+        with mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(days=1, hours=1)):
+            self.assertEqual(self.client.get('/learn/flashcards/review/').context['left'], 6)
+        self.assertContains(self.client.get('/'), 'Nothing due. Add a deck.')
+
+    def test_remove_deck_and_arabic_page(self):
+        from .models import CardReview
+        self.add()
+        self.client.post(f'/learn/flashcards/remove/{self.chapter.slug}/')
+        self.assertFalse(CardReview.objects.exists())
+        self.client.cookies['django_language'] = 'ar'
+        page = self.client.get('/learn/flashcards/')
+        self.assertContains(page, 'dir="rtl"')
+
+    def test_card_text_keeps_code_and_escapes_html(self):
+        from .flashcards import card_html
+        self.assertEqual(card_html('Use `<b>` not <i>'), 'Use <code dir="ltr">&lt;b&gt;</code> not &lt;i&gt;')

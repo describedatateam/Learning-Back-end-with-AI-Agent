@@ -1,0 +1,98 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Flashcards" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow flash">
+  <header class="page-head">
+    <h1>{% translate "Flashcards" %}</h1>
+    <p class="muted">{% translate "Cards come back right before you'd forget them. Get one wrong and it returns sooner." %}</p>
+  </header>
+
+  {% if error %}<div class="notice error" role="alert">{% icon 'triangle-alert' %}<span>{{ error }}</span></div>{% endif %}
+  {% if added %}<div class="notice success" role="status">{% icon 'circle-check' %}<span>{% translate "Deck added. Its cards are in today's review." %}</span></div>{% endif %}
+
+  <section class="card flash-today{% if due %} has-due{% endif %}" aria-labelledby="today-title">
+    <span class="metric-icon" aria-hidden="true">{% if due %}{% icon 'layers' css='icon-lg' %}{% else %}{% icon 'circle-check' css='icon-lg' %}{% endif %}</span>
+    <div>
+      <p class="meta">{% translate "Today's review" %}</p>
+      <h2 id="today-title">
+        {% if due %}{% blocktranslate trimmed count n=due %}{{ n }} card due{% plural %}{{ n }} cards due{% endblocktranslate %}
+        {% elif decks %}{% translate "All caught up" %}
+        {% else %}{% translate "No cards yet" %}{% endif %}
+      </h2>
+      <p class="meta">
+        {% if due %}{% translate "About 10 seconds a card." %}
+        {% elif next_due %}{% blocktranslate trimmed with when=next_due|date:"l j F" %}Next cards come back on {{ when }}.{% endblocktranslate %}
+        {% else %}{% translate "Add a deck from a chapter you've studied to start." %}{% endif %}
+        {% if reviewed_today %}· {% blocktranslate trimmed count n=reviewed_today %}{{ n }} answer today{% plural %}{{ n }} answers today{% endblocktranslate %}{% endif %}
+      </p>
+    </div>
+    {% if due %}<a class="btn primary push" href="{% url 'learn:flashcards_review' %}">{% icon 'play' %}{% translate "Start review" %}</a>
+    {% elif not decks %}<a class="btn secondary push" href="#add">{% icon 'plus' %}{% translate "Add a deck" %}</a>{% endif %}
+  </section>
+
+  {% if decks %}
+  <h2 id="decks">{% translate "Your decks" %}</h2>
+  <ul class="deck-list">
+    {% for deck in decks %}
+    <li class="card deck">
+      <div class="deck-top">
+        <div>
+          <strong><bdi>{{ deck.chapter.title }}</bdi></strong>
+          <p class="meta"><bdi>{{ deck.chapter.course.path.title }}</bdi></p>
+        </div>
+        <form method="post" action="{% url 'learn:flashcards_remove' deck.chapter.slug %}" class="push" data-confirm="{% translate 'Remove this deck and its review history?' %}">
+          {% csrf_token %}
+          <button class="icon-btn" type="submit" title="{% translate 'Remove deck' %}" aria-label="{% translate 'Remove deck' %}">{% icon 'trash-2' %}</button>
+        </form>
+      </div>
+      <div class="progress{% if deck.learned == deck.cards %} complete{% endif %}" role="progressbar" aria-valuenow="{{ deck.learned }}" aria-valuemin="0" aria-valuemax="{{ deck.cards }}" aria-label="{% translate 'Cards learned' %}"><div style="width: {% widthratio deck.learned deck.cards 100 %}%"></div></div>
+      <p class="meta num">
+        {% blocktranslate trimmed count n=deck.cards %}{{ n }} card{% plural %}{{ n }} cards{% endblocktranslate %}
+        · {% blocktranslate trimmed with n=deck.learned %}{{ n }} learned{% endblocktranslate %}
+        {% if deck.due %}· <span class="due">{% blocktranslate trimmed with n=deck.due %}{{ n }} due{% endblocktranslate %}</span>{% endif %}
+      </p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <h2 id="add">{% translate "Add a deck" %}</h2>
+  <p class="meta">{% translate "Each chapter has one deck of 6 to 10 cards. The first time a chapter is added, the AI writes its cards, which takes a few seconds." %}</p>
+  {% for path, rows in choices %}
+  <details class="card deck-group"{% if forloop.first %} open{% endif %}>
+    <summary><bdi>{{ path.title }}</bdi>{% if path.ai_generated %} {% include "learn/_ai_tag.html" %}{% endif %}{% icon 'chevron-down' css='push' %}</summary>
+    <ul class="deck-choices">
+      {% for chapter, studied, added in rows %}
+      <li>
+        <span><bdi>{{ chapter.title }}</bdi>{% if studied %} <span class="tag practice hands-on">{% translate "Studied" %}</span>{% endif %}</span>
+        {% if added %}<span class="meta push">{% icon 'check' %}{% translate "Added" %}</span>
+        {% else %}
+        <form method="post" action="{% url 'learn:flashcards_add' chapter.slug %}" class="push add-deck">
+          {% csrf_token %}
+          <button class="btn secondary" type="submit" data-busy="{% translate 'Writing cards…' %}">{% icon 'plus' %}{% translate "Add" %}</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% empty %}
+  <p class="card">{% translate "Choose a path first, then add decks from its chapters." %} <a href="{% url 'learn:catalog' %}">{% translate "Explore paths" %}</a></p>
+  {% endfor %}
+</main>
+<script>
+(() => {
+  document.querySelectorAll('.add-deck').forEach((form) => form.addEventListener('submit', () => {
+    const button = form.querySelector('button');
+    button.disabled = true;
+    button.textContent = button.dataset.busy;
+  }));
+  document.querySelectorAll('form[data-confirm]').forEach((form) => form.addEventListener('submit', (event) => {
+    if (!confirm(form.dataset.confirm)) event.preventDefault();
+  }));
+})();
+</script>
+{% endblock %}

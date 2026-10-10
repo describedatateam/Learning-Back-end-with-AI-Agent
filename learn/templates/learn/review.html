@@ -1,0 +1,71 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Review" %} · {% translate "Flashcards" %} · Describe{% endblock %}
+{% block body_class %}rail{% endblock %}
+
+{% block content %}
+<main class="narrow flash review">
+  <nav class="review-top">
+    <a class="btn quiet" href="{% url 'learn:flashcards' %}">{% icon 'chevron-right' css='icon-flip-back' %}{% translate "Flashcards" %}</a>
+    {% if review %}<span class="meta num push">{% blocktranslate trimmed count n=left %}{{ n }} card left{% plural %}{{ n }} cards left{% endblocktranslate %}</span>{% endif %}
+  </nav>
+
+  {% if review %}
+  <article class="card flashcard" dir="{{ card_dir }}">
+    <p class="meta"><bdi>{{ card.chapter.title }}</bdi></p>
+    <p class="flash-q">{{ front }}</p>
+    {% if card.code %}<pre dir="ltr"><code>{{ card.code }}</code></pre>{% endif %}
+    <details class="flash-answer" id="answer">
+      <summary class="btn primary">{% icon 'eye' %}{% translate "Show answer" %}</summary>
+      <p class="flash-back">{{ back }}</p>
+      <form method="post" class="rate">
+        {% csrf_token %}
+        <input type="hidden" name="review" value="{{ review.id }}">
+        <input type="hidden" name="seconds" value="">
+        <p class="meta">{% translate "Did you know it?" %}</p>
+        <div class="rate-buttons">
+          <button class="btn rate-again" type="submit" name="rating" value="again">{% icon 'rotate-ccw' %}<span>{% translate "Again" %}<small>{% translate "later today" %}</small></span></button>
+          <button class="btn rate-good" type="submit" name="rating" value="good">{% icon 'check' %}<span>{% translate "Got it" %}<small>{% blocktranslate trimmed count n=good_days %}in {{ n }} day{% plural %}in {{ n }} days{% endblocktranslate %}</small></span></button>
+          <button class="btn rate-easy" type="submit" name="rating" value="easy">{% icon 'zap' %}<span>{% translate "Easy" %}<small>{% blocktranslate trimmed count n=easy_days %}in {{ n }} day{% plural %}in {{ n }} days{% endblocktranslate %}</small></span></button>
+        </div>
+      </form>
+    </details>
+  </article>
+  <p class="meta keys">{% translate "On a keyboard: Space shows the answer, then 1, 2 or 3." %}</p>
+  {% else %}
+  <section class="card empty-state{% if reviewed_today %} celebrate{% endif %}">
+    {% icon 'circle-check-big' css='icon-lg' %}
+    <h1>{% if reviewed_today %}{% translate "Done for today" %}{% else %}{% translate "Nothing to review" %}{% endif %}</h1>
+    <p>
+      {% if reviewed_today %}{% blocktranslate trimmed count n=reviewed_today %}You answered {{ n }} card today.{% plural %}You answered {{ n }} cards today.{% endblocktranslate %}{% endif %}
+      {% if next_due %}{% blocktranslate trimmed with when=next_due|date:"l j F" %}Next cards come back on {{ when }}.{% endblocktranslate %}{% endif %}
+    </p>
+    {% if xp %}<span class="xp-amt" dir="ltr">+{{ xp }} XP</span>{% endif %}
+    <a class="btn primary" href="{% url 'learn:flashcards' %}">{% translate "Back to flashcards" %}{% icon 'arrow-right' css='icon-flip' %}</a>
+  </section>
+  {% endif %}
+</main>
+{% if review %}
+<script>
+(() => {
+  const started = Date.now();
+  const answer = document.getElementById('answer');
+  const form = answer.querySelector('form');
+  form.addEventListener('submit', () => {
+    form.querySelector('[name=seconds]').value = Math.round((Date.now() - started) / 1000);
+  });
+  answer.addEventListener('toggle', () => { if (answer.open) form.querySelector('.rate-good').focus(); });
+  document.addEventListener('keydown', (event) => {
+    if (event.target.closest('input, textarea') || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (!answer.open && (event.key === ' ' || event.key === 'Enter')) {
+      event.preventDefault();
+      answer.open = true;
+    } else if (answer.open && ['1', '2', '3'].includes(event.key)) {
+      form.querySelectorAll('[name=rating]')[Number(event.key) - 1].click();
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -124,6 +124,16 @@
           {% endfor %}
         </ul>
       </section>
+      {% if user.is_authenticated %}
+      <a class="card flash-cta" href="{% url 'learn:flashcards' %}">
+        <span class="metric-icon" aria-hidden="true">{% icon 'layers' css='icon-lg' %}</span>
+        <div>
+          <p class="meta">{% translate "Flashcards" %}</p>
+          <strong>{% if cards_due %}{% blocktranslate trimmed count n=cards_due %}{{ n }} card due today{% plural %}{{ n }} cards due today{% endblocktranslate %}{% else %}{% translate "Nothing due. Add a deck." %}{% endif %}</strong>
+        </div>
+        {% icon 'arrow-right' css='icon-flip push' %}
+      </a>
+      {% endif %}
       <section class="card encourage">
         {% icon 'award' css='icon-lg' %}
         <p><strong>{% translate "You're building something real." %}</strong></p>

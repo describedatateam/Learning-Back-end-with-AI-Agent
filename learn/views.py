@@ -18,10 +18,10 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, gamification, generator, languages, notebook, placement, tutor
+from . import catalog, flashcards, gamification, generator, languages, notebook, placement, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
 from .models import (
-    Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
+    CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
     TutorMessage, XPEvent,
 )
 
@@ -111,7 +111,7 @@ def home(request):
     path = catalog.current_job_path(request.user)
     job = catalog.job_view(path, request.user) if path else None
     player = gamification.player_state(request.user)
-    context = {'job': job, 'player': player}
+    context = {'job': job, 'player': player, 'cards_due': flashcards.due_count(request.user)}
     if job and request.user.is_authenticated:
         passed, total = job.exercises_passed
         chapters_done = job.done + sum(s.done for s in job.prerequisites)
@@ -314,6 +314,8 @@ def chapter_detail(request, slug, chapter):
         'tutor_topic': tutor.chapter_topic(chapter), 'tutor_backend': tutor.backend_label(),
         'tutor_history': _chat_history(request.user, tutor.chapter_topic(chapter)) if request.user.is_authenticated else [],
         'can_run': _can_run(request),
+        'deck_added': request.user.is_authenticated and CardReview.objects.filter(
+            user=request.user, card__chapter=chapter).exists(),
     }
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -348,6 +350,85 @@ def supported_languages(request):
     return render(request, 'learn/languages.html', {
         'lang_groups': languages.grouped(), 'player': gamification.player_state(request.user),
     })
+
+
+def _deck_chapter(request, chapter):
+    chapter = get_object_or_404(Chapter.objects.select_related('course__path'), slug=chapter)
+    if chapter.course.path.owner_id not in (None, request.user.id):
+        raise Http404('No such chapter')
+    return chapter
+
+
+def _back_to(request, fallback):
+    target = request.POST.get('next', '')
+    if url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return target
+    return fallback
+
+
+@login_required
+def flashcards_page(request):
+    """Today's queue, the learner's decks, and chapters they can add."""
+    due = flashcards.due_count(request.user)
+    return render(request, 'learn/flashcards.html', {
+        'due': due, 'next_due': None if due else flashcards.next_due(request.user),
+        'reviewed_today': flashcards.reviewed_today(request.user),
+        'decks': flashcards.decks(request.user), 'choices': flashcards.deck_choices(request.user),
+        'added': request.GET.get('added'), 'error': request.session.pop('deck_error', ''),
+        'player': gamification.player_state(request.user),
+    })
+
+
+@login_required
+@require_POST
+def flashcards_add(request, chapter):
+    chapter = _deck_chapter(request, chapter)
+    try:
+        count, written = flashcards.add_deck(request.user, chapter)
+    except flashcards.DeckError as exc:
+        request.session['deck_error'] = str(exc)
+        return redirect(f'{reverse("learn:flashcards")}#add')
+    log_event(request, LearningEvent.CARDS_ADDED, chapter.slug, cards=count, written=written)
+    return redirect(_back_to(request, f'{reverse("learn:flashcards")}?added={chapter.slug}'))
+
+
+@login_required
+@require_POST
+def flashcards_remove(request, chapter):
+    flashcards.remove_deck(request.user, _deck_chapter(request, chapter))
+    return redirect(f'{reverse("learn:flashcards")}#decks')
+
+
+@login_required
+def flashcards_review(request):
+    """One due card at a time: think of the answer, show it, then say how it went."""
+    if request.method == 'POST':
+        review = get_object_or_404(CardReview, user=request.user, id=request.POST.get('review') or 0)
+        rating = request.POST.get('rating')
+        if rating in flashcards.RATINGS and review.due_at <= timezone.now():
+            flashcards.schedule(review, rating)
+            log_event(request, LearningEvent.CARD_REVIEWED, review.card.chapter.slug,
+                      _seconds_spent(request.POST), rating=rating, box=review.box)
+            rewards = gamification.Rewards(request.user)
+            rewards.daily()
+            if not flashcards.due_reviews(request.user).exists():
+                rewards.award(f'cards:{timezone.localdate().isoformat()}', flashcards.REVIEW_XP, 'Flashcard review')
+        return redirect('learn:flashcards_review')
+    queue = flashcards.due_reviews(request.user)
+    review = queue.first()
+    context = {'review': review, 'left': queue.count(), 'player': gamification.player_state(request.user),
+               'reviewed_today': flashcards.reviewed_today(request.user)}
+    if review:
+        card = review.card
+        context.update(card=card, front=flashcards.card_html(card.front), back=flashcards.card_html(card.back),
+                       card_dir='rtl' if flashcards.chapter_language(card.chapter) == 'ar' else 'ltr',
+                       good_days=flashcards.days_after(review, flashcards.GOOD),
+                       easy_days=flashcards.days_after(review, flashcards.EASY))
+    else:
+        context['next_due'] = flashcards.next_due(request.user)
+        context['xp'] = flashcards.REVIEW_XP if XPEvent.objects.filter(
+            user=request.user, key=f'cards:{timezone.localdate().isoformat()}').exists() else 0
+    return render(request, 'learn/review.html', context)
 
 
 def coming_soon(request, section):
