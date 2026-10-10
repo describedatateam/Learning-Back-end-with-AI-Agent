@@ -1337,9 +1337,20 @@ class HowThisWorksTests(SignedInTestCase):
         self.assertContains(page, 'Five steps, in any order')
 
 
-def sample_cards(n=6):
-    return {'cards': [{'front': f'What does `step{i}` do?', 'code': 'print(1)' if i == 0 else '', 'back': f'It runs step {i}.'}
-                      for i in range(n)]}
+def sample_cards(n=8, concepts=1):
+    cards = []
+    for i in range(n):
+        if i < concepts:
+            cards.append({'kind': 'concept', 'language': 'python', 'front': f'Why does idea {i} matter?',
+                          'code': '', 'solution': '', 'expected': '', 'back': 'Because it does.'})
+        elif i % 2:
+            cards.append({'kind': 'output', 'language': 'python', 'front': f'What does `step{i}` print?',
+                          'code': f'x = {i}\nprint(x * 2)', 'solution': '', 'expected': 'wrong on purpose',
+                          'back': f'It prints {i * 2}.'})
+        else:
+            cards.append({'kind': 'complete', 'language': 'python', 'front': f'Make it print {i}.',
+                          'code': f'print(____)', 'solution': f'print({i})', 'expected': str(i), 'back': 'Pass the number.'})
+    return {'cards': cards}
 
 
 class FlashcardTests(SignedInTestCase):
@@ -1363,12 +1374,12 @@ class FlashcardTests(SignedInTestCase):
     def test_clean_cards_lists_problems(self):
         from .flashcards import clean_cards
         cards, errors = clean_cards(sample_cards())
-        self.assertEqual((len(cards), errors), (6, []))
-        bad = sample_cards(3)
-        bad['cards'].append({'front': 'What does `step0` do?', 'back': 'again'})
-        bad['cards'].append({'front': '', 'back': 'x'})
+        self.assertEqual((len(cards), errors), (8, []))
+        bad = sample_cards(6, concepts=3)
+        bad['cards'].append({'kind': 'complete', 'front': 'No blank', 'code': 'print(1)', 'solution': 'print(1)', 'back': 'x'})
+        bad['cards'].append({'kind': 'concept', 'front': '', 'back': 'x'})
         _, errors = clean_cards(bad)
-        self.assertEqual(len(errors), 3, errors)
+        self.assertEqual(len(errors), 3, errors)  # the two broken cards, and too many concept cards
         self.assertEqual(clean_cards([])[1], ['The reply must be a JSON object with a "cards" list.'])
 
     def test_adding_a_deck_writes_it_once_and_queues_it(self):
@@ -1376,24 +1387,27 @@ class FlashcardTests(SignedInTestCase):
         response, ask = self.add()
         self.assertRedirects(response, f'/learn/flashcards/?added={self.chapter.slug}', fetch_redirect_response=False)
         system, messages = ask.call_args.args
-        self.assertIn('flashcards', system)
+        self.assertIn('"complete": front says', system)
         self.assertIn(self.chapter.title, messages[0]['content'])
-        self.assertEqual(Flashcard.objects.filter(chapter=self.chapter, source=Flashcard.AI).count(), 6)
-        self.assertEqual(CardReview.objects.filter(user=self.user).count(), 6)
+        self.assertEqual(Flashcard.objects.filter(chapter=self.chapter, source=Flashcard.AI).count(), 8)
+        self.assertEqual(CardReview.objects.filter(user=self.user).count(), 8)
+        # Python cards were run: expected output is what Python really printed.
+        self.assertEqual(Flashcard.objects.get(chapter=self.chapter, order=1).expected, '2')
+        self.assertEqual(Flashcard.objects.get(chapter=self.chapter, order=2).expected, '2')
         self.assertTrue(LearningEvent.objects.filter(kind=LearningEvent.CARDS_ADDED, data__written=True).exists())
         # A second learner gets the same deck without asking the AI again.
         other = User.objects.create_user('other', password='pw')
         self.client.force_login(other)
         _, ask = self.add()
         ask.assert_not_called()
-        self.assertEqual(CardReview.objects.filter(user=other).count(), 6)
+        self.assertEqual(CardReview.objects.filter(user=other).count(), 8)
         page = self.client.get('/learn/flashcards/')
-        self.assertContains(page, '6 cards due')
+        self.assertContains(page, '8 cards due')
         self.assertContains(page, self.chapter.title)
 
     def test_bad_reply_is_retried_then_refused(self):
         from .models import Flashcard
-        response, ask = self.add(replies=['not json', json.dumps(sample_cards(2))])
+        response, ask = self.add(replies=['not json', json.dumps(sample_cards(3))])
         self.assertEqual(ask.call_count, 2)
         self.assertFalse(Flashcard.objects.exists())
         page = self.client.get(response.url)
@@ -1446,28 +1460,28 @@ class FlashcardTests(SignedInTestCase):
         from .models import CardReview, LearningEvent, XPEvent
         self.add()
         page = self.client.get('/learn/flashcards/review/')
-        self.assertContains(page, '6 cards left')
+        self.assertContains(page, '8 cards left')
         self.assertContains(page, 'Show answer')
         first = page.context['review']
         self.client.post('/learn/flashcards/review/', {'review': first.id, 'rating': 'again', 'seconds': '4'})
         # A wrong card goes to the back of today's queue.
         page = self.client.get('/learn/flashcards/review/')
         self.assertNotEqual(page.context['review'].id, first.id)
-        self.assertEqual(page.context['left'], 6)
-        for _ in range(6):
+        self.assertEqual(page.context['left'], 8)
+        for _ in range(8):
             review = self.client.get('/learn/flashcards/review/').context['review']
             self.client.post('/learn/flashcards/review/', {'review': review.id, 'rating': 'good'})
         page = self.client.get('/learn/flashcards/review/')
         self.assertContains(page, 'Done for today')
         self.assertTrue(XPEvent.objects.filter(user=self.user, key__startswith='cards:').exists())
-        self.assertEqual(LearningEvent.objects.filter(kind=LearningEvent.CARD_REVIEWED).count(), 7)
+        self.assertEqual(LearningEvent.objects.filter(kind=LearningEvent.CARD_REVIEWED).count(), 9)
         # Answering a card that isn't due changes nothing.
         before = CardReview.objects.get(id=first.id).due_at
         self.client.post('/learn/flashcards/review/', {'review': first.id, 'rating': 'easy'})
         self.assertEqual(CardReview.objects.get(id=first.id).due_at, before)
         # Tomorrow every card is due again.
         with mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(days=1, hours=1)):
-            self.assertEqual(self.client.get('/learn/flashcards/review/').context['left'], 6)
+            self.assertEqual(self.client.get('/learn/flashcards/review/').context['left'], 8)
         self.assertContains(self.client.get('/'), 'Nothing due. Add a deck.')
 
     def test_remove_deck_and_arabic_page(self):
@@ -1482,3 +1496,50 @@ class FlashcardTests(SignedInTestCase):
     def test_card_text_keeps_code_and_escapes_html(self):
         from .flashcards import card_html
         self.assertEqual(card_html('Use `<b>` not <i>'), 'Use <code dir="ltr">&lt;b&gt;</code> not &lt;i&gt;')
+
+    def test_broken_python_cards_are_sent_back_then_dropped(self):
+        from .models import Flashcard
+        broken = sample_cards(10)
+        broken['cards'][2]['solution'] = 'print(1/0)'
+        response, ask = self.add(replies=[json.dumps(broken), json.dumps(broken)])
+        self.assertEqual(ask.call_count, 2)
+        self.assertIn('does not run', ask.call_args.args[1][-1]['content'])
+        self.assertEqual(Flashcard.objects.filter(chapter=self.chapter).count(), 9)
+
+    def test_code_box_runs_python_and_checks_the_output(self):
+        from .models import CardReview
+        self.add()
+        complete = CardReview.objects.get(user=self.user, card__order=2)
+        def run(code, review=complete):
+            return self.client.post('/learn/flashcards/run/', {'review': review.id, 'code': code},
+                                    content_type='application/json').json()
+        self.assertTrue(run('print(2)')['correct'])
+        self.assertFalse(run('print(3)')['correct'])
+        self.assertIn('ZeroDivisionError', run('print(1/0)')['error'])
+        self.assertIn('____', run('print(____)')['error'])
+        concept = self.client.get('/learn/flashcards/review/').context['review']
+        self.client.post('/learn/flashcards/review/', {'review': concept.id, 'rating': 'good'})
+        page = self.client.get('/learn/flashcards/review/')
+        self.assertContains(page, 'id="code-box"')
+        self.assertContains(page, 'Ask the tutor about this card')
+        # Other learners' cards can't be run.
+        other = User.objects.create_user('other', password='pw')
+        self.client.force_login(other)
+        self.assertEqual(self.client.post('/learn/flashcards/run/', {'review': complete.id, 'code': 'print(2)'},
+                                          content_type='application/json').status_code, 404)
+
+    def test_tutor_sees_the_card_and_the_code_box(self):
+        from .models import CardReview
+        from .tutor import FLASHCARD_TOPIC, build_card_turn, build_system
+        self.add()
+        review = CardReview.objects.get(user=self.user, card__order=2)
+        turn = build_card_turn('Hint please', review.card, 'print(5)', '5\n')
+        self.assertIn('Make it print 2.', turn)
+        self.assertIn('print(5)', turn)
+        self.assertIn('not seen it yet', turn)
+        self.assertIn('flashcards', build_system(None, flashcards=True)[1]['text'])
+        with mock.patch('learn.tutor.stream_reply', return_value=iter([('text', 'Try 2'), ('final', mock.Mock(stop_reason='end_turn'))])):
+            response = self.client.post(f'/learn/tutor/{FLASHCARD_TOPIC}/ask/', {'question': 'Hint please', 'review': review.id,
+                                        'code': 'print(5)'}, content_type='application/json')
+            body = b''.join(response.streaming_content)
+        self.assertIn(b'Try 2', body)

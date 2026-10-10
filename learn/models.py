@@ -301,11 +301,20 @@ class Flashcard(models.Model):
     QUIZ = 'quiz'  # made from the chapter's quiz when no AI was reachable
     SOURCE_CHOICES = [(AI, 'Written by AI'), (QUIZ, 'From the quiz')]
 
+    OUTPUT = 'output'      # "what does this print?"
+    COMPLETE = 'complete'  # fill the ____ so the code works
+    CONCEPT = 'concept'    # a key idea, no code to run
+    KIND_CHOICES = [(OUTPUT, 'Predict the output'), (COMPLETE, 'Complete the code'), (CONCEPT, 'Key concept')]
+
     chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='flashcards')
     order = models.PositiveSmallIntegerField()
-    front = models.TextField()            # the question
-    code = models.TextField(blank=True)   # optional short snippet shown under the question
-    back = models.TextField()             # the answer
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=CONCEPT)
+    language = models.CharField(max_length=20, blank=True)  # python, javascript, html, css, sql...
+    front = models.TextField()              # the question
+    code = models.TextField(blank=True)     # the code the card is about; COMPLETE cards have a ____ blank
+    solution = models.TextField(blank=True)  # COMPLETE cards: the code with the blank filled in
+    expected = models.TextField(blank=True)  # what the code (or solution) prints; checked by running it for Python
+    back = models.TextField()               # the explanation
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=AI)
     created_at = models.DateTimeField(auto_now_add=True)
 
