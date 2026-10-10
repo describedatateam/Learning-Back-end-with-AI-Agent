@@ -233,7 +233,8 @@ def placement_test(request, slug):
 @login_required
 def generate_path(request):
     """Generate a skill path with AI for a topic outside the course map."""
-    form = {'skill': '', 'level': 'beginner', 'hours': 5}
+    form = {'skill': ' '.join(request.GET.get('skill', '').split())[:generator.MAX_SKILL_CHARS],  # from My project
+            'level': 'beginner', 'hours': 5}
     context = {'levels': generator.LEVELS, 'ai_available': generator.ai_available(),
                'left_today': max(0, generator.DAILY_LIMIT - generator.generated_today(request.user)),
                'mine': Path.objects.filter(owner=request.user).order_by('-created_at'),
@@ -471,13 +472,13 @@ MILESTONE_XP = 20  # first time each milestone of the learner's own project is t
 def _project_or_404(request, project_id):
     if not request.user.is_authenticated:
         raise Http404('Log in to see your projects')
-    return get_object_or_404(Project, id=project_id, user=request.user)
+    return get_object_or_404(projects.visible_projects(request.user), id=project_id)
 
 
 @login_required
 def project_home(request):
     """The learner's projects, and the two ways to start one: describe it, or upload an SRS."""
-    mine = list(Project.objects.filter(user=request.user))
+    mine = list(projects.visible_projects(request.user).select_related('user'))
     form = {'title': '', 'what': '', 'who': '', 'tech': ''}
     context = {'ai_available': generator.ai_available(),
                'left_today': max(0, projects.DAILY_LIMIT - projects.written_today(request.user)),
@@ -524,7 +525,8 @@ def project_home(request):
                 log_event(request, LearningEvent.PROJECT_SRS, '', source=source, gaps=len(srs['gaps']))
                 return redirect('learn:project_detail', project.id)
         context['error'] = error
-    context.update(form=form, mine=[(p, projects.progress(p)) for p in mine])
+    context.update(form=form, mine=[(p, projects.progress(p)) for p in mine],
+                   join_error=request.session.pop('join_error', ''))
     return render(request, 'learn/projects.html', context)
 
 
@@ -533,8 +535,13 @@ def project_detail(request, project_id):
     """The SRS and its milestone walkthrough, with the tutor that knows the project."""
     project = _project_or_404(request, project_id)
     topic = tutor.project_topic(project)
+    members = projects.team(project)
+    is_owner = project.user_id == request.user.id
     return render(request, 'learn/project.html', {
-        'project': project, 'srs': project.srs, 'milestones': projects.milestones(project),
+        'project': project, 'srs': project.srs,
+        'milestones': projects.milestones(project, {u.id: u for u in members}),
+        'members': members, 'is_owner': is_owner, 'join_code': projects.ensure_join_code(project) if is_owner else '',
+        'joined': request.GET.get('joined'),
         'progress': projects.progress(project), 'srs_dir': 'rtl' if project.language == 'ar' else 'ltr',
         'updated': request.GET.get('updated'), 'error': request.session.pop('project_error', ''),
         'ai_available': generator.ai_available(),
@@ -550,14 +557,37 @@ def project_check(request, project_id):
     """Tick or untick one task of the walkthrough."""
     project = _project_or_404(request, project_id)
     data = json.loads(request.body or '{}')
+    before = {m['id'] for m in projects.milestones(project) if m['finished']}
     if not projects.toggle(project, str(data.get('task', '')), bool(data.get('done'))):
         return JsonResponse({'error': 'Unknown task.'}, status=400)
+    finished = [m['id'] for m in projects.milestones(project) if m['finished']]
     rewards = gamification.Rewards(request.user)
-    for milestone in projects.milestones(project):
-        if milestone['finished']:
-            rewards.award(f'project:{project.id}:{milestone["id"]}', MILESTONE_XP, 'Project milestone')
-    return JsonResponse({'progress': projects.progress(project),
-                         'finished': [m['id'] for m in projects.milestones(project) if m['finished']]})
+    for milestone_id in set(finished) - before:  # the teammate who finishes a milestone gets its XP
+        rewards.award(f'project:{project.id}:{milestone_id}', MILESTONE_XP, 'Project milestone')
+    return JsonResponse({'progress': projects.progress(project), 'finished': finished})
+
+
+@login_required
+@require_POST
+def project_claim(request, project_id):
+    """Take a task ("I'll do this") or give it back."""
+    project = _project_or_404(request, project_id)
+    data = json.loads(request.body or '{}')
+    if not projects.claim(project, str(data.get('task', '')), request.user, bool(data.get('take'))):
+        return JsonResponse({'error': 'Unknown task.'}, status=400)
+    owner = project.claims.get(str(data.get('task', '')))
+    return JsonResponse({'owner': request.user.get_username() if owner == request.user.id else '', 'mine': owner == request.user.id})
+
+
+@login_required
+@require_POST
+def project_join(request):
+    """Join a teammate's project with the code they shared."""
+    project = projects.join(request.user, request.POST.get('code', ''))
+    if not project:
+        request.session['join_error'] = gettext('No project has this code. Check it with your teammate.')
+        return redirect(f'{reverse("learn:project")}#join')
+    return redirect(f'{reverse("learn:project_detail", args=[project.id])}?joined=1')
 
 
 @login_required
@@ -579,6 +609,7 @@ def project_update(request, project_id):
         request.session['project_error'] = generator.friendly_error(exc)
         return redirect(f'{url}#gaps')
     project.done = projects.carry_ticks(project.srs, project.done, srs)
+    project.claims = projects.carry_claims(project.srs, project.claims, srs)
     project.srs = srs
     project.save()
     log_event(request, LearningEvent.PROJECT_SRS, '', source='update', gaps=len(srs['gaps']))
@@ -588,9 +619,15 @@ def project_update(request, project_id):
 @login_required
 @require_POST
 def project_delete(request, project_id):
+    """The owner deletes the project; a teammate leaves it."""
     project = _project_or_404(request, project_id)
     TutorMessage.objects.filter(user=request.user, topic=tutor.project_topic(project)).delete()
-    project.delete()
+    if project.user_id == request.user.id:
+        project.delete()
+    else:
+        project.members.filter(user=request.user).delete()
+        project.claims = {t: u for t, u in project.claims.items() if u != request.user.id}
+        project.save(update_fields=['claims'])
     return redirect('learn:project')
 
 
@@ -786,7 +823,8 @@ def tutor_ask(request, topic):
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
     project = _project_or_404(request, tutor.project_id(topic)) if tutor.project_id(topic) is not None else None
-    system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC, project=project)
+    system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC, project=project,
+                                learner=request.user)
     user = request.user
     if exercise:
         log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))

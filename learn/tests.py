@@ -1575,7 +1575,7 @@ SAMPLE_SRS = {
     'gaps': [],
     'milestones': [
         {'title': 'Set up', 'goal': 'The site runs', 'tasks': ['Start a Django project', 'Add an app'], 'chapters': ['nope']},
-        {'title': 'Models', 'goal': 'Tools are stored', 'tasks': ['Write the Tool model'], 'chapters': []},
+        {'title': 'Models', 'goal': 'Tools are stored', 'tasks': ['Write the Tool model'], 'chapters': [], 'skill': 'Django models'},
     ],
 }
 
@@ -1698,3 +1698,71 @@ class ProjectSrsTests(SignedInTestCase):
         project.refresh_from_db()
         self.assertEqual(project.done, ['m2-t1'])  # "Start a Django project" moved to m2; the Tool model task is gone
         self.assertEqual(project.srs['milestones'][2]['title'], 'Pages')
+
+    def test_steps_without_a_course_offer_to_generate_one(self):
+        project = self._project()
+        page = self.client.get(f'/learn/project/{project.id}/')
+        self.assertContains(page, '/learn/paths/generate/?skill=Django%20models')
+        self.assertContains(page, '/learn/paths/generate/?skill=Set%20up')  # no skill given: the title
+        self.assertContains(self.client.get('/learn/paths/generate/?skill=Django%20models'), 'value="Django models"')
+
+    # --- Team projects (Day 7b) ---
+
+    def _join(self, project, name='teammate'):
+        mate = User.objects.create_user(name, password='pw')
+        from .projects import ensure_join_code
+        code = ensure_join_code(project)
+        self.client.force_login(mate)
+        response = self.client.post('/learn/project/join/', {'code': code.lower()})
+        self.assertRedirects(response, f'/learn/project/{project.id}/?joined=1')
+        return mate
+
+    def test_teammate_joins_with_code_and_shares_ticks(self):
+        project = self._project()
+        page = self.client.get(f'/learn/project/{project.id}/')
+        self.assertContains(page, project.join_code)
+        self._join(project)
+        self.client.post(f'/learn/project/{project.id}/check/', {'task': 'm1-t1', 'done': True}, content_type='application/json')
+        project.refresh_from_db()
+        self.assertEqual(project.done, ['m1-t1'])
+        page = self.client.get('/learn/project/')
+        self.assertContains(page, 'Team project of')
+        self.assertNotContains(self.client.get(f'/learn/project/{project.id}/'), project.join_code)  # only the owner shares it
+
+    def test_wrong_code_does_not_join(self):
+        project = self._project()
+        self.client.post('/learn/project/join/', {'code': 'ZZZZZZ'})
+        self.assertFalse(project.members.exists())
+
+    def test_claims_show_who_does_each_task(self):
+        project = self._project()
+        mate = self._join(project)
+        data = self.client.post(f'/learn/project/{project.id}/claim/', {'task': 'm1-t2', 'take': True},
+                                content_type='application/json').json()
+        self.assertTrue(data['mine'])
+        project.refresh_from_db()
+        self.assertEqual(project.claims, {'m1-t2': mate.id})
+        self.client.force_login(self.user)
+        page = self.client.get(f'/learn/project/{project.id}/')
+        self.assertContains(page, '<bdi>teammate</bdi>', count=2)  # team list and the task
+        from .projects import tutor_context
+        self.assertIn('Add an app (taken by teammate)', tutor_context(project, self.user))
+
+    def test_teammate_leaves_but_cannot_delete(self):
+        project = self._project()
+        mate = self._join(project)
+        self.client.post(f'/learn/project/{project.id}/claim/', {'task': 'm1-t1', 'take': True}, content_type='application/json')
+        self.client.post(f'/learn/project/{project.id}/delete/')
+        project.refresh_from_db()
+        self.assertFalse(project.members.filter(user=mate).exists())
+        self.assertEqual(project.claims, {})
+        self.assertEqual(self.client.get(f'/learn/project/{project.id}/').status_code, 404)
+
+    def test_milestone_xp_goes_to_whoever_finishes_it(self):
+        project = self._project()
+        mate = self._join(project)
+        self.client.post(f'/learn/project/{project.id}/check/', {'task': 'm2-t1', 'done': True}, content_type='application/json')
+        self.assertTrue(XPEvent.objects.filter(user=mate, key=f'project:{project.id}:m2').exists())
+        self.client.force_login(self.user)
+        self.client.post(f'/learn/project/{project.id}/check/', {'task': 'm1-t1', 'done': True}, content_type='application/json')
+        self.assertFalse(XPEvent.objects.filter(user=self.user, key=f'project:{project.id}:m2').exists())

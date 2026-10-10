@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-10 08:57+0000\n"
+"POT-Creation-Date: 2026-10-10 09:20+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -79,28 +79,28 @@ msgstr "عملي في متصفحك"
 msgid "Lessons, slides and quizzes"
 msgstr "دروس وشرائح واختبارات قصيرة"
 
-#: learn/projects.py:99
+#: learn/projects.py:102
 msgid ""
 "This PDF could not be read. Try saving it again, or upload it as Word or "
 "text."
 msgstr ""
 "تعذّرت قراءة ملف PDF هذا. جرّب حفظه من جديد، أو ارفعه بصيغة Word أو نص."
 
-#: learn/projects.py:109
+#: learn/projects.py:112
 msgid ""
 "This Word file could not be read. Save it as .docx (not .doc) and try again."
 msgstr ""
 "تعذّرت قراءة ملف Word هذا. احفظه بصيغة .docx (وليس .doc) وحاول مرة أخرى."
 
-#: learn/projects.py:122
+#: learn/projects.py:125
 msgid "Upload a PDF, Word (.docx), Markdown or text file."
 msgstr "ارفع ملف PDF أو Word (.docx) أو Markdown أو نص."
 
-#: learn/projects.py:124
+#: learn/projects.py:127
 msgid "This file is bigger than 2 MB. Upload a smaller one."
 msgstr "هذا الملف أكبر من 2 ميغابايت. ارفع ملفًا أصغر."
 
-#: learn/projects.py:134
+#: learn/projects.py:137
 msgid ""
 "No readable text was found in this file. If it is a scanned PDF, upload it "
 "as Word or text instead."
@@ -108,14 +108,14 @@ msgstr ""
 "لم نجد نصًا مقروءًا في هذا الملف. إن كان PDF ممسوحًا ضوئيًا، فارفعه بصيغة "
 "Word أو نص بدلًا منه."
 
-#: learn/projects.py:205
+#: learn/projects.py:208
 msgid ""
 "The AI's SRS didn't pass the checks, so nothing was saved. Please try again."
 msgstr ""
 "لم تجتز وثيقة المتطلبات التي كتبها الذكاء الاصطناعي الفحوصات، لذلك لم يُحفظ "
 "شيء. حاول مرة أخرى."
 
-#: learn/projects.py:297
+#: learn/projects.py:302
 msgid ""
 "Your SRS has no data models. Which things does the app store, and what does "
 "each one hold?"
@@ -123,7 +123,7 @@ msgstr ""
 "لا توجد نماذج بيانات في وثيقتك. ما الأشياء التي يحفظها التطبيق، وماذا يحمل "
 "كل منها؟"
 
-#: learn/projects.py:298
+#: learn/projects.py:303
 msgid "Your SRS has no \"done\" checks. How will you know each feature works?"
 msgstr "لا توجد اختبارات \"انتهى\" في وثيقتك. كيف ستعرف أن كل ميزة تعمل؟"
 
@@ -148,7 +148,7 @@ msgstr[4] "%(hours)s ساعة"
 msgstr[5] "%(hours)s ساعة"
 
 #: learn/templates/learn/_course.html:10 learn/templates/learn/home.html:41
-#: learn/templates/learn/project.html:52
+#: learn/templates/learn/project.html:67
 msgid "You are here"
 msgstr "أنت هنا"
 
@@ -947,7 +947,7 @@ msgid "Quiz (%(n)s)"
 msgstr "الاختبار القصير (%(n)s)"
 
 #: learn/templates/learn/exercise.html:114
-#: learn/templates/learn/project.html:113
+#: learn/templates/learn/project.html:146
 msgid "Tutor"
 msgstr "المعلّم"
 
@@ -1367,7 +1367,7 @@ msgstr ""
 "لمهارة غير موجودة في الكتالوج. يكتب الذكاء الاصطناعي الدورات والفصول والدروس"
 " والشرائح والاختبارات القصيرة، ويفحصها التطبيق قبل حفظها."
 
-#: learn/templates/learn/generate.html:15 learn/views.py:255
+#: learn/templates/learn/generate.html:15 learn/views.py:256
 msgid ""
 "AI generation is not set up on this server yet. Add GEMINI_API_KEY to the "
 ".env file."
@@ -2023,119 +2023,186 @@ msgid "SRS written by AI from your description"
 msgstr "وثيقة متطلبات كتبها الذكاء الاصطناعي من وصفك"
 
 #: learn/templates/learn/project.html:14
-#: learn/templates/learn/projects.html:20
+#: learn/templates/learn/projects.html:21
 #, python-format
 msgid "%(done)s of %(total)s tasks done"
 msgstr "أُنجزت %(done)s من %(total)s مهام"
 
 #: learn/templates/learn/project.html:18
 msgid ""
+"You joined the team. Tick tasks as you finish them, and tap I'll do this on "
+"the ones you take."
+msgstr ""
+"انضممت إلى الفريق. علّم المهام عند إنهائها، واضغط \"سأقوم بها\" على المهام "
+"التي تأخذها."
+
+#: learn/templates/learn/project.html:19
+msgid ""
 "Your SRS is updated. Tasks you had ticked stay ticked where they still "
 "exist."
 msgstr "حُدّثت وثيقة متطلباتك. المهام التي أنجزتها تبقى منجزة ما دامت موجودة."
 
 #: learn/templates/learn/project.html:24
+msgid "Team"
+msgstr "الفريق"
+
+#: learn/templates/learn/project.html:26
+msgid "(owner)"
+msgstr "(المالك)"
+
+#: learn/templates/learn/project.html:26
+msgid "(you)"
+msgstr "(أنت)"
+
+#: learn/templates/learn/project.html:30
+msgid "Teammates open My project and enter this code to join:"
+msgstr "يفتح زملاؤك صفحة مشروعي ويُدخلون هذا الرمز للانضمام:"
+
+#: learn/templates/learn/project.html:32
+msgid "Copy"
+msgstr "نسخ"
+
+#: learn/templates/learn/project.html:39
 msgid "Gaps to fill"
 msgstr "نواقص تحتاج إكمالها"
 
-#: learn/templates/learn/project.html:26
+#: learn/templates/learn/project.html:41
 msgid ""
 "Answer these and AI works your answers into the SRS. Nothing else changes."
 msgstr ""
 "أجب عنها وسيضيف الذكاء الاصطناعي إجاباتك إلى الوثيقة. لن يتغير شيء آخر."
 
-#: learn/templates/learn/project.html:33
+#: learn/templates/learn/project.html:48
 msgid "Your answers or new details"
 msgstr "إجاباتك أو تفاصيل جديدة"
 
-#: learn/templates/learn/project.html:37
+#: learn/templates/learn/project.html:52
 msgid "Update my SRS"
 msgstr "حدّث وثيقتي"
 
-#: learn/templates/learn/project.html:38
+#: learn/templates/learn/project.html:53
 msgid "Updating your SRS. This can take a minute, so keep this page open."
 msgstr "نحدّث وثيقتك. قد يستغرق ذلك دقيقة، فأبقِ هذه الصفحة مفتوحة."
 
-#: learn/templates/learn/project.html:45
-#: learn/templates/learn/projects.html:91
+#: learn/templates/learn/project.html:60
+#: learn/templates/learn/projects.html:102
 msgid "Walkthrough"
 msgstr "خطوات التنفيذ"
 
-#: learn/templates/learn/project.html:62
+#: learn/templates/learn/project.html:77
+#: learn/templates/learn/project.html:178
+msgid "Give this task back"
+msgstr "تخلَّ عن هذه المهمة"
+
+#: learn/templates/learn/project.html:77
+#: learn/templates/learn/project.html:178
+msgid "You"
+msgstr "أنت"
+
+#: learn/templates/learn/project.html:79
+#: learn/templates/learn/project.html:178
+msgid "I'll do this"
+msgstr "سأقوم بها"
+
+#: learn/templates/learn/project.html:86
 msgid "Learn it:"
 msgstr "تعلّمها:"
 
-#: learn/templates/learn/project.html:70
+#: learn/templates/learn/project.html:88
+msgid "No course on the site covers this step yet."
+msgstr "لا توجد دورة على الموقع لهذه الخطوة بعد."
+
+#: learn/templates/learn/project.html:88
+msgid "Generate a course for this step"
+msgstr "أنشئ دورة لهذه الخطوة"
+
+#: learn/templates/learn/project.html:88
+msgid "Generate a course"
+msgstr "أنشئ دورة"
+
+#: learn/templates/learn/project.html:96
 msgid "Requirements (SRS)"
 msgstr "المتطلبات (SRS)"
 
-#: learn/templates/learn/project.html:73
+#: learn/templates/learn/project.html:99
 msgid "Goals"
 msgstr "الأهداف"
 
-#: learn/templates/learn/project.html:77
+#: learn/templates/learn/project.html:103
 msgid "Users"
 msgstr "المستخدمون"
 
-#: learn/templates/learn/project.html:81
+#: learn/templates/learn/project.html:107
 msgid "User stories"
 msgstr "قصص المستخدم"
 
-#: learn/templates/learn/project.html:82
+#: learn/templates/learn/project.html:108
 msgid "Must"
 msgstr "ضروري"
 
-#: learn/templates/learn/project.html:82
+#: learn/templates/learn/project.html:108
 msgid "Should"
 msgstr "مهم"
 
-#: learn/templates/learn/project.html:82
+#: learn/templates/learn/project.html:108
 msgid "Could"
 msgstr "إضافي"
 
-#: learn/templates/learn/project.html:82
+#: learn/templates/learn/project.html:108
 #, python-format
 msgid "As %(role)s, I want %(want)s"
 msgstr "بصفتي %(role)s، أريد %(want)s"
 
-#: learn/templates/learn/project.html:82
+#: learn/templates/learn/project.html:108
 #, python-format
 msgid ", so that %(benefit)s"
 msgstr "، كي %(benefit)s"
 
-#: learn/templates/learn/project.html:85
+#: learn/templates/learn/project.html:111
 msgid "Data models"
 msgstr "نماذج البيانات"
 
-#: learn/templates/learn/project.html:91
-#: learn/templates/learn/project.html:102
+#: learn/templates/learn/project.html:117
+#: learn/templates/learn/project.html:128
 msgid "None yet."
 msgstr "لا يوجد بعد."
 
-#: learn/templates/learn/project.html:95
+#: learn/templates/learn/project.html:121
 msgid "API endpoints"
 msgstr "نقاط الواجهة البرمجية"
 
-#: learn/templates/learn/project.html:98
+#: learn/templates/learn/project.html:124
 msgid "This project has no API."
 msgstr "لا يحتوي هذا المشروع على واجهة برمجية."
 
-#: learn/templates/learn/project.html:101
+#: learn/templates/learn/project.html:127
 msgid "Done checks"
 msgstr "اختبارات \"انتهى\""
 
-#: learn/templates/learn/project.html:107
-msgid "Delete this project and its walkthrough?"
-msgstr "هل تحذف هذا المشروع وخطواته؟"
+#: learn/templates/learn/project.html:134
+msgid "Delete this project and its walkthrough? Your teammates lose it too."
+msgstr "هل تحذف هذا المشروع وخطواته؟ سيفقده زملاؤك أيضًا."
 
-#: learn/templates/learn/project.html:109
+#: learn/templates/learn/project.html:136
 msgid "Delete project"
 msgstr "احذف المشروع"
 
-#: learn/templates/learn/project.html:122
+#: learn/templates/learn/project.html:139
+msgid "Leave this team project?"
+msgstr "هل تغادر مشروع الفريق هذا؟"
+
+#: learn/templates/learn/project.html:141
+msgid "Leave project"
+msgstr "غادر المشروع"
+
+#: learn/templates/learn/project.html:155
 #, python-brace-format
 msgid "{done} of {total} tasks done"
 msgstr "أُنجزت {done} من {total} مهام"
+
+#: learn/templates/learn/project.html:179
+msgid "Copied"
+msgstr "تم النسخ"
 
 #: learn/templates/learn/projects.html:10
 msgid ""
@@ -2153,37 +2220,50 @@ msgid "Your projects"
 msgstr "مشاريعك"
 
 #: learn/templates/learn/projects.html:20
+#, python-format
+msgid "Team project of <bdi>%(name)s</bdi>"
+msgstr "مشروع فريق <bdi>%(name)s</bdi>"
+
+#: learn/templates/learn/projects.html:21
 msgid "From your SRS"
 msgstr "من وثيقة متطلباتك"
 
-#: learn/templates/learn/projects.html:20
+#: learn/templates/learn/projects.html:21
 msgid "SRS written by AI"
 msgstr "وثيقة كتبها الذكاء الاصطناعي"
 
-#: learn/templates/learn/projects.html:26
+#: learn/templates/learn/projects.html:27
 msgid "Start another project"
 msgstr "ابدأ مشروعًا آخر"
 
-#: learn/templates/learn/projects.html:30 learn/views.py:494
+#: learn/templates/learn/projects.html:32
+msgid "Joining a teammate's project? Enter their code."
+msgstr "تنضم إلى مشروع زميل؟ أدخل رمزه."
+
+#: learn/templates/learn/projects.html:35
+msgid "Join"
+msgstr "انضم"
+
+#: learn/templates/learn/projects.html:41 learn/views.py:495
 msgid ""
 "AI is not set up on this server yet. Add GEMINI_API_KEY to the .env file."
 msgstr ""
 "الذكاء الاصطناعي غير مُعدّ على هذا الخادم بعد. أضف GEMINI_API_KEY إلى ملف "
 ".env."
 
-#: learn/templates/learn/projects.html:34
+#: learn/templates/learn/projects.html:45
 msgid "How to start"
 msgstr "طريقة البدء"
 
-#: learn/templates/learn/projects.html:35
+#: learn/templates/learn/projects.html:46
 msgid "Describe it"
 msgstr "صِفه"
 
-#: learn/templates/learn/projects.html:36
+#: learn/templates/learn/projects.html:47
 msgid "Upload my SRS"
 msgstr "ارفع وثيقتي"
 
-#: learn/templates/learn/projects.html:43
+#: learn/templates/learn/projects.html:54
 msgid ""
 "AI reads your SRS, puts it in the same shape as the ones it writes, and "
 "lists anything missing, like data models or done checks, so you can fill the"
@@ -2193,34 +2273,34 @@ msgstr ""
 "ويذكر ما ينقصها مثل نماذج البيانات أو اختبارات \"انتهى\"، لتكمل النواقص بدل "
 "أن تبدأ من الصفر."
 
-#: learn/templates/learn/projects.html:45
+#: learn/templates/learn/projects.html:56
 msgid "Your SRS file"
 msgstr "ملف وثيقة المتطلبات"
 
-#: learn/templates/learn/projects.html:47
+#: learn/templates/learn/projects.html:58
 msgid "PDF, Word (.docx), Markdown or text, up to 2 MB."
 msgstr "PDF أو Word (.docx) أو Markdown أو نص، حتى 2 ميغابايت."
 
-#: learn/templates/learn/projects.html:50
-#: learn/templates/learn/projects.html:77
+#: learn/templates/learn/projects.html:61
+#: learn/templates/learn/projects.html:88
 msgid "Project name"
 msgstr "اسم المشروع"
 
-#: learn/templates/learn/projects.html:50
-#: learn/templates/learn/projects.html:77
+#: learn/templates/learn/projects.html:61
+#: learn/templates/learn/projects.html:88
 msgid "(optional)"
 msgstr "(اختياري)"
 
-#: learn/templates/learn/projects.html:54
+#: learn/templates/learn/projects.html:65
 msgid "Read my SRS"
 msgstr "اقرأ وثيقتي"
 
-#: learn/templates/learn/projects.html:55
+#: learn/templates/learn/projects.html:66
 msgid "Reading your SRS. This can take a minute, so keep this page open."
 msgstr "نقرأ وثيقتك. قد يستغرق ذلك دقيقة، فأبقِ هذه الصفحة مفتوحة."
 
-#: learn/templates/learn/projects.html:56
-#: learn/templates/learn/projects.html:84
+#: learn/templates/learn/projects.html:67
+#: learn/templates/learn/projects.html:95
 #, python-format
 msgid "%(n)s left today"
 msgid_plural "%(n)s left today"
@@ -2231,68 +2311,68 @@ msgstr[3] "تبقّت %(n)s اليوم"
 msgstr[4] "تبقّت %(n)s اليوم"
 msgstr[5] "تبقّت %(n)s اليوم"
 
-#: learn/templates/learn/projects.html:64
+#: learn/templates/learn/projects.html:75
 msgid "What does it do?"
 msgstr "ماذا يفعل؟"
 
-#: learn/templates/learn/projects.html:65
+#: learn/templates/learn/projects.html:76
 msgid ""
 "For example: a site where my neighbours can lend each other tools, see what "
 "is available and book it for a day."
 msgstr ""
 "مثال: موقع يعير فيه جيراني الأدوات لبعضهم، ويرون المتاح منها ويحجزونه ليوم."
 
-#: learn/templates/learn/projects.html:68
+#: learn/templates/learn/projects.html:79
 msgid "Who is it for?"
 msgstr "لمن هو؟"
 
-#: learn/templates/learn/projects.html:69
+#: learn/templates/learn/projects.html:80
 msgid "For example: people in my building"
 msgstr "مثال: سكان عمارتي"
 
-#: learn/templates/learn/projects.html:73
+#: learn/templates/learn/projects.html:84
 msgid "Tech you want to use"
 msgstr "التقنيات التي تريد استخدامها"
 
-#: learn/templates/learn/projects.html:74
+#: learn/templates/learn/projects.html:85
 msgid "For example: Django, HTML, CSS"
 msgstr "مثال: Django وHTML وCSS"
 
-#: learn/templates/learn/projects.html:82
+#: learn/templates/learn/projects.html:93
 msgid "Write my SRS"
 msgstr "اكتب وثيقتي"
 
-#: learn/templates/learn/projects.html:83
+#: learn/templates/learn/projects.html:94
 msgid "Writing your SRS. This can take a minute, so keep this page open."
 msgstr "نكتب وثيقتك. قد يستغرق ذلك دقيقة، فأبقِ هذه الصفحة مفتوحة."
 
-#: learn/templates/learn/projects.html:89
+#: learn/templates/learn/projects.html:100
 msgid "What you get"
 msgstr "ما الذي ستحصل عليه"
 
-#: learn/templates/learn/projects.html:90
+#: learn/templates/learn/projects.html:101
 msgid "Requirements"
 msgstr "المتطلبات"
 
-#: learn/templates/learn/projects.html:90
+#: learn/templates/learn/projects.html:101
 msgid ""
 "Goals, users, user stories, data models, API endpoints and done checks."
 msgstr ""
 "الأهداف والمستخدمون وقصص المستخدم ونماذج البيانات ونقاط الواجهة البرمجية "
 "واختبارات \"انتهى\"."
 
-#: learn/templates/learn/projects.html:91
+#: learn/templates/learn/projects.html:102
 msgid ""
 "Milestones in build order, with small tasks to tick off and XP for each "
 "milestone."
 msgstr ""
 "مراحل بترتيب البناء، فيها مهام صغيرة تعلّم عليها، ونقاط خبرة لكل مرحلة."
 
-#: learn/templates/learn/projects.html:92
+#: learn/templates/learn/projects.html:103
 msgid "A tutor that knows it"
 msgstr "معلّم يعرف مشروعك"
 
-#: learn/templates/learn/projects.html:92
+#: learn/templates/learn/projects.html:103
 msgid "Ask how to start a task and get hints for your own project."
 msgstr "اسأل كيف تبدأ مهمة واحصل على تلميحات لمشروعك."
 
@@ -2440,7 +2520,7 @@ msgstr "تعذّر تشغيل الكود. حاول مرة أخرى."
 msgid "(nothing printed)"
 msgstr "(لم يُطبع شيء)"
 
-#: learn/templates/learn/review.html:90 learn/views.py:416
+#: learn/templates/learn/review.html:90 learn/views.py:417
 msgid "Fill in the ____ first, then run the code."
 msgstr "املأ ____ أولًا، ثم شغّل الكود."
 
@@ -2479,32 +2559,36 @@ msgstr ""
 msgid "New here and have an invite code?"
 msgstr "جديد هنا ولديك رمز دعوة؟"
 
-#: learn/views.py:251
+#: learn/views.py:252
 msgid "Write the skill you want to learn."
 msgstr "اكتب المهارة التي تريد أن تتعلّمها."
 
-#: learn/views.py:253
+#: learn/views.py:254
 msgid "Pick a level."
 msgstr "اختر مستوى."
 
-#: learn/views.py:257
+#: learn/views.py:258
 msgid "You have generated the most paths allowed today. Try again tomorrow."
 msgstr "أنشأت أقصى عدد مسموح به من المسارات اليوم. حاول مرة أخرى غدًا."
 
-#: learn/views.py:496 learn/views.py:574
+#: learn/views.py:497 learn/views.py:604
 msgid ""
 "You have written the most SRS documents allowed today. Try again tomorrow."
 msgstr "كتبت أقصى عدد مسموح من الوثائق اليوم. حاول غدًا."
 
-#: learn/views.py:499
+#: learn/views.py:500
 msgid "Describe what your project does in a sentence or two."
 msgstr "صِف ما يفعله مشروعك في جملة أو جملتين."
 
-#: learn/views.py:506
+#: learn/views.py:507
 msgid "Choose your SRS file first."
 msgstr "اختر ملف وثيقتك أولًا."
 
-#: learn/views.py:571
+#: learn/views.py:588
+msgid "No project has this code. Check it with your teammate."
+msgstr "لا يوجد مشروع بهذا الرمز. تأكد منه مع زميلك."
+
+#: learn/views.py:601
 msgid "Write your answers or new details first."
 msgstr "اكتب إجاباتك أو التفاصيل الجديدة أولًا."
 

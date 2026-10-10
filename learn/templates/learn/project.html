@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load i18n ui %}
+{% load i18n static ui %}
 
 {% block title %}{{ project.title }} · Describe{% endblock %}
 
@@ -15,10 +15,25 @@
     </div>
   </header>
 
+  {% if joined %}<div class="notice success" role="status">{% icon 'users' %}<span>{% translate "You joined the team. Tick tasks as you finish them, and tap I'll do this on the ones you take." %}</span></div>{% endif %}
   {% if updated %}<div class="notice success" role="status">{% icon 'circle-check' %}<span>{% translate "Your SRS is updated. Tasks you had ticked stay ticked where they still exist." %}</span></div>{% endif %}
 
   <div class="proj-grid">
     <div class="proj-main">
+      <section class="card proj-team" aria-labelledby="team-title">
+        <h2 id="team-title">{% icon 'users' %}{% translate "Team" %} <span class="tab-count num">{{ members|length }}</span></h2>
+        <ul class="team-list">
+          {% for u in members %}<li><span class="avatar" aria-hidden="true">{{ u.get_username|first|upper }}</span><bdi>{{ u.get_username }}</bdi>{% if forloop.first %} <span class="meta">{% translate "(owner)" %}</span>{% endif %}{% if u == request.user %} <span class="meta">{% translate "(you)" %}</span>{% endif %}</li>{% endfor %}
+        </ul>
+        {% if is_owner %}
+        <div class="join-code">
+          <span class="meta">{% translate "Teammates open My project and enter this code to join:" %}</span>
+          <code dir="ltr" id="join-code">{{ join_code }}</code>
+          <button class="btn" type="button" id="copy-code">{% icon 'copy' %}<span>{% translate "Copy" %}</span></button>
+        </div>
+        {% endif %}
+      </section>
+
       {% if srs.gaps or error %}
       <section class="card proj-gaps" id="gaps" aria-labelledby="gaps-title">
         <h2 id="gaps-title">{% icon 'triangle-alert' %}{% translate "Gaps to fill" %}</h2>
@@ -55,11 +70,22 @@
             </div>
             <ul class="tasks">
               {% for t in m.tasks %}
-              <li><label><input type="checkbox" data-task="{{ t.id }}"{% if t.done %} checked{% endif %}><span>{{ t.text }}</span></label></li>
+              <li class="task">
+                <label><input type="checkbox" data-task="{{ t.id }}"{% if t.done %} checked{% endif %}><span>{{ t.text }}</span></label>
+                {% if members|length > 1 %}
+                <span class="claim" data-claim="{{ t.id }}" dir="auto">
+                  {% if t.owner == request.user %}<button type="button" class="claim-btn mine" data-take="0" title="{% translate 'Give this task back' %}">{% icon 'hand' %}{% translate "You" %}</button>
+                  {% elif t.owner %}<span class="claim-who"><span class="avatar" aria-hidden="true">{{ t.owner.get_username|first|upper }}</span><bdi>{{ t.owner.get_username }}</bdi></span>
+                  {% elif not t.done %}<button type="button" class="claim-btn" data-take="1">{% icon 'hand' %}{% translate "I'll do this" %}</button>{% endif %}
+                </span>
+                {% endif %}
+              </li>
               {% endfor %}
             </ul>
             {% if m.links %}
             <p class="milestone-links meta" dir="auto">{% icon 'book-open' %}{% translate "Learn it:" %} {% for link in m.links %}<a href="{{ link.url }}"><bdi>{{ link.title }}</bdi></a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+            {% else %}
+            <p class="milestone-links meta">{% translate "No course on the site covers this step yet." %} <a class="gen-course" href="{% url 'learn:generate' %}?skill={{ m.skill|default:m.title|urlencode }}" title="{% translate 'Generate a course for this step' %}">{% icon 'sparkles' %}{% translate "Generate a course" %}</a></p>
             {% endif %}
           </li>
           {% endfor %}
@@ -104,10 +130,17 @@
         </div>
       </section>
 
-      <form method="post" action="{% url 'learn:project_delete' project.id %}" class="proj-delete" onsubmit="return confirm('{{ _("Delete this project and its walkthrough?")|escapejs }}')">
+      {% if is_owner %}
+      <form method="post" action="{% url 'learn:project_delete' project.id %}" class="proj-delete" onsubmit="return confirm('{{ _("Delete this project and its walkthrough? Your teammates lose it too.")|escapejs }}')">
         {% csrf_token %}
         <button class="btn danger" type="submit">{% icon 'trash-2' %}{% translate "Delete project" %}</button>
       </form>
+      {% else %}
+      <form method="post" action="{% url 'learn:project_delete' project.id %}" class="proj-delete" onsubmit="return confirm('{{ _("Leave this team project?")|escapejs }}')">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">{% icon 'log-out' %}{% translate "Leave project" %}</button>
+      </form>
+      {% endif %}
     </div>
 
     <aside class="card tutor-box proj-tutor" aria-label="{% translate 'Tutor' %}">
@@ -141,6 +174,31 @@
     }
     box.disabled = false;
   }));
+  const claimUrl = "{% url 'learn:project_claim' project.id %}";
+  const T = {mine: "{{ _('You')|escapejs }}", take: "{{ _("I'll do this")|escapejs }}", back: "{{ _('Give this task back')|escapejs }}",
+             copied: "{{ _('Copied')|escapejs }}"};
+  const sprite = "{% static 'learn/icons.svg' %}";
+  const hand = `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="${sprite}#hand"/></svg>`;
+  document.querySelectorAll('[data-claim]').forEach((slot) => slot.addEventListener('click', async (event) => {
+    const button = event.target.closest('button.claim-btn');
+    if (!button) return;
+    button.disabled = true;
+    try {
+      const res = await fetch(claimUrl, {method: 'POST', headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json'},
+                                         body: JSON.stringify({task: slot.dataset.claim, take: button.dataset.take === '1'})});
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      slot.innerHTML = data.mine
+        ? `<button type="button" class="claim-btn mine" data-take="0" title="${T.back}">${hand}${T.mine}</button>`
+        : `<button type="button" class="claim-btn" data-take="1">${hand}${T.take}</button>`;
+    } catch (e) {
+      button.disabled = false;
+    }
+  }));
+  const copy = document.getElementById('copy-code');
+  if (copy) copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById('join-code').textContent); copy.querySelector('span').textContent = T.copied; } catch (e) {}
+  });
   document.querySelectorAll('form[data-busy]').forEach((form) => form.addEventListener('submit', () => {
     form.querySelector('button[type=submit]').disabled = true;
     const note = form.querySelector('.busy-note');

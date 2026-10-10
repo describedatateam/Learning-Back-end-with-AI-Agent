@@ -17,6 +17,7 @@
       {% include "learn/_ring.html" with percent=prog.percent %}
       <div class="proj-card-body">
         <strong dir="auto">{{ p.title }}</strong>
+        {% if p.user != request.user %}<span class="meta">{% icon 'users' %}{% blocktranslate trimmed with name=p.user.get_username %}Team project of <bdi>{{ name }}</bdi>{% endblocktranslate %}</span>{% endif %}
         <span class="meta">{% if p.source == 'uploaded' %}{% icon 'upload' %}{% translate "From your SRS" %}{% else %}{% icon 'sparkles' %}{% translate "SRS written by AI" %}{% endif %} · {% blocktranslate trimmed with done=prog.done total=prog.total %}{{ done }} of {{ total }} tasks done{% endblocktranslate %}</span>
       </div>
       {% icon 'chevron-right' css='icon-flip' %}
@@ -25,6 +26,16 @@
   </section>
   <h2>{% translate "Start another project" %}</h2>
   {% endif %}
+
+  <form class="card join-form" id="join" method="post" action="{% url 'learn:project_join' %}">
+    {% csrf_token %}
+    <label for="code">{% icon 'users' %}{% translate "Joining a teammate's project? Enter their code." %}</label>
+    <div class="join-row">
+      <input id="code" name="code" maxlength="8" autocomplete="off" autocapitalize="characters" dir="ltr" placeholder="ABC234" required>
+      <button class="btn" type="submit">{% translate "Join" %}</button>
+    </div>
+    {% if join_error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ join_error }}</span></div>{% endif %}
+  </form>
 
   {% if not ai_available %}
   <div class="notice warning">{% icon 'triangle-alert' %}<span>{% translate "AI is not set up on this server yet. Add GEMINI_API_KEY to the .env file." %}</span></div>
