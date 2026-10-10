@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, flashcards, gamification, generator, languages, notebook, placement, projects, tutor
+from . import catalog, flashcards, gamification, generator, languages, notebook, placement, projects, tutor, web_exercises
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
     CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, Project,
@@ -212,8 +212,9 @@ def placement_test(request, slug):
     if request.method == 'POST':
         answers = {str(q['id']): request.POST.get(f'q{q["id"]}') for q in questions}
         code = {str(t.id): request.POST.get(f'task{t.id}', '') for t in tasks}
+        browser = {str(t.id): request.POST.get(f'task{t.id}_result', '') for t in tasks if t.language == 'javascript'}
         before = placement.latest_attempt(request.user, path)
-        outcome = placement.grade(path, answers, code)
+        outcome = placement.grade(path, answers, code, browser)
         placement.save_attempt(request.user, path, outcome, answers, code)
         log_event(request, LearningEvent.PLACEMENT, path.slug, correct=outcome['correct'], total=outcome['total'],
                   tasks_passed=outcome['tasks_passed'], tasks_total=outcome['tasks_total'], passed=outcome['passed'])
@@ -631,9 +632,42 @@ def project_delete(request, project_id):
     return redirect('learn:project')
 
 
+def _exercise_chapter(slug):
+    """The featured chapter that lists this exercise, for the breadcrumb."""
+    chapters = Chapter.objects.select_related('course__path').filter(course__path__owner__isnull=True)
+    return next((ch for ch in chapters if slug in ch.exercises), None)
+
+
+def _web_exercise_detail(request, exercise):
+    """An HTML, CSS or JavaScript exercise: file tabs, live preview, console and tests, all in the browser."""
+    progress = ExerciseProgress.objects.filter(user=request.user, slug=exercise.slug).first()
+    starter = exercise.starter_files
+    try:
+        saved = json.loads(progress.code) if progress and progress.code else {}
+    except ValueError:
+        saved = {}
+    files = {name: saved.get(name, text) if isinstance(saved, dict) else text for name, text in starter.items()}
+    local = exercise.localized(get_language())
+    return render(request, 'learn/web_exercise.html', {
+        'exercise': local,
+        'chapter': _exercise_chapter(exercise.slug),
+        'progress': progress,
+        'files': files,
+        'starter_files': starter,
+        'quiz': [{'question': q['question'], 'options': q['options']} for q in local.quiz],
+        'tests': web_exercises.list_tests(local),
+        'player': gamification.player_state(request.user),
+        'tutor_history': _chat_history(request.user, exercise.slug),
+        'tutor_backend': tutor.backend_label(),
+        'can_run': True,
+    })
+
+
 @login_required
 def exercise_detail(request, slug):
     exercise = _exercise_or_404(slug)
+    if exercise.kind == 'web':
+        return _web_exercise_detail(request, exercise)
     exercises = load_exercises()
     index = exercises.index(exercise)
     progress = ExerciseProgress.objects.filter(user=request.user, slug=slug).first()
@@ -663,11 +697,17 @@ def run(request, slug):
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to run code.'}, status=403)
     data = json.loads(request.body or '{}')
-    code = data.get('code', '')
     test_id = data.get('test')
-    if test_id and test_id not in {t['id'] for t in list_tests(exercise)}:
-        return JsonResponse({'error': 'Unknown test.'}, status=400)
-    result = run_tests(exercise, code, test_id)
+    if exercise.kind == 'web':
+        # The tests already ran in the learner's browser; this records what they reported.
+        test_id = None
+        code = json.dumps(web_exercises.clean_files(exercise, data.get('files')))
+        result = web_exercises.score(exercise.localized(get_language()), data.get('results'))
+    else:
+        code = data.get('code', '')
+        if test_id and test_id not in {t['id'] for t in list_tests(exercise)}:
+            return JsonResponse({'error': 'Unknown test.'}, status=400)
+        result = run_tests(exercise, code, test_id)
     seconds = _seconds_spent(data)
 
     progress, _ = ExerciseProgress.objects.get_or_create(user=request.user, slug=slug)
@@ -763,6 +803,8 @@ def solution(request, slug):
     except ValueError:
         data = {}
     log_event(request, LearningEvent.SOLUTION_VIEWED, slug, _seconds_spent(data), passed=progress.passed)
+    if exercise.kind == 'web':
+        return JsonResponse({'files': exercise.solution_files})
     return JsonResponse({'solution': exercise.solution})
 
 

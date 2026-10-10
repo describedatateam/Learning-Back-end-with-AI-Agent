@@ -1,0 +1,288 @@
+{% extends "learn/base.html" %}
+{% load i18n static ui %}
+
+{% block body_class %}rail{% endblock %}
+{% block title %}{{ exercise.title }} · Describe{% endblock %}
+
+{% block content %}
+<main class="wide web-ex">
+  <nav class="crumbs meta">
+    {% if chapter %}<a href="{% url 'learn:path' chapter.course.path.slug %}"><bdi>{{ chapter.course.path.title }}</bdi></a>{% icon 'chevron-right' css='icon-flip' %}<bdi>{{ chapter.title }}</bdi>
+    {% else %}<a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a>{% endif %}
+    <span id="status-badge" class="push">
+      {% if progress.passed %}<span class="badge done">{% translate "Passed" %}</span>
+      {% elif progress %}<span class="badge wip">{% translate "In progress" %}</span>
+      {% else %}<span class="badge new">{% translate "Not started" %}</span>{% endif %}
+    </span>
+  </nav>
+
+  <div class="web-layout">
+    <section class="card web-side">
+      <div class="web-tabs" role="tablist">
+        <button type="button" role="tab" class="active" data-tab="lesson">{% icon 'book-open' %}{% translate "Lesson" %}</button>
+        <button type="button" role="tab" data-tab="hints">{% icon 'circle-help' %}{% translate "Hints" %}</button>
+        <button type="button" role="tab" data-tab="quiz">{% icon 'list-checks' %}{% translate "Quiz" %}</button>
+        <button type="button" role="tab" data-tab="tutor">{% icon 'bot' %}{% translate "Tutor" %}</button>
+      </div>
+      <div class="web-pane lesson" id="tab-lesson">
+        <p class="tag practice hands-on">{% icon 'play' %}{% translate "Runs in your browser" %}</p>
+        {{ exercise.instructions_html|safe }}
+      </div>
+      <div class="web-pane" id="tab-hints" hidden>
+        <p class="muted">{% translate "Try on your own first, then open one hint at a time." %}</p>
+        {% for hint in exercise.hints %}
+          <details class="hint"><summary>{% blocktranslate trimmed with n=forloop.counter %}Hint {{ n }}{% endblocktranslate %}</summary><p>{{ hint|safe }}</p></details>
+        {% endfor %}
+        <button class="btn quiet" type="button" id="show-solution">{% icon 'eye' %}{% translate "Show reference solution" %}</button>
+      </div>
+      <div class="web-pane" id="tab-quiz" hidden>
+        <form id="quiz-form" class="placement">
+          {% for q in quiz %}
+          <fieldset class="question" data-q="{{ forloop.counter0 }}">
+            <p class="q-text">{{ forloop.counter }}. {{ q.question|safe }}</p>
+            {% for option in q.options %}
+            <label class="option"><input type="radio" name="q{{ forloop.parentloop.counter0 }}" value="{{ forloop.counter0 }}"> <span>{{ option|safe }}</span></label>
+            {% endfor %}
+            <p class="feedback meta" hidden></p>
+          </fieldset>
+          {% endfor %}
+          <div class="actions"><button class="btn primary" type="submit">{% icon 'check' %}{% translate "Check answers" %}</button><span id="quiz-score" class="meta"></span></div>
+        </form>
+      </div>
+      <div class="web-pane tutor-pane" id="tab-tutor" hidden>
+        {% include "learn/_tutor.html" with tutor_topic=exercise.slug %}
+      </div>
+    </section>
+
+    <section class="card ide">
+      <div class="ide-head">
+        <div class="file-tabs" dir="ltr" role="tablist" aria-label="{% translate 'Files' %}">
+          {% for name in exercise.files %}<button type="button" role="tab" data-file="{{ name }}"{% if forloop.first %} class="active" aria-selected="true"{% endif %}>{{ name }}</button>{% endfor %}
+        </div>
+        <button class="btn quiet" type="button" id="reset" title="{% translate 'Start again from the starter code' %}">{% icon 'rotate-ccw' %}{% translate "Reset" %}</button>
+        <button class="btn primary" type="button" id="run">{% icon 'play' %}{% translate "Run tests" %}</button>
+      </div>
+      <div class="ide-editor" dir="ltr">
+        {% for name, text in files.items %}
+        <textarea class="code-box ide-code" data-file="{{ name }}" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="{{ name }}"{% if not forloop.first %} hidden{% endif %}>{{ text }}</textarea>
+        {% endfor %}
+      </div>
+      <div class="web-tabs out-tabs" role="tablist">
+        {% if exercise.preview %}<button type="button" role="tab" class="active" data-out="preview">{% icon 'eye' %}{% translate "Preview" %}</button>{% endif %}
+        <button type="button" role="tab" data-out="tests"{% if not exercise.preview %} class="active"{% endif %}>{% icon 'list-checks' %}{% translate "Tests" %} <span class="meta num" id="test-count">{{ tests|length }}</span></button>
+        <button type="button" role="tab" data-out="console">{% icon 'code' %}{% translate "Console" %} <span class="meta num" id="log-count"></span></button>
+      </div>
+      {% if exercise.preview %}<div class="out-pane" id="out-preview"><iframe id="preview" class="preview web-preview" title="{% translate 'Preview' %}"></iframe></div>{% endif %}
+      <div class="out-pane" id="out-tests"{% if exercise.preview %} hidden{% endif %}>
+        <p class="notice" id="verdict" role="status" hidden></p>
+        <ul class="task-tests" id="test-list">
+          {% for t in tests %}<li data-test="{{ t.id }}">{% icon 'circle' %}<span>{{ t.html }}</span><code class="meta" dir="ltr" hidden></code></li>{% endfor %}
+        </ul>
+      </div>
+      <div class="out-pane" id="out-console" hidden>
+        <pre class="run-output web-console" id="console" dir="ltr"><span class="muted">{% translate "console.log output from the preview shows here." %}</span></pre>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog id="solution-dialog" class="card">
+  <div class="card-head"><strong>{% translate "Reference solution" %}</strong><button class="btn quiet push" type="button" id="close-solution">{% icon 'x' %}{% translate "Close" %}</button></div>
+  <div id="solution-files" dir="ltr"></div>
+  <button class="btn secondary" type="button" id="load-solution">{% translate "Load into editor" %}</button>
+</dialog>
+
+{% csrf_token %}
+{{ starter_files|json_script:"starter-files" }}
+{{ exercise.tests_source|json_script:"web-tests" }}
+{{ exercise.api|json_script:"web-api" }}
+{% endblock %}
+
+{% block script %}
+{% with cm="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16" %}
+<script src="{{ cm }}/mode/xml/xml.min.js"></script>
+<script src="{{ cm }}/mode/javascript/javascript.min.js"></script>
+<script src="{{ cm }}/mode/css/css.min.js"></script>
+<script src="{{ cm }}/mode/htmlmixed/htmlmixed.min.js"></script>
+{% endwith %}
+<script src="{% static 'learn/js/web-runner.js' %}"></script>
+<script>
+(() => {
+  const T = {
+    allPassed: "{{ _('All tests pass. Nice work!')|escapejs }}",
+    some: "{{ _('{passed} of {total} tests pass. Open the Preview or ask the tutor.')|escapejs }}",
+    slow: "{{ _('Your code took longer than 5 seconds. Is there an infinite loop?')|escapejs }}",
+    stopped: "{{ _('Your code stopped with an error:')|escapejs }}",
+    unreachable: "{{ _('Your result could not be saved. Check your connection.')|escapejs }}",
+    reset: "{{ _('Replace your code with the starter code?')|escapejs }}",
+    peek: "{{ _('Peek at the solution? Try a little longer first; you lose the no-peek bonus.')|escapejs }}",
+    score: "{{ _('{correct} of {total} right')|escapejs }}",
+    passed: "{{ _('Passed')|escapejs }}",
+    inProgress: "{{ _('In progress')|escapejs }}",
+  };
+  const fill = (s, values) => s.replace(/\{(\w+)\}/g, (m, key) => values[key]);
+  const urls = {
+    run: "{% url 'learn:run' exercise.slug %}",
+    quiz: "{% url 'learn:quiz' exercise.slug %}",
+    solution: "{% url 'learn:solution' exercise.slug %}",
+  };
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const post = (url, body) => fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+    body: JSON.stringify({ ...body, seconds: Math.round(performance.now() / 1000) }),
+  }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  const icon = (name) => `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="{% static 'learn/icons.svg' %}#${name}"/></svg>`;
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => [...document.querySelectorAll(sel)];
+  const starter = JSON.parse($('#starter-files').textContent);
+  const tests = JSON.parse($('#web-tests').textContent);
+  const api = JSON.parse($('#web-api').textContent);
+  const draftKey = 'learn-web-draft:{{ exercise.slug }}';
+
+  // Tabs: lesson side and output side.
+  const tabs = (buttons, attr, show) => buttons.forEach((b) => b.addEventListener('click', () => {
+    buttons.forEach((x) => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', x === b); });
+    show(b.dataset[attr]);
+  }));
+  tabs($$('.web-side .web-tabs button'), 'tab', (name) => $$('.web-pane').forEach((p) => { p.hidden = p.id !== `tab-${name}`; }));
+  const outButtons = $$('.out-tabs button');
+  const showOut = (name) => outButtons.find((b) => b.dataset.out === name)?.click();
+  tabs(outButtons, 'out', (name) => $$('.out-pane').forEach((p) => { p.hidden = p.id !== `out-${name}`; }));
+
+  // Editors: CodeMirror when it loaded, the plain text box otherwise (offline, or blocked).
+  const modes = { 'index.html': 'htmlmixed', 'style.css': 'css', 'script.js': 'javascript' };
+  const editors = {};
+  $$('.ide-code').forEach((box) => {
+    const name = box.dataset.file;
+    if (window.CodeMirror && CodeMirror.modes[modes[name]]) {
+      const cm = CodeMirror.fromTextArea(box, { mode: modes[name], theme: 'vscode', lineNumbers: true, tabSize: 2, indentUnit: 2,
+        lineWrapping: false, autoCloseBrackets: true, matchBrackets: true, styleActiveLine: true, inputStyle: 'contenteditable' });
+      cm.getWrapperElement().dataset.file = name;
+      if (box.hidden) cm.getWrapperElement().hidden = true;
+      cm.on('change', changed);
+      editors[name] = { get: () => cm.getValue(), set: (v) => cm.setValue(v), show: (on) => { cm.getWrapperElement().hidden = !on; if (on) cm.refresh(); } };
+    } else {
+      box.addEventListener('input', changed);
+      box.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab' || e.shiftKey) return;
+        e.preventDefault();
+        box.setRangeText('  ', box.selectionStart, box.selectionEnd, 'end');
+        changed();
+      });
+      editors[name] = { get: () => box.value, set: (v) => { box.value = v; }, show: (on) => { box.hidden = !on; } };
+    }
+  });
+  const files = () => Object.fromEntries(Object.entries(editors).map(([name, ed]) => [name, ed.get()]));
+  tabs($$('.file-tabs button'), 'file', (name) => Object.entries(editors).forEach(([n, ed]) => ed.show(n === name)));
+
+  // Live preview and console, a moment after typing stops.
+  const consoleBox = $('#console'), logCount = $('#log-count');
+  let logs = 0;
+  const onLog = ({ level, line }) => {
+    if (!logs) consoleBox.textContent = '';
+    logs += 1;
+    logCount.textContent = logs;
+    const row = document.createElement('div');
+    row.className = level === 'error' ? 'bad' : '';
+    row.textContent = line;
+    consoleBox.appendChild(row);
+  };
+  const refresh = () => {
+    logs = 0;
+    logCount.textContent = '';
+    consoleBox.textContent = '';
+    if ($('#preview')) WebRunner.preview($('#preview'), { files: files(), api }, onLog);
+  };
+  let timer = null;
+  function changed() {
+    clearTimeout(timer);
+    timer = setTimeout(() => { refresh(); try { localStorage.setItem(draftKey, JSON.stringify(files())); } catch (e) {} }, 600);
+  }
+  try {
+    const draft = JSON.parse(localStorage.getItem(draftKey) || 'null');
+    if (draft && !{{ progress.passed|yesno:"true,false" }}) Object.entries(draft).forEach(([n, v]) => editors[n] && editors[n].set(v));
+  } catch (e) {}
+  refresh();
+
+  // Run tests in the browser, show them, then save the result (and XP) on the server.
+  const verdict = $('#verdict');
+  const say = (kind, html) => { verdict.hidden = false; verdict.className = `notice ${kind}`; verdict.innerHTML = html; };
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let lastResult = null;
+  window.tutorContext = () => ({ code: Object.entries(files()).map(([n, t]) => `<!-- ${n} -->\n${t}`).join('\n\n'), result: lastResult });
+  $('#run').addEventListener('click', async () => {
+    const run = $('#run');
+    run.disabled = true;
+    showOut('tests');
+    $$('#test-list li').forEach((li) => { li.className = 'running'; });
+    try {
+      const result = await WebRunner.run({ files: files(), tests, api });
+      const byId = Object.fromEntries(result.tests.map((t) => [t.id, t]));
+      $$('#test-list li').forEach((li) => {
+        const t = byId[li.dataset.test] || { outcome: 'error' };
+        const ok = t.outcome === 'passed';
+        li.className = ok ? 'ok' : 'bad';
+        li.querySelector('svg').outerHTML = icon(ok ? 'circle-check' : 'circle-x');
+        const note = li.querySelector(':scope > code');
+        note.textContent = ok ? '' : (t.message || '');
+        note.hidden = ok || !t.message;
+      });
+      const passed = result.tests.filter((t) => t.outcome === 'passed').length;
+      const total = $$('#test-list li').length;
+      if (result.timedOut) say('error', esc(T.slow));
+      else if (passed === total) say('success celebrate', `${icon('circle-check')}<span>${esc(T.allPassed)}</span>`);
+      else say(result.error ? 'error' : 'warning', `<span>${esc(fill(T.some, { passed, total }))}${result.error ? `<br><code dir="ltr">${esc(T.stopped)} ${esc(result.error)}</code>` : ''}</span>`);
+      try {
+        const saved = await post(urls.run, { files: files(), results: result.tests });
+        lastResult = saved;
+        if (saved.all_passed) $('#status-badge').innerHTML = `<span class="badge done">${esc(T.passed)}</span>`;
+        else $('#status-badge').innerHTML = `<span class="badge wip">${esc(T.inProgress)}</span>`;
+        if (window.celebrate) window.celebrate(saved.xp);
+      } catch (e) { say('error', esc(T.unreachable)); }
+    } finally { run.disabled = false; }
+  });
+
+  $('#reset').addEventListener('click', () => {
+    if (!confirm(T.reset)) return;
+    Object.entries(starter).forEach(([n, v]) => editors[n] && editors[n].set(v));
+    try { localStorage.removeItem(draftKey); } catch (e) {}
+    refresh();
+  });
+
+  // Reference solution.
+  const dialog = $('#solution-dialog');
+  let solution = null;
+  $('#show-solution').addEventListener('click', async () => {
+    if (!{{ progress.passed|yesno:"true,false" }} && !confirm(T.peek)) return;
+    solution = (await post(urls.solution, {})).files;
+    $('#solution-files').innerHTML = Object.entries(solution).map(([n, t]) => `<p class="meta">${esc(n)}</p><pre><code>${esc(t)}</code></pre>`).join('');
+    dialog.showModal();
+  });
+  $('#close-solution').addEventListener('click', () => dialog.close());
+  $('#load-solution').addEventListener('click', () => {
+    Object.entries(solution || {}).forEach(([n, v]) => editors[n] && editors[n].set(v));
+    dialog.close();
+    refresh();
+  });
+
+  // Quiz: same grading as the Python exercises.
+  $('#quiz-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const answers = $$('#quiz-form fieldset').map((f) => { const c = f.querySelector('input:checked'); return c ? Number(c.value) : null; });
+    const data = await post(urls.quiz, { answers });
+    data.results.forEach((r, i) => {
+      const f = $(`#quiz-form [data-q="${i}"]`);
+      f.querySelectorAll('label').forEach((label, j) => {
+        label.classList.toggle('right', j === r.answer);
+        label.classList.toggle('wrong', j === answers[i] && !r.correct);
+      });
+      const why = f.querySelector('.feedback');
+      why.hidden = !r.explanation;
+      why.innerHTML = r.explanation;
+    });
+    $('#quiz-score').textContent = fill(T.score, { correct: data.correct, total: data.total });
+    if (window.celebrate) window.celebrate(data.xp);
+  });
+})();
+</script>
+{% endblock %}

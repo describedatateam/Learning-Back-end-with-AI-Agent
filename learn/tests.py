@@ -882,7 +882,8 @@ class CatalogTests(SignedInTestCase):
         from .models import Chapter, Path
         self.assertEqual(set(Path.objects.filter(kind=Path.JOB).values_list('slug', flat=True)),
                          {'backend-developer', 'frontend-developer', 'fullstack-developer'})
-        known = {e.slug for e in load_exercises()}
+        from .web_exercises import load_web_exercises
+        known = {e.slug for e in load_exercises()} | {e.slug for e in load_web_exercises()}
         linked = [slug for ch in Chapter.objects.all() for slug in ch.exercises]
         linked += [slug for p in Path.objects.filter(kind=Path.JOB) for slug in p.capstone.get('exercises', [])]
         self.assertEqual(set(linked), known)  # every exercise appears, and only real ones
@@ -1026,16 +1027,26 @@ class PlacementTests(SignedInTestCase):
         # Shown on the path page too.
         self.assertContains(self.client.get('/learn/paths/python-basics/'), 'chapters you already know are skipped')
 
-    def test_javascript_test_is_questions_only(self):
+    def test_javascript_tasks_are_graded_from_the_browser(self):
+        from .models import Path
         response = self.client.get('/learn/paths/javascript-fundamentals/placement/')
         self.assertContains(response, 'typeof null')
-        self.assertNotContains(response, 'Coding tasks')
-        from .models import Path
+        self.assertContains(response, 'cheapTitles')
+        self.assertContains(response, 'web-runner.js')
+        self.assertContains(response, 'task-tests-1')  # the tests the browser runs
         js = Path.objects.get(slug='javascript-fundamentals')
         for q in js.placement_test['multiple_choice_questions']:
             self.assertIn(q['correct_option'], q['options'])
+        answers = {f'q{q["id"]}': q['correct_option'] for q in js.placement_test['multiple_choice_questions']}
+        passing = lambda ids: json.dumps({'tests': [{'id': i, 'outcome': 'passed'} for i in ids]})
         response = self.client.post('/learn/paths/javascript-fundamentals/placement/', {
-            f'q{q["id"]}': q['correct_option'] for q in js.placement_test['multiple_choice_questions']})
+            **answers, 'task1': 'function cheapTitles() {}', 'task1_result': passing(['filters', 'empty']),
+            'task2': '', 'task2_result': passing(['string', 'bumped', 'kept'])})
+        self.assertContains(response, 'Not this time')  # one of task 1's tests did not pass
+        self.assertContains(response, '1 of 2 coding tasks passing')
+        response = self.client.post('/learn/paths/javascript-fundamentals/placement/', {
+            **answers, 'task1_result': passing(['filters', 'empty', 'unchanged']),
+            'task2_result': passing(['string', 'bumped', 'kept'])})
         self.assertContains(response, 'You passed')
 
     def test_paths_without_a_test(self):
@@ -1766,3 +1777,60 @@ class ProjectSrsTests(SignedInTestCase):
         self.client.force_login(self.user)
         self.client.post(f'/learn/project/{project.id}/check/', {'task': 'm1-t1', 'done': True}, content_type='application/json')
         self.assertFalse(XPEvent.objects.filter(user=self.user, key=f'project:{project.id}:m2').exists())
+
+
+class WebExerciseTests(SignedInTestCase):
+    """HTML, CSS and JavaScript exercises: the browser runs the tests, the server records them."""
+
+    def test_content_is_complete(self):
+        from .web_exercises import load_web_exercises
+        exercises = load_web_exercises()
+        self.assertGreaterEqual(len(exercises), 2)
+        for exercise in exercises:
+            with self.subTest(exercise=exercise.slug):
+                self.assertEqual(set(exercise.starter_files), set(exercise.files))
+                self.assertEqual(set(exercise.solution_files), set(exercise.files))
+                for t in exercise.tests_meta:
+                    self.assertIn(f"test('{t['id']}'", exercise.tests_source)
+                    self.assertTrue(t.get('description_ar'))
+                self.assertTrue((exercise.path / 'instructions.ar.md').exists())
+                self.assertEqual([q['answer'] for q in exercise.quiz], [q['answer'] for q in exercise.ar['quiz']])
+                self.assertIsNotNone(get_exercise(exercise.slug))
+
+    def test_front_end_chapters_link_them(self):
+        from .catalog import load_catalog
+        from .models import Chapter
+        load_catalog()
+        self.assertEqual(Chapter.objects.get(slug='flexbox-layouts').exercises, ['flexbox-navbar'])
+        self.assertEqual(Chapter.objects.get(slug='fetching-data-with-fetch-api').exercises, ['fetch-user-cards'])
+        self.assertContains(self.client.get('/learn/paths/html-css-foundations/'), '/learn/flexbox-navbar/')
+
+    def test_page(self):
+        response = self.client.get('/learn/flexbox-navbar/')
+        self.assertContains(response, 'web-runner.js')
+        self.assertContains(response, 'style.css')
+        self.assertContains(response, 'The bar is a flex container')
+        self.assertNotContains(response, 'list-style: none;\n  display: flex;')  # the solution stays hidden
+        self.client.cookies['django_language'] = 'ar'
+        response = self.client.get('/learn/fetch-user-cards/')
+        self.assertContains(response, 'اجلب المستخدمين')
+
+    def test_run_records_browser_results(self):
+        from .web_exercises import get_web_exercise
+        exercise = get_web_exercise('flexbox-navbar')
+        ids = [t['id'] for t in exercise.tests_meta]
+        files = {'index.html': '<p>hi</p>', 'style.css': 'nav{}', 'evil.py': 'x'}
+        post = lambda results: self.client.post('/learn/flexbox-navbar/run/', json.dumps(
+            {'files': files, 'results': results}), content_type='application/json').json()
+        data = post([{'id': ids[0], 'outcome': 'passed'}, {'id': 'made-up', 'outcome': 'passed'}])
+        self.assertEqual((data['passed'], data['total'], data['all_passed']), (1, len(ids), False))
+        progress = ExerciseProgress.objects.get(user=self.user, slug='flexbox-navbar')
+        self.assertEqual(json.loads(progress.code), {'index.html': '<p>hi</p>', 'style.css': 'nav{}'})
+        data = post([{'id': i, 'outcome': 'passed'} for i in ids])
+        self.assertTrue(data['all_passed'])
+        self.assertTrue(data['xp']['gained'])
+        self.assertTrue(ExerciseProgress.objects.get(user=self.user, slug='flexbox-navbar').passed)
+        # Saved files come back in the editor.
+        self.assertContains(self.client.get('/learn/flexbox-navbar/'), 'nav{}')
+        solution = self.client.post('/learn/flexbox-navbar/solution/').json()
+        self.assertIn('display: flex', solution['files']['style.css'])

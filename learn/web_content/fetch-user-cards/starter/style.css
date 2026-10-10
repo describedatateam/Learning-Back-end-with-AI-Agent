@@ -1,0 +1,7 @@
+body { font-family: system-ui, sans-serif; margin: 20px; }
+#status { color: #4338ca; }
+#status.error { color: #b91c1c; }
+#users { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.card { border: 1px solid #c7d2fe; border-radius: 10px; padding: 12px; }
+.card h3 { margin: 0 0 4px; }
+.card p { margin: 0; color: #475569; overflow-wrap: anywhere; }

@@ -1,0 +1,5 @@
+[
+  {"id": "filters", "description": "Keeps titles with a price at or below the limit, in order", "description_ar": "يحتفظ بالعناوين التي سعرها أقل من الحد أو يساويه، بالترتيب"},
+  {"id": "empty", "description": "Returns an empty array when nothing matches", "description_ar": "يعيد مصفوفة فارغة عندما لا يطابق شيء"},
+  {"id": "unchanged", "description": "Does not change the array it was given", "description_ar": "لا يغيّر المصفوفة التي أُعطيت له"}
+]

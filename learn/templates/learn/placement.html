@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load i18n ui %}
+{% load i18n static ui %}
 
 {% block title %}{% translate "Placement test" %} · {{ path.title }} · Describe{% endblock %}
 
@@ -53,9 +53,19 @@
     <section class="card question">
       <p class="meta">{% blocktranslate with n=forloop.counter %}Task {{ n }}{% endblocktranslate %} · <bdi>{{ task.chapter }}</bdi></p>
       <p class="q-text" dir="ltr">{{ task.prompt }}</p>
-      <label class="meta" for="task{{ task.id }}">{% translate "Your code (Python)" %}</label>
-      <textarea class="code-input" id="task{{ task.id }}" name="task{{ task.id }}" rows="12" spellcheck="false" dir="ltr">{{ item.code }}</textarea>
+      <label class="meta" for="task{{ task.id }}">{% if task.language == 'javascript' %}{% translate "Your code (JavaScript)" %}{% else %}{% translate "Your code (Python)" %}{% endif %}</label>
+      <textarea class="code-input" id="task{{ task.id }}" name="task{{ task.id }}" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" dir="ltr">{{ item.code }}</textarea>
+      {% if task.language == 'javascript' %}
+      <input type="hidden" name="task{{ task.id }}_result" value="">
+      {{ task.browser_tests|json_script:task.json_id }}
+      <div class="task-run" data-task="{{ task.id }}">
+        <button class="btn secondary" type="button" data-run-task="{{ task.id }}">{% icon 'play' %}{% translate "Run tests" %}</button>
+        <span class="meta">{% translate "Runs in your browser." %}</span>
+      </div>
+      <ul class="task-tests" data-tests="{{ task.id }}">{% for t in task.tests %}<li data-test="{{ t.id }}">{% icon 'circle' %}<span>{{ t.html }}</span><code class="meta" dir="ltr" hidden></code></li>{% endfor %}</ul>
+      {% else %}
       <details class="meta"><summary>{% translate "What the tests check" %}</summary><ul dir="ltr">{% for t in task.tests %}<li>{{ t.description }}</li>{% endfor %}</ul></details>
+      {% endif %}
       {% if r %}
       <p class="feedback {% if r.all_passed %}ok{% else %}bad{% endif %}">{% if r.all_passed %}{% icon 'circle-check' %}{% translate "All tests pass" %}{% else %}{% icon 'circle-x' %}{% blocktranslate trimmed with passed=r.passed total=r.total %}{{ passed }} of {{ total }} tests pass{% endblocktranslate %}{% endif %}{% if r.error %}<code class="meta" dir="ltr">{{ r.error|truncatechars:300 }}</code>{% endif %}</p>
       {% endif %}
@@ -69,7 +79,52 @@
     </div>
   </form>
 </main>
+<script src="{% static 'learn/js/web-runner.js' %}"></script>
 <script>
+// JavaScript tasks run their tests in the browser (learn/js/web-runner.js); the results go with the form.
+(() => {
+  const T = {
+    slow: "{{ _('Your code took longer than 5 seconds. Is there an infinite loop?')|escapejs }}",
+    checking: "{{ _('Running the coding tasks…')|escapejs }}",
+  };
+  const form = document.querySelector('form.placement');
+  const icon = (name) => `<svg class="icon" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="{% static 'learn/icons.svg' %}#${name}"/></svg>`;
+  async function runTask(id) {
+    const code = document.getElementById(`task${id}`).value;
+    const tests = JSON.parse(document.getElementById(`task-tests-${id}`).textContent);
+    const result = await WebRunner.run({ files: { 'script.js': code }, tests });
+    if (result.timedOut) result.error = T.slow;
+    form.querySelector(`[name="task${id}_result"]`).value = JSON.stringify({ tests: result.tests, error: result.error });
+    const outcomes = Object.fromEntries(result.tests.map((t) => [t.id, t]));
+    form.querySelectorAll(`[data-tests="${id}"] li`).forEach((li) => {
+      const t = outcomes[li.dataset.test] || { outcome: 'error', message: result.error || '' };
+      const ok = t.outcome === 'passed';
+      li.className = ok ? 'ok' : 'bad';
+      li.querySelector('svg').outerHTML = icon(ok ? 'circle-check' : 'circle-x');
+      const note = li.querySelector(':scope > code');
+      note.textContent = ok ? '' : (t.message || '');
+      note.hidden = ok || !t.message;
+    });
+    return result;
+  }
+  form.querySelectorAll('[data-run-task]').forEach((button) => button.addEventListener('click', async () => {
+    button.disabled = true;
+    try { await runTask(button.dataset.runTask); } finally { button.disabled = false; }
+  }));
+  let checked = false;
+  form.addEventListener('submit', async (event) => {
+    const ids = [...form.querySelectorAll('[data-run-task]')].map((b) => b.dataset.runTask);
+    if (checked || !ids.length) return;
+    event.preventDefault();
+    const submit = form.querySelector('button[type=submit]');
+    submit.disabled = true;
+    submit.lastChild.textContent = T.checking;
+    for (const id of ids) await runTask(id);
+    checked = true;
+    form.submit();
+  });
+})();
+
 // Tab in the code boxes inserts four spaces instead of leaving the box.
 document.querySelectorAll('.code-input').forEach((box) => box.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab' || e.shiftKey) return;

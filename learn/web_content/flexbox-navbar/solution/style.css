@@ -1,0 +1,35 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.site-nav {
+  background: #1e1b4b;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  gap: 16px;
+}
+
+main {
+  padding: 20px;
+}

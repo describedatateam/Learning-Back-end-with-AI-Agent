@@ -1,0 +1,17 @@
+[
+  {
+    "id": "string",
+    "description": "Returns a JSON string, not an object",
+    "description_ar": "يعيد نص JSON وليس كائناً"
+  },
+  {
+    "id": "bumped",
+    "description": "Adds 1 to `version`",
+    "description_ar": "يضيف 1 إلى `version`"
+  },
+  {
+    "id": "kept",
+    "description": "Keeps every other property as it was",
+    "description_ar": "يبقي باقي الخصائص كما هي"
+  }
+]

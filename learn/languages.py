@@ -5,7 +5,7 @@ the live hint under the Generate page's skill box, the "What you can practise"
 panel and the Supported languages page. Change a language here and all four follow.
 
 `mode` says where its code will run: SERVER (the Python runner), BROWSER (the
-browser runner, planned for Day 8) or READING (no runner: lessons, slides and
+browser runner, learn/static/learn/js/web-runner.js) or READING (no runner: lessons, slides and
 quizzes only). `ready` is True once featured exercises exist for it today.
 Frameworks without a runner (Laravel, Flutter, C++, C# and so on) can still be
 generated; they just stay reading and quizzes until a sandbox is wanted.
@@ -27,11 +27,11 @@ LANGUAGES = [
      'aliases': ['django rest framework', 'rest framework', 'drf', 'rest api']},
     {'key': 'sql', 'name': 'SQL', 'mode': BROWSER, 'ready': False, 'art': 'table',
      'aliases': ['sql', 'sqlite', 'postgres', 'postgresql', 'mysql', 'database', 'databases', 'قواعد البيانات']},
-    {'key': 'html', 'name': 'HTML', 'mode': BROWSER, 'ready': False, 'art': 'page',
+    {'key': 'html', 'name': 'HTML', 'mode': BROWSER, 'ready': True, 'art': 'page',
      'aliases': ['html', 'html5', 'web page', 'semantic html']},
-    {'key': 'css', 'name': 'CSS', 'mode': BROWSER, 'ready': False, 'art': 'style',
+    {'key': 'css', 'name': 'CSS', 'mode': BROWSER, 'ready': True, 'art': 'style',
      'aliases': ['css', 'css3', 'tailwind', 'tailwind css', 'bootstrap', 'sass', 'scss', 'flexbox', 'grid layout']},
-    {'key': 'javascript', 'name': 'JavaScript', 'mode': BROWSER, 'ready': False, 'art': 'quiz',
+    {'key': 'javascript', 'name': 'JavaScript', 'mode': BROWSER, 'ready': True, 'art': 'quiz',
      'aliases': ['javascript', 'js', 'dom', 'es6', 'جافاسكربت', 'جافا سكربت']},
     {'key': 'react', 'name': 'React', 'mode': BROWSER, 'ready': False, 'art': 'components',
      'aliases': ['react', 'reactjs', 'react.js', 'jsx', 'رياكت']},

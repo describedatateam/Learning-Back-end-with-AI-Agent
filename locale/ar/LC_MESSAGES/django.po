@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-10 09:20+0000\n"
+"POT-Creation-Date: 2026-10-10 09:49+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -154,6 +154,7 @@ msgstr "أنت هنا"
 
 #: learn/templates/learn/_course.html:12
 #: learn/templates/learn/exercise.html:111
+#: learn/templates/learn/web_exercise.html:22
 msgid "Lesson"
 msgstr "الدرس"
 
@@ -163,6 +164,7 @@ msgid "Slides"
 msgstr "الشرائح"
 
 #: learn/templates/learn/_course.html:12 learn/templates/learn/chapter.html:52
+#: learn/templates/learn/web_exercise.html:24
 msgid "Quiz"
 msgstr "اختبار قصير"
 
@@ -171,6 +173,8 @@ msgstr "اختبار قصير"
 #: learn/templates/learn/exercise.html:98
 #: learn/templates/learn/exercise.html:219
 #: learn/templates/learn/notebook.html:86 learn/templates/learn/path.html:72
+#: learn/templates/learn/web_exercise.html:13
+#: learn/templates/learn/web_exercise.html:120
 msgid "Passed"
 msgstr "ناجح"
 
@@ -188,11 +192,11 @@ msgstr ""
 
 #: learn/templates/learn/_lang_groups.html:7
 msgid ""
-"Code will run in your browser with a live preview or console. Until that "
-"arrives, these paths have lessons, slides and quizzes."
+"Code runs in your browser with a live preview, a console and tests. The "
+"featured Front end path has the first of these exercises today."
 msgstr ""
-"ستعمل الشيفرة في متصفحك مع معاينة حية أو وحدة تحكم. وإلى أن يصل ذلك، في هذه "
-"المسارات دروس وشرائح واختبارات قصيرة."
+"تعمل الشيفرة في متصفحك مع معاينة حية ووحدة تحكم واختبارات. ومسار الواجهة "
+"الأمامية المميز فيه أول هذه التمارين اليوم."
 
 #: learn/templates/learn/_lang_groups.html:7
 msgid ""
@@ -386,6 +390,8 @@ msgstr "مكتمل"
 #: learn/templates/learn/dashboard.html:89
 #: learn/templates/learn/exercise.html:99
 #: learn/templates/learn/exercise.html:220
+#: learn/templates/learn/web_exercise.html:14
+#: learn/templates/learn/web_exercise.html:121
 msgid "In progress"
 msgstr "قيد التقدّم"
 
@@ -396,6 +402,7 @@ msgstr "التمارين قريبًا"
 #: learn/templates/learn/_status.html:1
 #: learn/templates/learn/dashboard.html:90
 #: learn/templates/learn/exercise.html:100
+#: learn/templates/learn/web_exercise.html:15
 msgid "Not started"
 msgstr "لم يبدأ"
 
@@ -550,6 +557,7 @@ msgstr "الرئيسية"
 #: learn/templates/learn/chapter.html:8 learn/templates/learn/generate.html:8
 #: learn/templates/learn/languages.html:8 learn/templates/learn/path.html:8
 #: learn/templates/learn/placement.html:8
+#: learn/templates/learn/web_exercise.html:11
 msgid "Paths"
 msgstr "المسارات"
 
@@ -773,7 +781,7 @@ msgid "Not quite"
 msgstr "ليس تمامًا"
 
 #: learn/templates/learn/chapter.html:77
-#: learn/templates/learn/placement.html:67
+#: learn/templates/learn/placement.html:77
 msgid "Check my answers"
 msgstr "تحقّق من إجاباتي"
 
@@ -948,6 +956,7 @@ msgstr "الاختبار القصير (%(n)s)"
 
 #: learn/templates/learn/exercise.html:114
 #: learn/templates/learn/project.html:146
+#: learn/templates/learn/web_exercise.html:25
 msgid "Tutor"
 msgstr "المعلّم"
 
@@ -988,11 +997,13 @@ msgid "Try on your own first — open one hint at a time."
 msgstr "جرّب بنفسك أولًا، وافتح تلميحًا واحدًا في كل مرة."
 
 #: learn/templates/learn/exercise.html:130
+#: learn/templates/learn/web_exercise.html:34
 #, python-format
 msgid "Hint %(n)s"
 msgstr "التلميح %(n)s"
 
 #: learn/templates/learn/exercise.html:132
+#: learn/templates/learn/web_exercise.html:36
 msgid "Show reference solution"
 msgstr "اعرض الحل المرجعي"
 
@@ -1012,6 +1023,7 @@ msgstr ""
 " XP كحد أقصى)، ففكّر جيدًا قبل أن تتحقق!"
 
 #: learn/templates/learn/exercise.html:149
+#: learn/templates/learn/web_exercise.html:49
 msgid "Check answers"
 msgstr "تحقّق من الإجابات"
 
@@ -1030,6 +1042,7 @@ msgstr "<b>Shift+Enter</b> شغّل التحديد · <b>Ctrl+Enter</b> شغّل
 
 #: learn/templates/learn/exercise.html:163
 #: learn/templates/learn/review.html:29
+#: learn/templates/learn/web_exercise.html:62
 msgid "Reset"
 msgstr "إعادة الضبط"
 
@@ -1049,14 +1062,18 @@ msgstr "شغّل التحديد"
 
 #: learn/templates/learn/exercise.html:165
 #: learn/templates/learn/exercise.html:210
+#: learn/templates/learn/placement.html:62
+#: learn/templates/learn/web_exercise.html:63
 msgid "Run tests"
 msgstr "شغّل الاختبارات"
 
 #: learn/templates/learn/exercise.html:171
+#: learn/templates/learn/web_exercise.html:72
 msgid "Tests"
 msgstr "الاختبارات (tests)"
 
 #: learn/templates/learn/exercise.html:172
+#: learn/templates/learn/web_exercise.html:73
 msgid "Console"
 msgstr "وحدة التحكم (Console)"
 
@@ -1076,14 +1093,17 @@ msgstr ""
 "والدوال والأصناف)، ثم تُطبع قيمة السطر الأخير، كما في Python shell."
 
 #: learn/templates/learn/exercise.html:186
+#: learn/templates/learn/web_exercise.html:90
 msgid "Reference solution"
 msgstr "الحل المرجعي"
 
 #: learn/templates/learn/exercise.html:186
+#: learn/templates/learn/web_exercise.html:92
 msgid "Load into editor"
 msgstr "حمّله في المحرّر"
 
 #: learn/templates/learn/exercise.html:186
+#: learn/templates/learn/web_exercise.html:90
 msgid "Close"
 msgstr "إغلاق"
 
@@ -1128,7 +1148,7 @@ msgid "Your code didn't load."
 msgstr "لم يُحمَّل الكود الخاص بك."
 
 #: learn/templates/learn/exercise.html:209
-#: learn/templates/learn/review.html:84
+#: learn/templates/learn/review.html:85
 msgid "Running…"
 msgstr "جارٍ التشغيل…"
 
@@ -1219,6 +1239,7 @@ msgid "Show the reference solution?"
 msgstr "هل تريد عرض الحل المرجعي؟"
 
 #: learn/templates/learn/exercise.html:232
+#: learn/templates/learn/web_exercise.html:117
 msgid "Replace your code with the starter code?"
 msgstr "هل تريد استبدال الكود الخاص بك بكود البداية؟"
 
@@ -1367,7 +1388,7 @@ msgstr ""
 "لمهارة غير موجودة في الكتالوج. يكتب الذكاء الاصطناعي الدورات والفصول والدروس"
 " والشرائح والاختبارات القصيرة، ويفحصها التطبيق قبل حفظها."
 
-#: learn/templates/learn/generate.html:15 learn/views.py:256
+#: learn/templates/learn/generate.html:15 learn/views.py:257
 msgid ""
 "AI generation is not set up on this server yet. Add GEMINI_API_KEY to the "
 ".env file."
@@ -1990,29 +2011,47 @@ msgid "Task %(n)s"
 msgstr "المهمة %(n)s"
 
 #: learn/templates/learn/placement.html:56
+msgid "Your code (JavaScript)"
+msgstr "الكود الخاص بك (JavaScript)"
+
+#: learn/templates/learn/placement.html:56
 msgid "Your code (Python)"
 msgstr "الكود الخاص بك (Python)"
 
-#: learn/templates/learn/placement.html:58
+#: learn/templates/learn/placement.html:63
+msgid "Runs in your browser."
+msgstr "يعمل في متصفحك."
+
+#: learn/templates/learn/placement.html:67
 msgid "What the tests check"
 msgstr "ما الذي تفحصه الاختبارات"
 
-#: learn/templates/learn/placement.html:60
+#: learn/templates/learn/placement.html:70
 msgid "All tests pass"
 msgstr "نجحت كل الاختبارات"
 
-#: learn/templates/learn/placement.html:60
+#: learn/templates/learn/placement.html:70
 #, python-format
 msgid "%(passed)s of %(total)s tests pass"
 msgstr "نجح %(passed)s من %(total)s اختبارات"
 
-#: learn/templates/learn/placement.html:67
+#: learn/templates/learn/placement.html:77
 msgid "Check again"
 msgstr "تحقّق مرة أخرى"
 
-#: learn/templates/learn/placement.html:68
+#: learn/templates/learn/placement.html:78
 msgid "Cancel"
 msgstr "إلغاء"
+
+#: learn/templates/learn/placement.html:87
+#: learn/templates/learn/review.html:92
+#: learn/templates/learn/web_exercise.html:114
+msgid "Your code took longer than 5 seconds. Is there an infinite loop?"
+msgstr "استغرق الكود أكثر من 5 ثوانٍ. هل فيه حلقة لا تنتهي؟"
+
+#: learn/templates/learn/placement.html:88
+msgid "Running the coding tasks…"
+msgstr "جارٍ تشغيل مهام البرمجة…"
 
 #: learn/templates/learn/project.html:14
 msgid "Mapped from your SRS"
@@ -2244,7 +2283,7 @@ msgstr "تنضم إلى مشروع زميل؟ أدخل رمزه."
 msgid "Join"
 msgstr "انضم"
 
-#: learn/templates/learn/projects.html:41 learn/views.py:495
+#: learn/templates/learn/projects.html:41 learn/views.py:496
 msgid ""
 "AI is not set up on this server yet. Add GEMINI_API_KEY to the .env file."
 msgstr ""
@@ -2424,6 +2463,8 @@ msgid "This language doesn't run here yet. Compare with the answer."
 msgstr "لا تعمل هذه اللغة هنا بعد. قارن بالإجابة."
 
 #: learn/templates/learn/review.html:35
+#: learn/templates/learn/web_exercise.html:71
+#: learn/templates/learn/web_exercise.html:75
 msgid "Preview"
 msgstr "معاينة"
 
@@ -2497,30 +2538,30 @@ msgstr[5] "أجبت عن %(n)s بطاقة اليوم."
 msgid "Back to flashcards"
 msgstr "العودة إلى البطاقات"
 
-#: learn/templates/learn/review.html:85
+#: learn/templates/learn/review.html:86
 msgid "Correct. It prints exactly what was expected."
 msgstr "صحيح. يطبع الناتج المتوقع تمامًا."
 
-#: learn/templates/learn/review.html:86
+#: learn/templates/learn/review.html:87
 msgid ""
 "It runs, but the output is different from the expected one. Try again or ask"
 " the tutor."
 msgstr ""
 "يعمل الكود، لكن ناتجه مختلف عن المتوقع. حاول مرة أخرى أو اسأل المعلّم."
 
-#: learn/templates/learn/review.html:87
+#: learn/templates/learn/review.html:88
 msgid "Your code stopped with an error."
 msgstr "توقف الكود بسبب خطأ."
 
-#: learn/templates/learn/review.html:88
+#: learn/templates/learn/review.html:89
 msgid "Could not run the code. Please try again."
 msgstr "تعذّر تشغيل الكود. حاول مرة أخرى."
 
-#: learn/templates/learn/review.html:89
+#: learn/templates/learn/review.html:90
 msgid "(nothing printed)"
 msgstr "(لم يُطبع شيء)"
 
-#: learn/templates/learn/review.html:90 learn/views.py:417
+#: learn/templates/learn/review.html:91 learn/views.py:418
 msgid "Fill in the ____ first, then run the code."
 msgstr "املأ ____ أولًا، ثم شغّل الكود."
 
@@ -2555,40 +2596,93 @@ msgstr ""
 "والاختبار والأمان… وللمساعدة في تمرين معيّن، افتح تبويب "
 "<strong>المعلّم</strong> فيه حتى يرى المعلّم الكود الخاص بك."
 
+#: learn/templates/learn/web_exercise.html:23
+msgid "Hints"
+msgstr "تلميحات"
+
+#: learn/templates/learn/web_exercise.html:28
+msgid "Runs in your browser"
+msgstr "يعمل في متصفحك"
+
+#: learn/templates/learn/web_exercise.html:32
+msgid "Try on your own first, then open one hint at a time."
+msgstr "جرّب بنفسك أولًا، ثم افتح تلميحًا واحدًا في كل مرة."
+
+#: learn/templates/learn/web_exercise.html:59
+msgid "Files"
+msgstr "الملفات"
+
+#: learn/templates/learn/web_exercise.html:62
+msgid "Start again from the starter code"
+msgstr "ابدأ من جديد من كود البداية"
+
+#: learn/templates/learn/web_exercise.html:83
+msgid "console.log output from the preview shows here."
+msgstr "يظهر هنا ناتج console.log من المعاينة."
+
+#: learn/templates/learn/web_exercise.html:112
+msgid "All tests pass. Nice work!"
+msgstr "نجحت كل الاختبارات. أحسنت!"
+
+#: learn/templates/learn/web_exercise.html:113
+#, python-brace-format
+msgid "{passed} of {total} tests pass. Open the Preview or ask the tutor."
+msgstr "نجح {passed} من {total} اختبارات. افتح المعاينة أو اسأل المعلّم."
+
+#: learn/templates/learn/web_exercise.html:115
+msgid "Your code stopped with an error:"
+msgstr "توقف الكود بسبب خطأ:"
+
+#: learn/templates/learn/web_exercise.html:116
+msgid "Your result could not be saved. Check your connection."
+msgstr "تعذّر حفظ نتيجتك. تحقّق من اتصالك."
+
+#: learn/templates/learn/web_exercise.html:118
+msgid ""
+"Peek at the solution? Try a little longer first; you lose the no-peek bonus."
+msgstr ""
+"هل تريد الاطّلاع على الحل؟ حاول قليلًا بعد، فستخسر مكافأة عدم الاطّلاع على "
+"الحل."
+
+#: learn/templates/learn/web_exercise.html:119
+#, python-brace-format
+msgid "{correct} of {total} right"
+msgstr "{correct} من {total} صحيحة"
+
 #: learn/templates/registration/login.html:16
 msgid "New here and have an invite code?"
 msgstr "جديد هنا ولديك رمز دعوة؟"
 
-#: learn/views.py:252
+#: learn/views.py:253
 msgid "Write the skill you want to learn."
 msgstr "اكتب المهارة التي تريد أن تتعلّمها."
 
-#: learn/views.py:254
+#: learn/views.py:255
 msgid "Pick a level."
 msgstr "اختر مستوى."
 
-#: learn/views.py:258
+#: learn/views.py:259
 msgid "You have generated the most paths allowed today. Try again tomorrow."
 msgstr "أنشأت أقصى عدد مسموح به من المسارات اليوم. حاول مرة أخرى غدًا."
 
-#: learn/views.py:497 learn/views.py:604
+#: learn/views.py:498 learn/views.py:605
 msgid ""
 "You have written the most SRS documents allowed today. Try again tomorrow."
 msgstr "كتبت أقصى عدد مسموح من الوثائق اليوم. حاول غدًا."
 
-#: learn/views.py:500
+#: learn/views.py:501
 msgid "Describe what your project does in a sentence or two."
 msgstr "صِف ما يفعله مشروعك في جملة أو جملتين."
 
-#: learn/views.py:507
+#: learn/views.py:508
 msgid "Choose your SRS file first."
 msgstr "اختر ملف وثيقتك أولًا."
 
-#: learn/views.py:588
+#: learn/views.py:589
 msgid "No project has this code. Check it with your teammate."
 msgstr "لا يوجد مشروع بهذا الرمز. تأكد منه مع زميلك."
 
-#: learn/views.py:601
+#: learn/views.py:602
 msgid "Write your answers or new details first."
 msgstr "اكتب إجاباتك أو التفاصيل الجديدة أولًا."
 

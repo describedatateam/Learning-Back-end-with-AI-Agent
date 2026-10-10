@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load i18n ui %}
+{% load i18n static ui %}
 
 {% block title %}{% translate "Review" %} · {% translate "Flashcards" %} · Describe{% endblock %}
 {% block body_class %}rail{% endblock %}
@@ -78,6 +78,7 @@
 </main>
 {% if review %}
 {{ card.expected|json_script:"card-expected" }}
+<script src="{% static 'learn/js/web-runner.js' %}"></script>
 <script>
 (() => {
   const T = {
@@ -88,6 +89,7 @@
     failed: "{{ _('Could not run the code. Please try again.')|escapejs }}",
     nothing: "{{ _('(nothing printed)')|escapejs }}",
     blank: "{{ _('Fill in the ____ first, then run the code.')|escapejs }}",
+    slow: "{{ _('Your code took longer than 5 seconds. Is there an infinite loop?')|escapejs }}",
   };
   const mode = "{{ run_mode }}";
   const reviewId = {{ review.id }};
@@ -151,28 +153,6 @@
     if (kind === 'success') { answer.open = true; verdict.classList.add('celebrate'); }
   }
 
-  function runInBrowser(code) {
-    // JavaScript runs in a sandboxed frame with no access to this page; console.log is collected.
-    return new Promise((resolve) => {
-      const frame = document.createElement('iframe');
-      frame.sandbox = 'allow-scripts';
-      frame.hidden = true;
-      const token = Math.random().toString(36).slice(2);
-      const finish = (data) => { window.removeEventListener('message', onMessage); frame.remove(); resolve(data); };
-      const onMessage = (event) => { if (event.source === frame.contentWindow && event.data && event.data.token === token) finish(event.data); };
-      window.addEventListener('message', onMessage);
-      setTimeout(() => finish({ output: '', error: 'Your code took longer than 3 seconds. Is there an infinite loop?' }), 3000);
-      const fmt = 'a.map((v) => typeof v === "string" ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })()).join(" ")';
-      frame.srcdoc = `<script>const lines = [];
-        console.log = console.info = console.warn = console.error = (...a) => lines.push(${fmt});
-        let error = null;
-        try { new Function(${JSON.stringify(code).replace(/</g, '\\u003c')})(); } catch (e) { error = e.name + ': ' + e.message; }
-        parent.postMessage({ token: ${JSON.stringify(token)}, output: lines.length ? lines.join("\\n") + "\\n" : "", error }, "*");
-      <\/script>`;
-      document.body.appendChild(frame);
-    });
-  }
-
   run.addEventListener('click', async () => {
     const code = box.value;
     if (code.includes('____')) { show('', T.blank); return; }
@@ -186,8 +166,8 @@
         out.hidden = true;
         lastOutput = '';
       } else if (mode === 'browser') {
-        const data = await runInBrowser(code);
-        show(data.output, data.error);
+        const data = await WebRunner.runJs(code);  // learn/js/web-runner.js
+        show(data.output, data.timedOut ? T.slow : data.error);
       } else {
         const response = await fetch("{% url 'learn:flashcards_run' %}", {
           method: 'POST',

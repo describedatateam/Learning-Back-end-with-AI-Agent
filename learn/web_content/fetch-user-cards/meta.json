@@ -1,0 +1,150 @@
+{
+  "title": "Fetch users and show them as cards",
+  "concept": "Fetch API",
+  "summary": "Load JSON from an API with async/await, render cards, and handle loading and errors.",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "api": {
+    "/api/users": {
+      "status": 200,
+      "body": [
+        {
+          "id": 1,
+          "name": "Lina Haddad",
+          "email": "lina@example.com"
+        },
+        {
+          "id": 2,
+          "name": "Omar Saleh",
+          "email": "omar@example.com"
+        },
+        {
+          "id": 3,
+          "name": "Sara Nasser",
+          "email": "sara@example.com"
+        }
+      ]
+    }
+  },
+  "tests": [
+    {
+      "id": "fetches",
+      "description": "Requests `GET /api/users`",
+      "description_ar": "يطلب `GET /api/users`"
+    },
+    {
+      "id": "loading",
+      "description": "Shows `Loading...` in `#status` while waiting",
+      "description_ar": "يعرض `Loading...` في `#status` أثناء الانتظار"
+    },
+    {
+      "id": "cards",
+      "description": "Adds one `<article class=\"card\">` per user",
+      "description_ar": "يضيف `<article class=\"card\">` لكل مستخدم"
+    },
+    {
+      "id": "content",
+      "description": "Each card has the name in `<h3>` and the email in `<p>`",
+      "description_ar": "في كل بطاقة الاسم داخل `<h3>` والبريد داخل `<p>`"
+    },
+    {
+      "id": "cleared",
+      "description": "Clears `#status` once the cards are shown",
+      "description_ar": "يفرّغ `#status` بعد ظهور البطاقات"
+    },
+    {
+      "id": "error",
+      "description": "Shows `Could not load users` when the API fails",
+      "description_ar": "يعرض `Could not load users` عندما يفشل الـ API"
+    }
+  ],
+  "hints": [
+    "Mark the function <code>async</code> so you can write <code>const response = await fetch('/api/users');</code>.",
+    "<code>response.ok</code> is <code>false</code> for errors like 404 or 500. Check it before reading the body, and <code>return</code> early.",
+    "<code>const users = await response.json();</code> gives you an array. Loop over it with <code>for (const user of users)</code>.",
+    "Build each card with <code>document.createElement('article')</code>, set <code>className = 'card'</code>, and use <code>textContent</code> (not <code>innerHTML</code>) for the name and email."
+  ],
+  "quiz": [
+    {
+      "question": "What does <code>await fetch(url)</code> give you?",
+      "options": [
+        "The JSON data",
+        "A Response object",
+        "A string of HTML",
+        "Nothing until the page reloads"
+      ],
+      "answer": 1,
+      "explanation": "fetch resolves to a Response. You still call <code>await response.json()</code> to read the body."
+    },
+    {
+      "question": "A server answers 500. What does fetch do?",
+      "options": [
+        "It throws an error",
+        "It resolves with <code>response.ok</code> set to false",
+        "It retries",
+        "It returns null"
+      ],
+      "answer": 1,
+      "explanation": "fetch only rejects when the network fails. HTTP errors still resolve, so check <code>response.ok</code>."
+    },
+    {
+      "question": "Why use <code>textContent</code> for data from an API?",
+      "options": [
+        "It is faster to type",
+        "It keeps the text as text, so HTML in the data can't run",
+        "It adds styling",
+        "It is required by fetch"
+      ],
+      "answer": 1,
+      "explanation": "<code>innerHTML</code> would treat the data as HTML, which opens the door to script injection (XSS)."
+    }
+  ],
+  "ar": {
+    "title": "اجلب المستخدمين واعرضهم كبطاقات",
+    "summary": "حمّل JSON من API باستخدام async/await، واعرض البطاقات، وتعامل مع التحميل والأخطاء.",
+    "hints": [
+      "اجعل الدالة <code>async</code> لتكتب <code>const response = await fetch('/api/users');</code>.",
+      "قيمة <code>response.ok</code> تكون <code>false</code> في أخطاء مثل 404 أو 500. تحقّق منها قبل قراءة المحتوى، واخرج بـ <code>return</code>.",
+      "<code>const users = await response.json();</code> يعطيك مصفوفة. مرّ عليها بـ <code>for (const user of users)</code>.",
+      "أنشئ كل بطاقة بـ <code>document.createElement('article')</code>، واكتب <code>className = 'card'</code>، واستخدم <code>textContent</code> (لا <code>innerHTML</code>) للاسم والبريد."
+    ],
+    "quiz": [
+      {
+        "question": "ماذا يعطيك <code>await fetch(url)</code>؟",
+        "options": [
+          "بيانات JSON",
+          "كائن Response",
+          "نص HTML",
+          "لا شيء حتى تُحدَّث الصفحة"
+        ],
+        "answer": 1,
+        "explanation": "fetch يعطي Response. وتحتاج بعدها إلى <code>await response.json()</code> لقراءة المحتوى."
+      },
+      {
+        "question": "ردّ الخادم بـ 500. ماذا يفعل fetch؟",
+        "options": [
+          "يرمي خطأ",
+          "ينجح لكن قيمة <code>response.ok</code> تكون false",
+          "يعيد المحاولة",
+          "يعيد null"
+        ],
+        "answer": 1,
+        "explanation": "fetch يفشل فقط عند انقطاع الشبكة. أخطاء HTTP تصل كاستجابة عادية، لذلك تحقّق من <code>response.ok</code>."
+      },
+      {
+        "question": "لماذا نستخدم <code>textContent</code> لبيانات الـ API؟",
+        "options": [
+          "أسرع في الكتابة",
+          "يبقي النص نصاً، فلا يعمل أي HTML داخل البيانات",
+          "يضيف تنسيقاً",
+          "fetch يتطلبه"
+        ],
+        "answer": 1,
+        "explanation": "<code>innerHTML</code> يعامل البيانات كـ HTML، وهذا يفتح الباب لحقن السكربتات (XSS)."
+      }
+    ]
+  }
+}

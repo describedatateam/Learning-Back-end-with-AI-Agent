@@ -79,7 +79,7 @@ tests in the exercise context are for your understanding only; the learner canno
 
 def _exercise_context(exercise):
     instructions = (exercise.path / 'instructions.md').read_text(encoding='utf-8')
-    grader = (exercise.path / 'grader_tests.py').read_text(encoding='utf-8')
+    grader = exercise.grader_source
     return (
         f'<exercise number="{exercise.number}" week="{exercise.week}" title="{exercise.title}">\n'
         f'The learner edits the file `{exercise.file}`.\n\n'
@@ -215,7 +215,7 @@ def build_learner_turn(question, *, exercise=None, code=None, result=None, progr
     return (
         '<learner_state>\n'
         f'Exercise status: {status}.\n'
-        f'Current `{exercise.file}`:\n```python\n{code}\n```\n'
+        f'Current `{exercise.file}`:\n```{exercise.code_language}\n{code}\n```\n'
         f'Latest test run: {_format_results(result)}\n'
         '</learner_state>\n\n'
         f'{question}'
