@@ -617,3 +617,11 @@ a.flash-cta { color: inherit; }
 .tutor-panel[open] summary .push { transform: rotate(180deg); }
 .tutor-panel .tutor-box { height: 420px; padding: 0; margin-block-start: var(--space-2); }
 @media (max-width: 639px) { .tutor-panel .tutor-box { height: 65vh; } }
+
+/* Paths tabs: featured vs. my generated */
+.tabs { display: flex; gap: var(--space-1, 4px); border-block-end: 1px solid var(--border); margin-block: var(--space-2) var(--space-4); overflow-x: auto; }
+.tabs a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--space-3); color: var(--muted); font-weight: 600; font-size: 14px; border-block-end: 2px solid transparent; margin-block-end: -1px; white-space: nowrap; }
+.tabs a:hover { color: var(--text); text-decoration: none; }
+.tabs a[aria-current="page"] { color: var(--accent); border-block-end-color: var(--accent); }
+.tab-count { background: var(--surface-2); color: var(--muted); border-radius: var(--radius-pill); padding: 0 8px; font-size: 12px; line-height: 20px; }
+.generate-home .card-head { flex-wrap: nowrap; align-items: flex-start; }

@@ -17,6 +17,28 @@
   <div class="notice warning">{% icon 'triangle-alert' %}<span>{% translate "The catalog is empty. Run: python manage.py load_catalog" %}</span></div>
   {% endif %}
 
+  {% if user.is_authenticated %}
+  <nav class="tabs" aria-label="{% translate 'Which paths' %}">
+    <a href="{% url 'learn:catalog' %}"{% if tab == 'featured' %} aria-current="page"{% endif %}>{% icon 'compass' %}{% translate "Featured paths" %}</a>
+    <a href="{% url 'learn:catalog' %}?tab=mine"{% if tab == 'mine' %} aria-current="page"{% endif %}>{% icon 'sparkles' %}{% translate "My generated paths" %}<span class="tab-count num">{{ generated|length }}</span></a>
+  </nav>
+  {% endif %}
+
+  {% if tab == 'mine' %}
+  {% if generated %}
+  <div class="card-grid three">
+    {% for skill in generated %}{% include "learn/_skill_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <a class="card generate-cta" href="{% url 'learn:generate' %}">
+    <span class="metric-icon xp">{% icon 'sparkles' css='icon-lg' %}</span>
+    <div><strong>{% translate "Want to learn something that isn't here?" %}</strong>
+      <p class="meta">{% translate "Pick a skill, your level and your hours a week, and AI builds a skill path with lessons, slides and quizzes." %}</p></div>
+  </a>
+  {% endif %}
+
+  {% else %}
   <h2>{% translate "Job paths" %}</h2>
   <div class="card-grid">
     {% for job in jobs %}
@@ -46,18 +68,6 @@
     {% endfor %}
   </div>
 
-  <h2>{% translate "Your generated paths" %}</h2>
-  {% if generated %}
-  <div class="card-grid three">
-    {% for skill in generated %}{% include "learn/_skill_card.html" %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <a class="card generate-cta" href="{% url 'learn:generate' %}">
-    <span class="metric-icon xp">{% icon 'sparkles' css='icon-lg' %}</span>
-    <div><strong>{% translate "Want to learn something that isn't here?" %}</strong>
-      <p class="meta">{% translate "Pick a skill, your level and your hours a week, and AI builds a skill path with lessons, slides and quizzes." %}</p></div>
-  </a>
   {% endif %}
 
   <p class="meta all-exercises"><a href="{% url 'learn:dashboard' %}">{% icon 'list-checks' %}{% translate "All back-end exercises, XP and badges" %}</a> · <a href="{% url 'learn:languages' %}">{% icon 'languages' %}{% translate "What you can practise in each language" %}</a></p>

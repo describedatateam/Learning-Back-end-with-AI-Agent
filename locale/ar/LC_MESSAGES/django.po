@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-10 08:15+0000\n"
+"POT-Creation-Date: 2026-10-10 08:23+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,19 +29,19 @@ msgstr "رمز الدعوة هذا غير صالح. اطلب رمزًا جديد
 msgid "This invite code has just been used up."
 msgstr "استُخدم رمز الدعوة هذا للتو بالكامل."
 
-#: learn/flashcards.py:256
+#: learn/flashcards.py:257
 msgid "The AI's cards didn't pass the checks. Please try again."
 msgstr "لم تجتز البطاقات التي كتبها الذكاء الاصطناعي الفحوص. حاول مرة أخرى."
 
-#: learn/flashcards.py:291
+#: learn/flashcards.py:292
 msgid "You have added a lot of new decks today. Please come back tomorrow."
 msgstr "أضفت مجموعات جديدة كثيرة اليوم. عُد غدًا من فضلك."
 
-#: learn/flashcards.py:301
+#: learn/flashcards.py:302
 msgid "No AI service is set up on this server."
 msgstr "لا توجد خدمة ذكاء اصطناعي مُعدّة على هذا الخادم."
 
-#: learn/flashcards.py:305
+#: learn/flashcards.py:306
 msgid "This chapter has nothing to make cards from yet."
 msgstr "لا يحتوي هذا الفصل بعد على ما نصنع منه بطاقات."
 
@@ -250,7 +250,7 @@ msgid "Already known"
 msgstr "معروف مسبقًا"
 
 #: learn/templates/learn/_skill_card.html:8
-#: learn/templates/learn/catalog.html:29 learn/templates/learn/home.html:39
+#: learn/templates/learn/catalog.html:51 learn/templates/learn/home.html:39
 #: learn/templates/learn/path.html:17 learn/templates/learn/path.html:57
 #: learn/templates/learn/path.html:91
 #, python-format
@@ -451,7 +451,7 @@ msgstr "مشروعي"
 
 #: learn/templates/learn/base.html:23 learn/templates/learn/base.html:80
 #: learn/templates/learn/flashcards.html:4
-#: learn/templates/learn/flashcards.html:9 learn/templates/learn/home.html:131
+#: learn/templates/learn/flashcards.html:9 learn/templates/learn/home.html:140
 #: learn/templates/learn/review.html:4 learn/templates/learn/review.html:10
 msgid "Flashcards"
 msgstr "البطاقات التعليمية"
@@ -497,7 +497,7 @@ msgstr "تسجيل الخروج"
 msgid "Sign in"
 msgstr "تسجيل الدخول"
 
-#: learn/templates/learn/base.html:73 learn/templates/learn/home.html:147
+#: learn/templates/learn/base.html:73 learn/templates/learn/home.html:156
 msgid "How this works"
 msgstr "كيف تعمل المنصة"
 
@@ -522,7 +522,7 @@ msgid "New rank"
 msgstr "الرتبة الجديدة"
 
 #: learn/templates/learn/catalog.html:13 learn/templates/learn/generate.html:4
-#: learn/templates/learn/generate.html:10
+#: learn/templates/learn/generate.html:10 learn/templates/learn/home.html:129
 #: learn/templates/learn/languages.html:24
 msgid "Generate a skill path"
 msgstr "أنشئ مسار مهارة"
@@ -531,21 +531,41 @@ msgstr "أنشئ مسار مهارة"
 msgid "The catalog is empty. Run: python manage.py load_catalog"
 msgstr "الكتالوج فارغ. شغّل: python manage.py load_catalog"
 
-#: learn/templates/learn/catalog.html:20
+#: learn/templates/learn/catalog.html:21
+msgid "Which paths"
+msgstr "أي المسارات"
+
+#: learn/templates/learn/catalog.html:22
+msgid "Featured paths"
+msgstr "المسارات المميزة"
+
+#: learn/templates/learn/catalog.html:23
+msgid "My generated paths"
+msgstr "مساراتي المُنشأة"
+
+#: learn/templates/learn/catalog.html:36
+msgid "Want to learn something that isn't here?"
+msgstr "تريد أن تتعلّم شيئًا غير موجود هنا؟"
+
+#: learn/templates/learn/catalog.html:37
+msgid "Pick a skill, your level and your hours a week, and AI builds a skill path with lessons, slides and quizzes."
+msgstr "اختر مهارة ومستواك وساعاتك في الأسبوع، وسيبني لك الذكاء الاصطناعي مسار مهارة فيه دروس وشرائح واختبارات قصيرة."
+
+#: learn/templates/learn/catalog.html:42
 msgid "Job paths"
 msgstr "المسارات الوظيفية"
 
-#: learn/templates/learn/catalog.html:25 learn/templates/learn/path.html:8
+#: learn/templates/learn/catalog.html:47 learn/templates/learn/path.html:8
 #: learn/templates/learn/path.html:13
 msgid "Job path"
 msgstr "مسار وظيفي"
 
-#: learn/templates/learn/catalog.html:25 learn/templates/learn/home.html:29
+#: learn/templates/learn/catalog.html:47 learn/templates/learn/home.html:29
 #: learn/templates/learn/path.html:13
 msgid "Your path"
 msgstr "مسارك"
 
-#: learn/templates/learn/catalog.html:31 learn/templates/learn/path.html:19
+#: learn/templates/learn/catalog.html:53 learn/templates/learn/path.html:19
 #, python-format
 msgid "%(n)s skill path"
 msgid_plural "%(n)s skill paths"
@@ -556,32 +576,20 @@ msgstr[3] "%(n)s مسارات مهارات"
 msgstr[4] "%(n)s مسار مهارة"
 msgstr[5] "%(n)s مسار مهارة"
 
-#: learn/templates/learn/catalog.html:35 learn/templates/learn/home.html:35
+#: learn/templates/learn/catalog.html:57 learn/templates/learn/home.html:35
 #: learn/templates/learn/path.html:22
 msgid "Path progress"
 msgstr "التقدّم في المسار"
 
-#: learn/templates/learn/catalog.html:43
+#: learn/templates/learn/catalog.html:65
 msgid "Skill paths"
 msgstr "مسارات المهارات"
 
-#: learn/templates/learn/catalog.html:49 learn/templates/learn/generate.html:59
-msgid "Your generated paths"
-msgstr "المسارات التي أنشأتها"
-
-#: learn/templates/learn/catalog.html:58
-msgid "Want to learn something that isn't here?"
-msgstr "تريد أن تتعلّم شيئًا غير موجود هنا؟"
-
-#: learn/templates/learn/catalog.html:59
-msgid "Pick a skill, your level and your hours a week, and AI builds a skill path with lessons, slides and quizzes."
-msgstr "اختر مهارة ومستواك وساعاتك في الأسبوع، وسيبني لك الذكاء الاصطناعي مسار مهارة فيه دروس وشرائح واختبارات قصيرة."
-
-#: learn/templates/learn/catalog.html:63
+#: learn/templates/learn/catalog.html:73
 msgid "All back-end exercises, XP and badges"
 msgstr "كل تمارين الواجهة الخلفية (back end) ونقاط XP والشارات"
 
-#: learn/templates/learn/catalog.html:63 learn/templates/learn/home.html:149
+#: learn/templates/learn/catalog.html:73 learn/templates/learn/home.html:158
 msgid "What you can practise in each language"
 msgstr "ما يمكنك التدرب عليه في كل لغة"
 
@@ -1171,7 +1179,7 @@ msgstr "إنشاء"
 msgid "For a skill that isn't in the catalog. AI writes the courses, chapters, lessons, slides and quizzes, and the app checks them before saving."
 msgstr "لمهارة غير موجودة في الكتالوج. يكتب الذكاء الاصطناعي الدورات والفصول والدروس والشرائح والاختبارات القصيرة، ويفحصها التطبيق قبل حفظها."
 
-#: learn/templates/learn/generate.html:15 learn/views.py:253
+#: learn/templates/learn/generate.html:15 learn/views.py:255
 msgid "AI generation is not set up on this server yet. Add GEMINI_API_KEY to the .env file."
 msgstr "الإنشاء بالذكاء الاصطناعي غير مُعدّ على هذا الخادم بعد. أضف GEMINI_API_KEY إلى ملف ‎.env."
 
@@ -1232,6 +1240,10 @@ msgstr "ما يمكنك التدرب عليه"
 #: learn/templates/learn/generate.html:55
 msgid "More about languages and badges"
 msgstr "المزيد عن اللغات والشارات"
+
+#: learn/templates/learn/generate.html:59
+msgid "Your generated paths"
+msgstr "المسارات التي أنشأتها"
 
 #: learn/templates/learn/generate.html:75
 #, python-brace-format
@@ -1416,7 +1428,26 @@ msgstr "ستظهر هنا محاولاتك واختباراتك القصيرة �
 msgid "All paths"
 msgstr "كل المسارات"
 
+#: learn/templates/learn/home.html:130
+msgid "Want to learn something that isn't here? AI builds a path for your level and time."
+msgstr "تريد تعلّم شيء غير موجود هنا؟ يبني الذكاء الاصطناعي مسارًا يناسب مستواك ووقتك."
+
 #: learn/templates/learn/home.html:132
+msgid "Generate a path"
+msgstr "أنشئ مسارًا"
+
+#: learn/templates/learn/home.html:133
+#, python-format
+msgid "My generated path (%(n)s)"
+msgid_plural "My generated paths (%(n)s)"
+msgstr[0] "مساراتي المُنشأة (%(n)s)"
+msgstr[1] "مساري المُنشأ (%(n)s)"
+msgstr[2] "مساراي المُنشآن (%(n)s)"
+msgstr[3] "مساراتي المُنشأة (%(n)s)"
+msgstr[4] "مساراتي المُنشأة (%(n)s)"
+msgstr[5] "مساراتي المُنشأة (%(n)s)"
+
+#: learn/templates/learn/home.html:141
 #, python-format
 msgid "%(n)s card due today"
 msgid_plural "%(n)s cards due today"
@@ -1427,15 +1458,15 @@ msgstr[3] "%(n)s بطاقات مستحقة اليوم"
 msgstr[4] "%(n)s بطاقة مستحقة اليوم"
 msgstr[5] "%(n)s بطاقة مستحقة اليوم"
 
-#: learn/templates/learn/home.html:132
+#: learn/templates/learn/home.html:141
 msgid "Nothing due. Add a deck."
 msgstr "لا شيء مستحق. أضف مجموعة."
 
-#: learn/templates/learn/home.html:139
+#: learn/templates/learn/home.html:148
 msgid "You're building something real."
 msgstr "أنت تبني شيئًا حقيقيًا."
 
-#: learn/templates/learn/home.html:140
+#: learn/templates/learn/home.html:149
 msgid "Every exercise you pass is code you wrote and tests that prove it works."
 msgstr "كل تمرين تجتازه هو كود كتبته بنفسك واختبارات تثبت أنه يعمل."
 
@@ -1863,7 +1894,7 @@ msgstr "تعذّر تشغيل الكود. حاول مرة أخرى."
 msgid "(nothing printed)"
 msgstr "(لم يُطبع شيء)"
 
-#: learn/templates/learn/review.html:90 learn/views.py:414
+#: learn/templates/learn/review.html:90 learn/views.py:416
 msgid "Fill in the ____ first, then run the code."
 msgstr "املأ ____ أولًا، ثم شغّل الكود."
 
@@ -1896,15 +1927,15 @@ msgstr "اسأل عن أي مفهوم في الواجهات الخلفية: HTTP
 msgid "New here and have an invite code?"
 msgstr "جديد هنا ولديك رمز دعوة؟"
 
-#: learn/views.py:249
+#: learn/views.py:251
 msgid "Write the skill you want to learn."
 msgstr "اكتب المهارة التي تريد أن تتعلّمها."
 
-#: learn/views.py:251
+#: learn/views.py:253
 msgid "Pick a level."
 msgstr "اختر مستوى."
 
-#: learn/views.py:255
+#: learn/views.py:257
 msgid "You have generated the most paths allowed today. Try again tomorrow."
 msgstr "أنشأت أقصى عدد مسموح به من المسارات اليوم. حاول مرة أخرى غدًا."
 

@@ -111,7 +111,8 @@ def home(request):
     path = catalog.current_job_path(request.user)
     job = catalog.job_view(path, request.user) if path else None
     player = gamification.player_state(request.user)
-    context = {'job': job, 'player': player, 'cards_due': flashcards.due_count(request.user)}
+    context = {'job': job, 'player': player, 'cards_due': flashcards.due_count(request.user),
+               'generated_count': Path.objects.filter(owner=request.user).count() if request.user.is_authenticated else 0}
     if job and request.user.is_authenticated:
         passed, total = job.exercises_passed
         chapters_done = job.done + sum(s.done for s in job.prerequisites)
@@ -147,8 +148,9 @@ def path_catalog(request):
     if request.user.is_authenticated:
         generated = [catalog.skill_view(p, states, skipped, False, marks) for p in
                      Path.objects.filter(owner=request.user).order_by('-created_at').prefetch_related('courses__chapters')]
+    tab = 'mine' if request.GET.get('tab') == 'mine' and request.user.is_authenticated else 'featured'
     return render(request, 'learn/catalog.html', {
-        'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None,
+        'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None, 'tab': tab,
         'player': gamification.player_state(request.user),
     })
 

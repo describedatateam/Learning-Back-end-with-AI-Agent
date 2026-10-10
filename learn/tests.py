@@ -1099,7 +1099,7 @@ class GeneratorTests(SignedInTestCase):
         self.assertContains(page, 'AI-generated')
         chapter = path.courses.first().chapters.first()
         self.assertContains(page, f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
-        self.assertContains(self.client.get('/learn/paths/'), 'Tailwind basics')
+        self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'Tailwind basics')
         lesson = self.client.get(f'/learn/paths/{path.slug}/chapters/{chapter.slug}/')
         self.assertContains(lesson, 'Tailwind gives you small classes')
         self.assertContains(lesson, '&lt;script&gt;')  # raw HTML from the AI shows as text
@@ -1164,7 +1164,7 @@ class GeneratorTests(SignedInTestCase):
         other = User.objects.create_user('other', password='pw')
         self.client.force_login(other)
         self.assertEqual(self.client.get(f'/learn/paths/{path.slug}/').status_code, 404)
-        self.assertNotContains(self.client.get('/learn/paths/'), 'Tailwind basics')
+        self.assertNotContains(self.client.get('/learn/paths/?tab=mine'), 'Tailwind basics')
         self.assertEqual(self.client.post(f'/learn/paths/{path.slug}/delete/').status_code, 404)
         self.client.force_login(self.user)
         self.assertRedirects(self.client.post(f'/learn/paths/{path.slug}/delete/'), '/learn/paths/generate/')
@@ -1220,8 +1220,8 @@ class Day5Tests(SignedInTestCase):
         self.assertEqual(practice(generated), SOON)
         page = self.client.get('/learn/paths/')
         self.assertContains(page, 'art-api')
-        self.assertContains(page, 'art-style')
-        self.assertContains(page, 'Hands-on soon')
+        self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'art-style')
+        self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'Hands-on soon')
         self.assertContains(page, 'Reading and quizzes')
         path_page = self.client.get(f'/learn/paths/{generated.slug}/')
         self.assertContains(path_page, 'class="journey"')
@@ -1543,3 +1543,21 @@ class FlashcardTests(SignedInTestCase):
                                         'code': 'print(5)'}, content_type='application/json')
             body = b''.join(response.streaming_content)
         self.assertIn(b'Try 2', body)
+
+
+class GeneratedTabTests(SignedInTestCase):
+    def test_generated_paths_have_their_own_tab_and_home_links_to_generate(self):
+        from .catalog import load_catalog
+        from .generator import clean_path, save_path
+        load_catalog()
+        path = save_path(self.user, clean_path(sample_generated_path())[0], {'skill': 'Tailwind'})
+        featured = self.client.get('/learn/paths/')
+        self.assertContains(featured, 'Featured paths')
+        self.assertNotContains(featured, path.title)
+        self.assertContains(featured, 'Python basics')
+        mine = self.client.get('/learn/paths/?tab=mine')
+        self.assertContains(mine, path.title)
+        self.assertNotContains(mine, 'class="card job path-card"')
+        home = self.client.get('/')
+        self.assertContains(home, 'href="/learn/paths/generate/"')
+        self.assertContains(home, 'My generated path (1)')

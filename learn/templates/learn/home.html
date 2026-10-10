@@ -124,6 +124,15 @@
           {% endfor %}
         </ul>
       </section>
+      <section class="card generate-home">
+        <div class="card-head"><span class="metric-icon xp" aria-hidden="true">{% icon 'sparkles' css='icon-lg' %}</span>
+          <div><h3>{% translate "Generate a skill path" %}</h3>
+            <p class="meta">{% translate "Want to learn something that isn't here? AI builds a path for your level and time." %}</p></div></div>
+        <div class="actions">
+          <a class="btn primary" href="{% url 'learn:generate' %}">{% icon 'sparkles' %}{% translate "Generate a path" %}</a>
+          {% if generated_count %}<a class="btn quiet" href="{% url 'learn:catalog' %}?tab=mine">{% blocktranslate trimmed count n=generated_count %}My generated path ({{ n }}){% plural %}My generated paths ({{ n }}){% endblocktranslate %}</a>{% endif %}
+        </div>
+      </section>
       {% if user.is_authenticated %}
       <a class="card flash-cta" href="{% url 'learn:flashcards' %}">
         <span class="metric-icon" aria-hidden="true">{% icon 'layers' css='icon-lg' %}</span>
