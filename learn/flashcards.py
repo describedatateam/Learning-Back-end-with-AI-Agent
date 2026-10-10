@@ -2,7 +2,10 @@
 
 Each chapter has one deck, written once by the AI (Gemini, or the tutor's Claude
 connection) from the chapter's title, goal and lesson, and shared by every learner
-who adds it. When no AI is reachable, the deck is made from the chapter's quiz.
+who adds it. Most cards are hands-on: "what does this print?" and "complete the
+code", with only a couple of key-concept cards. Python cards are run before saving,
+so their expected output is what Python really prints. When no AI is reachable, the
+deck is made from the chapter's quiz.
 
 Each learner has their own schedule per card, in Leitner boxes: a right answer
 moves the card to a later box (due again in more days), "Again" sends it back to
@@ -29,22 +32,40 @@ RATINGS = (AGAIN, GOOD, EASY)
 DAILY_WRITE_LIMIT = int(os.environ.get('LEARN_FLASHCARD_DAILY_LIMIT', 15))  # new decks written per learner per day
 REVIEW_XP = 15  # finishing the day's queue
 
+BLANK = '____'
+RUNNABLE = {'python': 'server', 'javascript': 'browser', 'html': 'preview'}  # how a card's code box runs
+MAX_CONCEPT_CARDS = 2
+
 CARDS_PROMPT = """\
-You write flashcards for Describe, a self-paced learning platform for beginner and junior \
-web developers. The learner has studied the chapter below and will review the cards over \
-the coming weeks, so each card checks one idea they should remember.
+You write practice flashcards for Describe, a self-paced learning platform for beginner and junior \
+web developers. The learner has studied the chapter below and will review the cards over the coming \
+weeks in a page with a code box they can run, so most cards make them read and write code.
 
 Reply with a single JSON object and nothing else, in exactly this shape:
-{"cards": [{"front": "a question", "code": "optional short code the question is about", "back": "the answer"}]}
+{"cards": [{"kind": "output" | "complete" | "concept", "language": "python", "front": "the question",
+            "code": "...", "solution": "...", "expected": "...", "back": "the explanation"}]}
+
+Card kinds:
+- "output": front asks what the code prints (or returns). code is 2 to 8 lines that print something. \
+expected is exactly what it prints. solution is empty.
+- "complete": front says what the finished code should do. code has exactly one ____ (four underscores) \
+where the learner types a missing part. solution is the same code with the blank filled in. expected is \
+exactly what the solution prints (empty for HTML and CSS).
+- "concept": only for a really important idea or rule the chapter depends on. code and solution are empty.
 
 Rules:
-- 6 to 10 cards that together cover the chapter's main ideas, in the order they are taught.
-- front is one clear question under 140 characters. Mix kinds: what something is, when to use it, \
-what a short piece of code does or prints, and one common mistake.
-- code is empty, or at most 6 short lines that the question refers to. No comments in it.
-- back answers in 1 or 2 short sentences, under 280 characters. Put code names in `backticks`.
-- No emojis, no HTML, no links, no Markdown other than `backticks`.
-- Write the questions and answers in {language}. Code, file names and technical names stay in English.\
+- 8 to 10 cards, in the order the chapter teaches. At most {max_concept} concept cards; the rest are \
+output and complete cards, roughly half each.
+- language is the card's code language: python, javascript, html, css or sql. Use the chapter's language.
+- Code is short, self-contained and runs on its own with no input(), files, network or extra packages. \
+For Python and JavaScript, the code must print with print() or console.log() so there is output to check. \
+In JavaScript, print arrays and objects as JSON, e.g. [2,4,6]. \
+No comments in the code.
+- Make a card test one thing the chapter teaches; mix easy and tricky cases (off-by-one, types, common mistakes).
+- front is one clear sentence under 140 characters. back explains why in 1 or 2 short sentences, \
+under 280 characters. Put code names in `backticks`.
+- No emojis, no HTML outside code, no links.
+- Write front and back in {language}. Code, output, file names and technical names stay in English.\
 """
 
 
@@ -143,7 +164,11 @@ def _text(value, limit):
     return value.strip()[:limit] if isinstance(value, str) else ''
 
 
-def clean_cards(data):
+def _code(value, lines=12):
+    return '\n'.join(_text(value, 1200).splitlines()[:lines]).strip('\n') if isinstance(value, str) else ''
+
+
+def clean_cards(data, default_language=''):
     """Return (cards, problems) from the AI's JSON."""
     if not isinstance(data, dict) or not isinstance(data.get('cards'), list):
         return [], ['The reply must be a JSON object with a "cards" list.']
@@ -152,36 +177,78 @@ def clean_cards(data):
         if not isinstance(card, dict):
             errors.append(f'card {i} must be an object.')
             continue
+        kind = card.get('kind')
         front, back = _text(card.get('front'), 300), _text(card.get('back'), 600)
+        code, solution = _code(card.get('code')), _code(card.get('solution'))
+        expected = _text(card.get('expected'), 600) if isinstance(card.get('expected'), str) else ''
+        language = (_text(card.get('language'), 20) or default_language).lower()
+        if kind not in ('output', 'complete', 'concept'):
+            errors.append(f'card {i} kind must be output, complete or concept.')
+            continue
         if not front or not back:
             errors.append(f'card {i} needs a front and a back.')
             continue
         if front.lower() in fronts:
             errors.append(f'card {i} repeats the question "{front}".')
             continue
+        if kind == 'output' and not code:
+            errors.append(f'card {i} is an output card, so it needs code.')
+            continue
+        if kind == 'complete' and (code.count(BLANK) != 1 or not solution or BLANK in solution):
+            errors.append(f'card {i} is a complete card: code needs exactly one ____ and solution the filled-in code.')
+            continue
         fronts.add(front.lower())
-        code = '\n'.join(_text(card.get('code'), 600).splitlines()[:8])
-        cards.append({'front': front, 'code': code, 'back': back})
-    if not 4 <= len(cards) <= 12:
-        errors.append(f'Write 6 to 10 cards (got {len(cards)} usable ones).')
+        if kind == 'concept':
+            solution = expected = ''
+        elif kind == 'output':
+            solution = ''
+        cards.append({'kind': kind, 'language': language, 'front': front, 'code': code, 'solution': solution,
+                      'expected': expected, 'back': back})
+    if sum(c['kind'] == 'concept' for c in cards) > MAX_CONCEPT_CARDS:
+        errors.append(f'Use at most {MAX_CONCEPT_CARDS} concept cards; turn the others into output or complete cards.')
+    if not 5 <= len(cards) <= 12:
+        errors.append(f'Write 8 to 10 cards (got {len(cards)} usable ones).')
     return cards[:12], errors
 
 
+def check_by_running(cards):
+    """Run every Python card and keep what it really prints. Returns (cards, problems)."""
+    from .exercises import run_snippet
+
+    kept, errors = [], []
+    for i, card in enumerate(cards, 1):
+        if card['language'] != 'python' or card['kind'] == 'concept':
+            kept.append(card)
+            continue
+        result = run_snippet(card['solution'] or card['code'])
+        if result.get('status') != 'ok':
+            errors.append(f'card {i} ("{card["front"][:60]}") does not run: {str(result.get("error"))[:200]}')
+            continue
+        output = result.get('output', '').rstrip()
+        if not output:
+            errors.append(f'card {i} ("{card["front"][:60]}") prints nothing, so there is no output to check.')
+            continue
+        kept.append(dict(card, expected=output[:600]))
+    return kept, errors
+
+
 def write_cards(chapter):
-    """Ask the AI for a deck. Raises DeckError."""
+    """Ask the AI for a deck, run the Python cards, and return the ones that work. Raises DeckError."""
     language = 'Arabic' if chapter_language(chapter) == 'ar' else 'English'
-    system = CARDS_PROMPT.replace('{language}', language)
+    system = CARDS_PROMPT.replace('{language}', language).replace('{max_concept}', str(MAX_CONCEPT_CARDS))
     messages = [{'role': 'user', 'content': source_text(chapter) + '\n\nWrite the flashcards.'}]
     errors = []
-    for _ in range(2):
+    for attempt in range(2):
         reply = generator.ask(system, messages)
         try:
-            cards, errors = clean_cards(generator.parse_json(reply))
+            cards, errors = clean_cards(generator.parse_json(reply), (chapter.course.language or '').lower())
         except ValueError as exc:
-            errors = [str(exc)]
-        else:
-            if not errors:
-                return cards
+            cards, errors = [], [str(exc)]
+        if not errors:
+            checked, run_errors = check_by_running(cards)
+            if len(checked) >= 5 and (not run_errors or attempt == 1):
+                return checked  # on the last try, broken cards are dropped rather than failing the deck
+            errors = run_errors or [f'Only {len(checked)} cards work; write 8 to 10.']
         messages += [
             {'role': 'assistant', 'content': reply},
             {'role': 'user', 'content': 'Your reply had these problems:\n- ' + '\n- '.join(errors[:10])
@@ -204,7 +271,7 @@ def quiz_cards(chapter):
         except (KeyError, IndexError, TypeError):
             continue
         back = answer + (f' {q["explanation"]}' if q.get('explanation') else '')
-        cards.append({'front': q['question'][:300], 'code': '', 'back': back[:600]})
+        cards.append({'kind': Flashcard.CONCEPT, 'front': q['question'][:300], 'code': '', 'back': back[:600]})
     return cards[:12]
 
 

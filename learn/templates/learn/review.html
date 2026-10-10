@@ -13,11 +13,36 @@
 
   {% if review %}
   <article class="card flashcard" dir="{{ card_dir }}">
-    <p class="meta"><bdi>{{ card.chapter.title }}</bdi></p>
+    <div class="card-head">
+      <span class="tag kind-{{ card.kind }}">{% if card.kind == 'output' %}{% icon 'play' %}{% translate "What does it print?" %}{% elif card.kind == 'complete' %}{% icon 'code' %}{% translate "Complete the code" %}{% else %}{% icon 'book-open' %}{% translate "Key concept" %}{% endif %}</span>
+      {% if card.language %}<span class="tag" dir="ltr">{{ card.language }}</span>{% endif %}
+      <span class="meta push"><bdi>{{ card.chapter.title }}</bdi></span>
+    </div>
     <p class="flash-q">{{ front }}</p>
-    {% if card.code %}<pre dir="ltr"><code>{{ card.code }}</code></pre>{% endif %}
+
+    {% if card.code and card.kind != 'concept' %}
+    <div class="sandbox" dir="ltr">
+      <label class="meta" for="code-box">{% if card.kind == 'complete' %}{% translate "Replace ____ and run your code" %}{% else %}{% translate "Predict the output, then run it to check" %}{% endif %}</label>
+      <textarea id="code-box" class="code-box" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" rows="{{ code_rows }}">{{ card.code }}</textarea>
+      <div class="sandbox-actions">
+        {% if run_mode %}<button class="btn secondary" type="button" id="run-code">{% icon 'play' %}{% if card.kind == 'complete' %}{% translate "Run and check" %}{% else %}{% translate "Run" %}{% endif %}</button>{% endif %}
+        <button class="btn quiet" type="button" id="reset-code">{% icon 'rotate-ccw' %}{% translate "Reset" %}</button>
+        {% if not run_mode %}<span class="meta">{% translate "This language doesn't run here yet. Compare with the answer." %}</span>{% endif %}
+      </div>
+      <div id="run-result" class="run-result" hidden>
+        <p class="notice" id="run-verdict" role="status" hidden></p>
+        <pre id="run-output" class="run-output"></pre>
+        {% if run_mode == 'preview' %}<iframe id="preview" class="preview" sandbox title="{% translate 'Preview' %}"></iframe>{% endif %}
+      </div>
+    </div>
+    {% elif card.code %}
+    <pre dir="ltr"><code>{{ card.code }}</code></pre>
+    {% endif %}
+
     <details class="flash-answer" id="answer">
       <summary class="btn primary">{% icon 'eye' %}{% translate "Show answer" %}</summary>
+      {% if card.solution %}<p class="meta">{% translate "Solution" %}</p><pre dir="ltr"><code>{{ card.solution }}</code></pre>{% endif %}
+      {% if card.expected %}<p class="meta">{% translate "Output" %}</p><pre dir="ltr" class="run-output expected">{{ card.expected }}</pre>{% endif %}
       <p class="flash-back">{{ back }}</p>
       <form method="post" class="rate">
         {% csrf_token %}
@@ -32,6 +57,11 @@
       </form>
     </details>
   </article>
+
+  <details class="card tutor-panel" id="tutor-panel">
+    <summary>{% icon 'bot' %}{% translate "Stuck? Ask the tutor about this card" %}{% icon 'chevron-down' css='push' %}</summary>
+    <div class="tutor-box">{% include "learn/_tutor.html" with tutor_cards=True %}</div>
+  </details>
   <p class="meta keys">{% translate "On a keyboard: Space shows the answer, then 1, 2 or 3." %}</p>
   {% else %}
   <section class="card empty-state{% if reviewed_today %} celebrate{% endif %}">
@@ -47,22 +77,131 @@
   {% endif %}
 </main>
 {% if review %}
+{{ card.expected|json_script:"card-expected" }}
 <script>
 (() => {
+  const T = {
+    running: "{{ _('Running…')|escapejs }}",
+    right: "{{ _('Correct. It prints exactly what was expected.')|escapejs }}",
+    different: "{{ _('It runs, but the output is different from the expected one. Try again or ask the tutor.')|escapejs }}",
+    error: "{{ _('Your code stopped with an error.')|escapejs }}",
+    failed: "{{ _('Could not run the code. Please try again.')|escapejs }}",
+    nothing: "{{ _('(nothing printed)')|escapejs }}",
+    blank: "{{ _('Fill in the ____ first, then run the code.')|escapejs }}",
+  };
+  const mode = "{{ run_mode }}";
+  const reviewId = {{ review.id }};
+  const expected = JSON.parse(document.getElementById('card-expected').textContent);
   const started = Date.now();
   const answer = document.getElementById('answer');
   const form = answer.querySelector('form');
+  const box = document.getElementById('code-box');
+  const original = box ? box.value : '';
+  let lastOutput = '';
+
   form.addEventListener('submit', () => {
     form.querySelector('[name=seconds]').value = Math.round((Date.now() - started) / 1000);
   });
   answer.addEventListener('toggle', () => { if (answer.open) form.querySelector('.rate-good').focus(); });
   document.addEventListener('keydown', (event) => {
     if (event.target.closest('input, textarea') || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (!answer.open && (event.key === ' ' || event.key === 'Enter')) {
+    if (!answer.open && (event.key === ' ' || event.key === 'Enter') && !event.target.closest('button, summary, a')) {
       event.preventDefault();
       answer.open = true;
     } else if (answer.open && ['1', '2', '3'].includes(event.key)) {
       form.querySelectorAll('[name=rating]')[Number(event.key) - 1].click();
+    }
+  });
+
+  // The tutor sees the card, the code box and its last output.
+  window.tutorContext = () => ({ review: reviewId, code: box ? box.value : '', output: lastOutput, revealed: answer.open });
+
+  if (!box) return;
+  // Tab types spaces instead of leaving the code box.
+  box.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab' || event.shiftKey) return;
+    event.preventDefault();
+    box.setRangeText('    ', box.selectionStart, box.selectionEnd, 'end');
+  });
+  const blank = box.value.indexOf('____');
+  if (blank !== -1) box.addEventListener('focus', () => { if (box.value === original) box.setSelectionRange(blank, blank + 4); }, { once: true });
+  document.getElementById('reset-code').addEventListener('click', () => { box.value = original; });
+
+  const result = document.getElementById('run-result');
+  const out = document.getElementById('run-output');
+  const verdict = document.getElementById('run-verdict');
+  const run = document.getElementById('run-code');
+  if (!run) return;
+
+  // JavaScript output is compared without spaces, since console.log and JSON print arrays differently.
+  const same = (a, b) => mode === 'browser' ? a.replace(/\s+/g, '') === b.replace(/\s+/g, '') : a.trimEnd() === b.trimEnd();
+
+  function show(output, error) {
+    lastOutput = (output || '') + (error ? `\n${error}` : '');
+    result.hidden = false;
+    out.textContent = lastOutput.trim() ? lastOutput : T.nothing;
+    out.classList.toggle('bad', Boolean(error));
+    let message = '', kind = '';
+    if (error) { message = T.error; kind = 'error'; }
+    else if (expected && same(output, expected)) { message = T.right; kind = 'success'; }
+    else if (expected && "{{ card.kind }}" === 'complete') { message = T.different; kind = 'warning'; }
+    verdict.hidden = !message;
+    verdict.className = `notice ${kind}`;
+    verdict.textContent = message;
+    if (kind === 'success') { answer.open = true; verdict.classList.add('celebrate'); }
+  }
+
+  function runInBrowser(code) {
+    // JavaScript runs in a sandboxed frame with no access to this page; console.log is collected.
+    return new Promise((resolve) => {
+      const frame = document.createElement('iframe');
+      frame.sandbox = 'allow-scripts';
+      frame.hidden = true;
+      const token = Math.random().toString(36).slice(2);
+      const finish = (data) => { window.removeEventListener('message', onMessage); frame.remove(); resolve(data); };
+      const onMessage = (event) => { if (event.source === frame.contentWindow && event.data && event.data.token === token) finish(event.data); };
+      window.addEventListener('message', onMessage);
+      setTimeout(() => finish({ output: '', error: 'Your code took longer than 3 seconds. Is there an infinite loop?' }), 3000);
+      const fmt = 'a.map((v) => typeof v === "string" ? v : (() => { try { return JSON.stringify(v); } catch (e) { return String(v); } })()).join(" ")';
+      frame.srcdoc = `<script>const lines = [];
+        console.log = console.info = console.warn = console.error = (...a) => lines.push(${fmt});
+        let error = null;
+        try { new Function(${JSON.stringify(code).replace(/</g, '\\u003c')})(); } catch (e) { error = e.name + ': ' + e.message; }
+        parent.postMessage({ token: ${JSON.stringify(token)}, output: lines.length ? lines.join("\\n") + "\\n" : "", error }, "*");
+      <\/script>`;
+      document.body.appendChild(frame);
+    });
+  }
+
+  run.addEventListener('click', async () => {
+    const code = box.value;
+    if (code.includes('____')) { show('', T.blank); return; }
+    run.disabled = true;
+    result.hidden = false;
+    out.textContent = T.running;
+    verdict.hidden = true;
+    try {
+      if (mode === 'preview') {
+        document.getElementById('preview').srcdoc = code;
+        out.hidden = true;
+        lastOutput = '';
+      } else if (mode === 'browser') {
+        const data = await runInBrowser(code);
+        show(data.output, data.error);
+      } else {
+        const response = await fetch("{% url 'learn:flashcards_run' %}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value },
+          body: JSON.stringify({ review: reviewId, code }),
+        });
+        if (!response.ok) throw new Error(response.status);
+        const data = await response.json();
+        show(data.output, data.error);
+      }
+    } catch (err) {
+      show('', T.failed);
+    } finally {
+      run.disabled = false;
     }
   });
 })();

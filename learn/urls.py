@@ -17,6 +17,7 @@ urlpatterns = [
     path('paths/<slug:slug>/skip/', views.skip_path, name='skip_path'),
     path('flashcards/', views.flashcards_page, name='flashcards'),
     path('flashcards/review/', views.flashcards_review, name='flashcards_review'),
+    path('flashcards/run/', views.flashcards_run, name='flashcards_run'),
     path('flashcards/add/<slug:chapter>/', views.flashcards_add, name='flashcards_add'),
     path('flashcards/remove/<slug:chapter>/', views.flashcards_remove, name='flashcards_remove'),
     path('project/', views.coming_soon, {'section': 'project'}, name='project'),

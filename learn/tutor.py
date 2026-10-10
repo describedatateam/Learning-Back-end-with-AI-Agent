@@ -32,6 +32,7 @@ MAX_HISTORY = 40          # messages kept in the prompt (older ones stay in the 
 MAX_QUESTION_CHARS = 4000
 MAX_CODE_CHARS = 20000
 GENERAL_TOPIC = 'general'
+FLASHCARD_TOPIC = 'flashcards'
 
 TUTOR_PROMPT = """\
 You are the study tutor inside Describe, a self-paced course where a beginner learns \
@@ -138,8 +139,33 @@ def _chapter_context(chapter):
     )
 
 
-def build_system(exercise, chapter=None):
-    if exercise:
+FLASHCARD_CONTEXT = (
+    '<flashcards>\nRight now the learner is reviewing practice flashcards: short "what does this print?", '
+    '"complete the code" and key-concept cards from the chapters they studied. Each question comes with the card '
+    'they are on, the code in their code box and what it printed when they last ran it. Help them reason it out: '
+    'give a hint or a smaller example first, and only reveal the card\'s answer if they ask for it or have already '
+    'seen it. Reply in the language the learner writes in; code and technical names stay in English.\n</flashcards>'
+)
+
+
+def build_card_turn(question, card, code=None, output=None, revealed=False):
+    """The content sent to the model for a question asked while reviewing a flashcard."""
+    answer = card.solution or card.expected or card.back
+    return (
+        f'<card kind="{card.kind}" language="{card.language}" chapter="{card.chapter.title}">\n'
+        f'Question: {card.front}\n'
+        + (f'Card code:\n```\n{card.code}\n```\n' if card.code else '')
+        + f'Answer (the learner has {"" if revealed else "not "}seen it yet): {answer}\nExplanation: {card.back}\n'
+        + (f'Their code box:\n```\n{(code or "")[:MAX_CODE_CHARS]}\n```\n' if code else '')
+        + (f'Last output:\n```\n{str(output)[:4000]}\n```\n' if output else '')
+        + f'</card>\n\n{question}'
+    )
+
+
+def build_system(exercise, chapter=None, flashcards=False):
+    if flashcards:
+        context = FLASHCARD_CONTEXT
+    elif exercise:
         context = _exercise_context(exercise)
     elif chapter:
         context = _chapter_context(chapter)

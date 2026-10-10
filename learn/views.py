@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 import markdown
 
 from . import catalog, flashcards, gamification, generator, languages, notebook, placement, tutor
-from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
+from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
     CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, SkippedPath,
     TutorMessage, XPEvent,
@@ -111,7 +111,8 @@ def home(request):
     path = catalog.current_job_path(request.user)
     job = catalog.job_view(path, request.user) if path else None
     player = gamification.player_state(request.user)
-    context = {'job': job, 'player': player, 'cards_due': flashcards.due_count(request.user)}
+    context = {'job': job, 'player': player, 'cards_due': flashcards.due_count(request.user),
+               'generated_count': Path.objects.filter(owner=request.user).count() if request.user.is_authenticated else 0}
     if job and request.user.is_authenticated:
         passed, total = job.exercises_passed
         chapters_done = job.done + sum(s.done for s in job.prerequisites)
@@ -147,8 +148,9 @@ def path_catalog(request):
     if request.user.is_authenticated:
         generated = [catalog.skill_view(p, states, skipped, False, marks) for p in
                      Path.objects.filter(owner=request.user).order_by('-created_at').prefetch_related('courses__chapters')]
+    tab = 'mine' if request.GET.get('tab') == 'mine' and request.user.is_authenticated else 'featured'
     return render(request, 'learn/catalog.html', {
-        'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None,
+        'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None, 'tab': tab,
         'player': gamification.player_state(request.user),
     })
 
@@ -400,6 +402,27 @@ def flashcards_remove(request, chapter):
 
 
 @login_required
+@require_POST
+def flashcards_run(request):
+    """Run the code in a Python flashcard's code box and say whether it prints what the card expects."""
+    data = json.loads(request.body or '{}')
+    review = get_object_or_404(CardReview.objects.select_related('card'), user=request.user, id=data.get('review') or 0)
+    card = review.card
+    if card.language != 'python':
+        return JsonResponse({'error': 'Only Python cards run on the server.'}, status=400)
+    code = str(data.get('code', ''))[:5000]
+    if flashcards.BLANK in code:
+        return JsonResponse({'status': 'error', 'output': '',
+                             'error': gettext('Fill in the ____ first, then run the code.')})
+    result = run_snippet(code)
+    output = result.get('output', '')
+    return JsonResponse({
+        'status': result.get('status'), 'output': output, 'error': result.get('error'),
+        'correct': bool(card.expected) and result.get('status') == 'ok' and output.rstrip() == card.expected.rstrip(),
+    })
+
+
+@login_required
 def flashcards_review(request):
     """One due card at a time: think of the answer, show it, then say how it went."""
     if request.method == 'POST':
@@ -422,6 +445,10 @@ def flashcards_review(request):
         card = review.card
         context.update(card=card, front=flashcards.card_html(card.front), back=flashcards.card_html(card.back),
                        card_dir='rtl' if flashcards.chapter_language(card.chapter) == 'ar' else 'ltr',
+                       run_mode=flashcards.RUNNABLE.get(card.language, ''),
+                       code_rows=min(max(card.code.count('\n') + 2, 3), 14),
+                       tutor_topic=tutor.FLASHCARD_TOPIC, tutor_backend=tutor.backend_label(),
+                       tutor_history=_chat_history(request.user, tutor.FLASHCARD_TOPIC), can_run=_can_run(request),
                        good_days=flashcards.days_after(review, flashcards.GOOD),
                        easy_days=flashcards.days_after(review, flashcards.EASY))
     else:
@@ -579,7 +606,7 @@ def _chat_history(user, topic):
 
 def _topic_target(request, topic):
     """What a tutor topic refers to: (exercise, chapter), both None for the general tutor."""
-    if topic == tutor.GENERAL_TOPIC:
+    if topic in (tutor.GENERAL_TOPIC, tutor.FLASHCARD_TOPIC):
         return None, None
     chapter_id = tutor.chapter_id(topic)
     if chapter_id is not None:
@@ -612,15 +639,21 @@ def tutor_ask(request, topic):
         return JsonResponse({'error': 'Ask a question first.'}, status=400)
 
     progress = ExerciseProgress.objects.filter(user=request.user, slug=topic).first() if exercise else None
-    turn = tutor.build_learner_turn(
-        question, exercise=exercise, code=data.get('code'), result=data.get('result'), progress=progress,
-    )
+    if topic == tutor.FLASHCARD_TOPIC:
+        review = CardReview.objects.filter(user=request.user, id=data.get('review') or 0).select_related(
+            'card__chapter').first()
+        turn = tutor.build_card_turn(question, review.card, data.get('code'), data.get('output'),
+                                     bool(data.get('revealed'))) if review else question
+    else:
+        turn = tutor.build_learner_turn(
+            question, exercise=exercise, code=data.get('code'), result=data.get('result'), progress=progress,
+        )
     history = list(TutorMessage.objects.filter(user=request.user, topic=topic).order_by('-created_at', '-id')[:tutor.MAX_HISTORY])[::-1]
     while history and history[0].role != 'user':  # the conversation must start with the learner
         history.pop(0)
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
-    system = tutor.build_system(exercise, chapter)
+    system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC)
     user = request.user
     if exercise:
         log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))

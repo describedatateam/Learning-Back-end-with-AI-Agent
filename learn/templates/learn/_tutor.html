@@ -42,6 +42,11 @@ tutor_history, can_run. A page can define window.tutorContext() returning
       <button type="button">{% translate "Explain REST like I'm new to it" %}</button>
       <button type="button">{% translate "What's the difference between a model and a serializer?" %}</button>
       <button type="button">{% translate "How do I read a Python traceback?" %}</button>
+    {% elif tutor_cards %}
+      <button type="button">{% translate "Give me a small hint" %}</button>
+      <button type="button">{% translate "Why is this the answer?" %}</button>
+      <button type="button">{% translate "Why does my code print something different?" %}</button>
+      <button type="button">{% translate "Show me a similar example" %}</button>
     {% elif tutor_chapter %}
       <button type="button">{% translate "Explain this lesson's main idea simply" %}</button>
       <button type="button">{% translate "Show me another example" %}</button>
@@ -59,7 +64,7 @@ tutor_history, can_run. A page can define window.tutorContext() returning
     <button class="btn primary" type="submit" id="tutor-send" {% if not can_run %}disabled title="{% translate "Open this page from localhost to use the tutor" %}"{% endif %}>{% translate "Send" %}</button>
   </form>
   <div class="tutor-foot">
-    <span>{% if tutor_topic == "general" %}{% translate "Ask about any backend concept." %}{% elif tutor_chapter %}{% translate "The tutor sees this chapter's lesson, slides and quiz." %}{% else %}{% translate "The tutor sees the lesson, your current code and your latest test results." %}{% endif %}{% if tutor_backend %} {% blocktranslate trimmed with backend=tutor_backend %}Uses <bdi>{{ backend }}</bdi>.{% endblocktranslate %}{% endif %}</span>
+    <span>{% if tutor_topic == "general" %}{% translate "Ask about any backend concept." %}{% elif tutor_cards %}{% translate "The tutor sees the card, your code and its output." %}{% elif tutor_chapter %}{% translate "The tutor sees this chapter's lesson, slides and quiz." %}{% else %}{% translate "The tutor sees the lesson, your current code and your latest test results." %}{% endif %}{% if tutor_backend %} {% blocktranslate trimmed with backend=tutor_backend %}Uses <bdi>{{ backend }}</bdi>.{% endblocktranslate %}{% endif %}</span>
     <button type="button" id="tutor-clear">{% translate "Clear chat" %}</button>
   </div>
 </div>

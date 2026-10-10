@@ -5,6 +5,7 @@ Executed in a subprocess (never imported by the web app) as:
     python runner.py <workdir> <learner_file>                  # all grader tests
     python runner.py <workdir> <learner_file> --test Class.m   # one grader test
     python runner.py <workdir> <learner_file> --scratch F      # run selected code
+    python runner.py <workdir> <learner_file> --snippet        # run a plain script (flashcards)
 
 The workdir contains the learner's file, any support files, and
 ``grader_tests.py``. For --scratch, F is a JSON file with the selected text and
@@ -352,15 +353,43 @@ def run_selection(workdir, learner_file, selection_path):
     return result
 
 
+def run_snippet(workdir, learner_file):
+    """Run a short plain-Python file (a flashcard) and return what it printed."""
+    workdir = prepare(workdir)
+    with open(learner_file, encoding='utf-8') as fh:
+        source = fh.read()
+    result = {'status': 'ok', 'output': '', 'error': None}
+    error = syntax_error(source, SNIPPET)
+    if error:
+        result['status'], result['error'] = 'error', error.replace(f'in {SNIPPET}, ', '')
+        return result
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
+        try:
+            exec(compile(source, SNIPPET, 'exec'), {'__name__': '__main__'})
+        except BaseException:  # SystemExit and KeyboardInterrupt are the learner's too
+            message, trace = short_traceback(sys.exc_info(), workdir, {SNIPPET: source})
+            result['status'] = 'error'
+            result['error'] = message + (f'\n\n{trace}' if trace else '')
+    result['output'] = captured.getvalue()
+    return result
+
+
+SNIPPET = '<your code>'
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('workdir')
     parser.add_argument('learner_file')
     parser.add_argument('--test')
     parser.add_argument('--scratch')
+    parser.add_argument('--snippet', action='store_true')
     args = parser.parse_args()
     try:
-        if args.scratch:
+        if args.snippet:
+            outcome = run_snippet(args.workdir, args.learner_file)
+        elif args.scratch:
             outcome = run_selection(args.workdir, args.learner_file, args.scratch)
         else:
             outcome = run(args.workdir, args.learner_file, args.test)

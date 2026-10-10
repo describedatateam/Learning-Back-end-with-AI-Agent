@@ -60,7 +60,7 @@
   {% endif %}
 
   <h2 id="add">{% translate "Add a deck" %}</h2>
-  <p class="meta">{% translate "Each chapter has one deck of 6 to 10 cards. The first time a chapter is added, the AI writes its cards, which takes a few seconds." %}</p>
+  <p class="meta">{% translate "Each chapter has one deck of 8 to 10 practice cards: mostly “what does it print?” and “complete the code”, which you run in a code box, plus a couple of key ideas. The first time a chapter is added, the AI writes its cards and the Python ones are run to check them, which takes a few seconds." %}</p>
   {% for path, rows in choices %}
   <details class="card deck-group"{% if forloop.first %} open{% endif %}>
     <summary><bdi>{{ path.title }}</bdi>{% if path.ai_generated %} {% include "learn/_ai_tag.html" %}{% endif %}{% icon 'chevron-down' css='push' %}</summary>

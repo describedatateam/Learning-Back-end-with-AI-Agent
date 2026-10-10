@@ -113,21 +113,32 @@ def _run_runner(exercise, code, extra_args=(), extra_files=None):
         learner_file.write_text(code, encoding='utf-8')
         for name, content in (extra_files or {}).items():
             (workdir / name).write_text(content, encoding='utf-8')
+        return _spawn(workdir, exercise.file, extra_args)
 
-        # Only what Python needs: the site's secrets (API keys, SECRET_KEY) stay out.
-        env = {k: v for k, v in os.environ.items() if k in RUNNER_ENV}
-        env.update(PYTHONIOENCODING='utf-8', PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(workdir))
-        try:
-            proc = subprocess.run(
-                [python_executable(), str(RUNNER), str(workdir), exercise.file, *extra_args],
-                capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT_SECONDS,
-                cwd=workdir, env=env,
-            )
-        except subprocess.TimeoutExpired:
-            return {
-                'status': 'load_error', 'tests': [], 'stdout': '', 'output': '',
-                'error': f'Your code took longer than {TIMEOUT_SECONDS} seconds. Is there an infinite loop?',
-            }
+
+def run_snippet(code, timeout=10):
+    """Run a short plain-Python snippet (a flashcard) in the same guarded runner. Returns {status, output, error}."""
+    with tempfile.TemporaryDirectory(prefix='learn-') as workdir:
+        workdir = Path(workdir)
+        (workdir / 'snippet.py').write_text(code, encoding='utf-8')
+        return _spawn(workdir, 'snippet.py', ['--snippet'], timeout)
+
+
+def _spawn(workdir, learner_file, extra_args, timeout=TIMEOUT_SECONDS):
+    # Only what Python needs: the site's secrets (API keys, SECRET_KEY) stay out.
+    env = {k: v for k, v in os.environ.items() if k in RUNNER_ENV}
+    env.update(PYTHONIOENCODING='utf-8', PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(workdir))
+    try:
+        proc = subprocess.run(
+            [python_executable(), str(RUNNER), str(workdir), learner_file, *extra_args],
+            capture_output=True, text=True, encoding='utf-8', timeout=timeout,
+            cwd=workdir, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            'status': 'load_error', 'tests': [], 'stdout': '', 'output': '',
+            'error': f'Your code took longer than {timeout} seconds. Is there an infinite loop?',
+        }
 
     marker_at = proc.stdout.rfind(RESULT_MARKER)
     if marker_at == -1:
