@@ -1,0 +1,102 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "My project" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <header class="page-head">
+    <h1>{% translate "My project" %}</h1>
+    <p class="muted">{% translate "Working on something of your own? Describe it or upload its SRS (Software Requirements Specification). You get the requirements, a step-by-step walkthrough to tick off, the chapters that teach each step, and a tutor that knows your project." %}</p>
+  </header>
+
+  {% if mine %}
+  <section class="proj-list" aria-label="{% translate 'Your projects' %}">
+    {% for p, prog in mine %}
+    <a class="card proj-card" href="{% url 'learn:project_detail' p.id %}">
+      {% include "learn/_ring.html" with percent=prog.percent %}
+      <div class="proj-card-body">
+        <strong dir="auto">{{ p.title }}</strong>
+        <span class="meta">{% if p.source == 'uploaded' %}{% icon 'upload' %}{% translate "From your SRS" %}{% else %}{% icon 'sparkles' %}{% translate "SRS written by AI" %}{% endif %} · {% blocktranslate trimmed with done=prog.done total=prog.total %}{{ done }} of {{ total }} tasks done{% endblocktranslate %}</span>
+      </div>
+      {% icon 'chevron-right' css='icon-flip' %}
+    </a>
+    {% endfor %}
+  </section>
+  <h2>{% translate "Start another project" %}</h2>
+  {% endif %}
+
+  {% if not ai_available %}
+  <div class="notice warning">{% icon 'triangle-alert' %}<span>{% translate "AI is not set up on this server yet. Add GEMINI_API_KEY to the .env file." %}</span></div>
+  {% endif %}
+  {% if error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ error }}</span></div>{% endif %}
+
+  <nav class="tabs" aria-label="{% translate 'How to start' %}">
+    <a href="?mode=describe"{% if mode == 'describe' %} aria-current="page"{% endif %}>{% icon 'sparkles' %}{% translate "Describe it" %}</a>
+    <a href="?mode=upload"{% if mode == 'upload' %} aria-current="page"{% endif %}>{% icon 'upload' %}{% translate "Upload my SRS" %}</a>
+  </nav>
+
+  {% if mode == 'upload' %}
+  <form class="card gen-form" method="post" enctype="multipart/form-data" data-busy>
+    {% csrf_token %}
+    <input type="hidden" name="mode" value="upload">
+    <p class="meta">{% translate "AI reads your SRS, puts it in the same shape as the ones it writes, and lists anything missing, like data models or done checks, so you can fill the gaps instead of starting over." %}</p>
+    <div class="field">
+      <label for="srs">{% translate "Your SRS file" %}</label>
+      <input id="srs" name="srs" type="file" accept=".pdf,.docx,.md,.markdown,.txt" required>
+      <p class="meta">{% translate "PDF, Word (.docx), Markdown or text, up to 2 MB." %}</p>
+    </div>
+    <div class="field">
+      <label for="title-up">{% translate "Project name" %} <span class="meta">{% translate "(optional)" %}</span></label>
+      <input id="title-up" name="title" value="{{ form.title }}" maxlength="120" dir="auto">
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit"{% if not ai_available or not left_today %} disabled{% endif %}>{% icon 'upload' %}{% translate "Read my SRS" %}</button>
+      <span class="meta busy-note" hidden>{% translate "Reading your SRS. This can take a minute, so keep this page open." %}</span>
+      <span class="meta push">{% blocktranslate trimmed count n=left_today %}{{ n }} left today{% plural %}{{ n }} left today{% endblocktranslate %}</span>
+    </div>
+  </form>
+  {% else %}
+  <form class="card gen-form" method="post" data-busy>
+    {% csrf_token %}
+    <input type="hidden" name="mode" value="describe">
+    <div class="field">
+      <label for="what">{% translate "What does it do?" %}</label>
+      <textarea id="what" name="what" rows="4" maxlength="1500" required dir="auto" placeholder="{% translate 'For example: a site where my neighbours can lend each other tools, see what is available and book it for a day.' %}">{{ form.what }}</textarea>
+    </div>
+    <div class="field">
+      <label for="who">{% translate "Who is it for?" %}</label>
+      <input id="who" name="who" value="{{ form.who }}" maxlength="300" dir="auto" placeholder="{% translate 'For example: people in my building' %}">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="tech">{% translate "Tech you want to use" %}</label>
+        <input id="tech" name="tech" value="{{ form.tech }}" maxlength="200" dir="auto" placeholder="{% translate 'For example: Django, HTML, CSS' %}">
+      </div>
+      <div class="field">
+        <label for="title">{% translate "Project name" %} <span class="meta">{% translate "(optional)" %}</span></label>
+        <input id="title" name="title" value="{{ form.title }}" maxlength="120" dir="auto">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit"{% if not ai_available or not left_today %} disabled{% endif %}>{% icon 'sparkles' %}{% translate "Write my SRS" %}</button>
+      <span class="meta busy-note" hidden>{% translate "Writing your SRS. This can take a minute, so keep this page open." %}</span>
+      <span class="meta push">{% blocktranslate trimmed count n=left_today %}{{ n }} left today{% plural %}{{ n }} left today{% endblocktranslate %}</span>
+    </div>
+  </form>
+  {% endif %}
+
+  <ol class="proj-how" aria-label="{% translate 'What you get' %}">
+    <li>{% icon 'file-text' %}<span><strong>{% translate "Requirements" %}</strong> {% translate "Goals, users, user stories, data models, API endpoints and done checks." %}</span></li>
+    <li>{% icon 'list-checks' %}<span><strong>{% translate "Walkthrough" %}</strong> {% translate "Milestones in build order, with small tasks to tick off and XP for each milestone." %}</span></li>
+    <li>{% icon 'bot' %}<span><strong>{% translate "A tutor that knows it" %}</strong> {% translate "Ask how to start a task and get hints for your own project." %}</span></li>
+  </ol>
+</main>
+<script>
+document.querySelectorAll('form[data-busy]').forEach((form) => form.addEventListener('submit', () => {
+  form.querySelector('button[type=submit]').disabled = true;
+  const note = form.querySelector('.busy-note');
+  if (note) note.hidden = false;
+}));
+</script>
+{% endblock %}

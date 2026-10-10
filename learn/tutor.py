@@ -112,6 +112,18 @@ def chapter_id(topic):
     return int(rest) if rest.isdigit() else None
 
 
+PROJECT_PREFIX = 'project-'
+
+
+def project_topic(project):
+    return f'{PROJECT_PREFIX}{project.id}'
+
+
+def project_id(topic):
+    rest = topic[len(PROJECT_PREFIX):] if topic.startswith(PROJECT_PREFIX) else ''
+    return int(rest) if rest.isdigit() else None
+
+
 def _chapter_context(chapter):
     path, content = chapter.course.path, chapter.content
     language = 'Arabic' if (path.request or {}).get('language') == 'ar' else 'English'
@@ -162,8 +174,11 @@ def build_card_turn(question, card, code=None, output=None, revealed=False):
     )
 
 
-def build_system(exercise, chapter=None, flashcards=False):
-    if flashcards:
+def build_system(exercise, chapter=None, flashcards=False, project=None):
+    if project:
+        from .projects import tutor_context
+        context = tutor_context(project)
+    elif flashcards:
         context = FLASHCARD_CONTEXT
     elif exercise:
         context = _exercise_context(exercise)

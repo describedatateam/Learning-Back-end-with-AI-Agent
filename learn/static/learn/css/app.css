@@ -625,3 +625,67 @@ a.flash-cta { color: inherit; }
 .tabs a[aria-current="page"] { color: var(--accent); border-block-end-color: var(--accent); }
 .tab-count { background: var(--surface-2); color: var(--muted); border-radius: var(--radius-pill); padding: 0 8px; font-size: 12px; line-height: 20px; }
 .generate-home .card-head { flex-wrap: nowrap; align-items: flex-start; }
+
+/* My project: SRS and milestone walkthrough (Day 7) */
+.field textarea { direction: inherit; unicode-bidi: plaintext; width: 100%; box-sizing: border-box; font: inherit; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); resize: vertical; }
+.field textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.proj-list { display: grid; gap: var(--space-3); margin-block-end: var(--space-5); }
+.proj-card { display: flex; flex-direction: row; align-items: center; gap: var(--space-3); color: var(--text); }
+.proj-card:hover { text-decoration: none; border-color: var(--accent); }
+.proj-card-body { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.proj-card .meta .icon, .proj-head .meta .icon { width: 14px; height: 14px; vertical-align: -2px; margin-inline-end: 4px; }
+.proj-how { list-style: none; padding: 0; margin: var(--space-5) 0 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.proj-how li { display: flex; gap: var(--space-2); align-items: flex-start; font-size: 14px; color: var(--muted); }
+.proj-how .icon { color: var(--accent); flex: none; margin-block-start: 2px; }
+.proj-how strong { color: var(--text); display: block; }
+.proj-head { display: flex; flex-direction: row; gap: var(--space-4); align-items: center; margin-block-end: var(--space-4); }
+.proj-head .ring { width: 64px; height: 64px; }
+.proj-head-body { display: grid; gap: var(--space-1); min-width: 0; }
+.proj-head h1 { margin: 0; }
+.proj-head p { margin: 0; }
+.proj-grid { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) {
+  .proj-grid { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
+  .proj-tutor { position: sticky; inset-block-start: var(--space-4); }
+}
+.proj-main { display: grid; gap: var(--space-5); min-width: 0; }
+.proj-main h2 { display: flex; align-items: center; gap: var(--space-2); margin-block: 0 var(--space-3); }
+.proj-gaps { background: var(--warn-soft); border-color: transparent; gap: var(--space-3); }
+.proj-gaps h2 { margin: 0; }
+.proj-gaps ul { margin: 0; padding-inline-start: 20px; display: grid; gap: var(--space-1); }
+.milestones { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.milestone { gap: var(--space-3); }
+.milestone.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.milestone-head { display: flex; gap: var(--space-3); align-items: flex-start; }
+.milestone-head h3 { margin: 0; font-size: 16px; }
+.milestone-head p { margin: 2px 0 0; }
+.milestone-num { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px; }
+.milestone.is-done .milestone-num { background: var(--ok-soft); color: var(--ok); }
+.tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+.tasks label { display: flex; gap: var(--space-2); align-items: flex-start; min-height: 40px; padding: var(--space-2); border-radius: var(--radius-sm); cursor: pointer; font-size: 14.5px; }
+.tasks label:hover { background: var(--surface-2); }
+.tasks input { width: 20px; height: 20px; flex: none; margin: 1px 0 0; accent-color: var(--ok-bar, var(--accent)); }
+.tasks input:checked + span { color: var(--muted); text-decoration: line-through; }
+.milestone-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.srs { display: grid; gap: var(--space-2); }
+.srs details { gap: var(--space-2); padding-block: var(--space-2); }
+.srs .step-title { flex-direction: row; align-items: center; gap: var(--space-2); }
+.srs ul { margin: 0; padding-inline-start: 20px; display: grid; gap: var(--space-1); font-size: 14.5px; }
+.srs .stories, .srs .endpoints { list-style: none; padding: 0; }
+.srs .stories li { display: flex; gap: var(--space-2); align-items: baseline; }
+.srs .stories .badge { flex: none; min-width: 52px; justify-content: center; }
+.srs .model { padding-block: var(--space-2); border-block-end: 1px solid var(--border); }
+.srs .model:last-child { border-block-end: 0; }
+.srs .fields { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: var(--space-1); }
+.srs .fields code { font-size: 12.5px; background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-pill); }
+.srs .endpoints li { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; padding-block: 4px; }
+.srs .method { font-size: 11.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.srs .method.m-post { background: var(--ok-soft); color: var(--ok); }
+.srs .method.m-delete { background: var(--bad-soft); color: var(--bad); }
+.srs .method.m-put, .srs .method.m-patch { background: var(--warn-soft); color: var(--warn); }
+.proj-delete { justify-self: start; }
+.proj-tutor { height: 560px; }
+@media (max-width: 600px) {
+  .proj-head { flex-direction: column; align-items: flex-start; }
+  .proj-tutor { height: 70vh; }
+}
