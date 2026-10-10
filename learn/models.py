@@ -361,6 +361,8 @@ class Project(models.Model):
     brief = models.JSONField(default=dict, blank=True)  # what the learner wrote, or the uploaded file's name
     srs = models.JSONField(default=dict)                # see learn/projects.py for the shape
     done = models.JSONField(default=list, blank=True)   # ids of ticked milestone tasks, like "m2-t1"
+    claims = models.JSONField(default=dict, blank=True)  # task id -> id of the teammate doing it
+    join_code = models.CharField(max_length=8, blank=True, db_index=True)  # teammates join with it
     language = models.CharField(max_length=5, default='en')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -370,3 +372,18 @@ class Project(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.title}'
+
+
+class ProjectMember(models.Model):
+    """A teammate on someone's project: they see the same SRS and ticks and can take tasks."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='team_projects')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['joined_at', 'id']
+        constraints = [models.UniqueConstraint(fields=['project', 'user'], name='one_membership_per_project')]
+
+    def __str__(self):
+        return f'{self.user} on {self.project}'

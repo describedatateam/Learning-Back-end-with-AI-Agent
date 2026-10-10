@@ -14,10 +14,12 @@ import io
 import json
 import os
 import re
+import secrets
 import zipfile
 from datetime import timedelta
 from xml.etree import ElementTree
 
+from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
@@ -25,7 +27,7 @@ from django.utils.translation import gettext
 
 from . import generator
 from .generator import GenerationError, parse_json
-from .models import Chapter, LearningEvent, Project
+from .models import Chapter, LearningEvent, Project, ProjectMember
 
 DAILY_LIMIT = int(os.environ.get('LEARN_PROJECT_DAILY_LIMIT', 5))  # SRS writes per learner per day
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
@@ -317,6 +319,13 @@ def carry_ticks(old_srs, done, new_srs):
     return [t['id'] for m in new_srs.get('milestones', []) for t in m['tasks'] if t['text'] in ticked]
 
 
+def carry_claims(old_srs, claims, new_srs):
+    """After an update, who is doing a task follows the task's text to its new id."""
+    old = {t['id']: t['text'] for m in old_srs.get('milestones', []) for t in m['tasks']}
+    new = {t['text']: t['id'] for m in new_srs.get('milestones', []) for t in m['tasks']}
+    return {new[old[task]]: user for task, user in claims.items() if old.get(task) in new}
+
+
 def progress(project):
     ids = task_ids(project.srs)
     done = len(set(project.done) & set(ids))
@@ -326,9 +335,61 @@ def progress(project):
 def toggle(project, task_id, checked):
     if task_id not in task_ids(project.srs):
         return False
-    done = [t for t in project.done if t != task_id] + ([task_id] if checked else [])
-    project.done = done
-    project.save(update_fields=['done', 'updated_at'])
+    with transaction.atomic():  # teammates tick at the same time: re-read the row before changing it
+        fresh = Project.objects.select_for_update().get(id=project.id)
+        project.done = [t for t in fresh.done if t != task_id] + ([task_id] if checked else [])
+        project.save(update_fields=['done', 'updated_at'])
+    return True
+
+
+# --- Teams ------------------------------------------------------------------------
+
+CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'  # no 0/O or 1/I/L to misread
+
+
+def visible_projects(user):
+    """Projects the learner owns or has joined."""
+    return Project.objects.filter(Q(user=user) | Q(members__user=user)).distinct()
+
+
+def ensure_join_code(project):
+    if not project.join_code:
+        while True:
+            code = ''.join(secrets.choice(CODE_LETTERS) for _ in range(6))
+            if not Project.objects.filter(join_code=code).exists():
+                break
+        project.join_code = code
+        project.save(update_fields=['join_code'])
+    return project.join_code
+
+
+def join(user, code):
+    """The project the code opens, with the learner added to its team; None for a wrong code."""
+    code = ''.join(code.split()).upper()
+    project = Project.objects.filter(join_code=code).first() if len(code) == 6 else None
+    if project and project.user_id != user.id:
+        ProjectMember.objects.get_or_create(project=project, user=user)
+    return project
+
+
+def team(project):
+    """The owner first, then teammates in the order they joined."""
+    return [project.user] + [m.user for m in project.members.select_related('user')]
+
+
+def claim(project, task_id, user, take):
+    """Take a task ("I'll do this") or give it back. Taking a teammate's task is allowed: plans change."""
+    if task_id not in task_ids(project.srs):
+        return False
+    with transaction.atomic():
+        fresh = Project.objects.select_for_update().get(id=project.id)
+        claims = dict(fresh.claims)
+        if take:
+            claims[task_id] = user.id
+        elif claims.get(task_id) == user.id:
+            del claims[task_id]
+        project.claims = claims
+        project.save(update_fields=['claims', 'updated_at'])
     return True
 
 
@@ -341,13 +402,14 @@ def chapter_link(chapter):
     return reverse('learn:path', args=[chapter.course.path.slug])
 
 
-def milestones(project):
-    """The milestones with their tasks ticked or not, and links to their chapters."""
+def milestones(project, people=None):
+    """The milestones with their tasks ticked or not, who is doing each, and links to their chapters."""
     slugs = {s for m in project.srs.get('milestones', []) for s in m['chapters']}
     chapters = {c.slug: c for c in Chapter.objects.filter(slug__in=slugs).select_related('course__path')}
     done, current, rows = set(project.done), None, []
     for number, m in enumerate(project.srs.get('milestones', []), 1):
-        tasks = [{**t, 'done': t['id'] in done} for t in m['tasks']]
+        tasks = [{**t, 'done': t['id'] in done, 'owner': (people or {}).get(project.claims.get(t['id']))}
+                 for t in m['tasks']]
         finished = all(t['done'] for t in tasks)
         if not finished and current is None:
             current = number
@@ -357,9 +419,10 @@ def milestones(project):
     return rows
 
 
-def tutor_context(project):
+def tutor_context(project, learner=None):
     """What the tutor knows about the learner's project."""
     srs, done = project.srs, set(project.done)
+    names = {u.id: u.get_username() for u in team(project)}
     lines = [f'<project title="{project.title}">',
              'Right now the learner is working on their own project, described by the SRS below. Help them '
              'plan and build it step by step: explain what a milestone needs, suggest how to start a task, '
@@ -380,9 +443,15 @@ def tutor_context(project):
     lines.append('Done checks: ' + '; '.join(srs.get('done_checks', [])))
     if srs.get('gaps'):
         lines.append('Open gaps: ' + '; '.join(g['note'] for g in srs['gaps']))
-    lines.append('Milestones (x = ticked by the learner):')
+    if len(names) > 1:
+        lines.append('This is a team project. Team: ' + ', '.join(names.values())
+                     + (f'. The learner asking you is {learner.get_username()}' if learner else '')
+                     + '. Help them with their own tasks and with splitting the work fairly.')
+    lines.append('Milestones (x = ticked by the team):')
     for m in srs.get('milestones', []):
         lines.append(f'{m["id"]}. {m["title"]}: {m["goal"]}')
-        lines += [f'  [{"x" if t["id"] in done else " "}] {t["text"]}' for t in m['tasks']]
+        lines += [f'  [{"x" if t["id"] in done else " "}] {t["text"]}'
+                  + (f' (taken by {names[project.claims[t["id"]]]})' if project.claims.get(t['id']) in names else '')
+                  for t in m['tasks']]
     lines.append('</project>')
     return '\n'.join(lines)

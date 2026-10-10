@@ -174,10 +174,10 @@ def build_card_turn(question, card, code=None, output=None, revealed=False):
     )
 
 
-def build_system(exercise, chapter=None, flashcards=False, project=None):
+def build_system(exercise, chapter=None, flashcards=False, project=None, learner=None):
     if project:
         from .projects import tutor_context
-        context = tutor_context(project)
+        context = tutor_context(project, learner)
     elif flashcards:
         context = FLASHCARD_CONTEXT
     elif exercise:
