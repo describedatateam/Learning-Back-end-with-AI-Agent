@@ -6,7 +6,8 @@ panel and the Supported languages page. Change a language here and all four foll
 
 `mode` says where its code will run: SERVER (the Python runner), BROWSER (the
 browser runner, learn/static/learn/js/web-runner.js) or READING (no runner: lessons, slides and
-quizzes only). `ready` is True once featured exercises exist for it today.
+quizzes only). `ready` is True once learners get auto-graded exercises in it today,
+in featured paths or in the exercises written into generated paths.
 Frameworks without a runner (Laravel, Flutter, C++, C# and so on) can still be
 generated; they just stay reading and quizzes until a sandbox is wanted.
 """
@@ -33,7 +34,7 @@ LANGUAGES = [
      'aliases': ['css', 'css3', 'tailwind', 'tailwind css', 'bootstrap', 'sass', 'scss', 'flexbox', 'grid layout']},
     {'key': 'javascript', 'name': 'JavaScript', 'mode': BROWSER, 'ready': True, 'art': 'quiz',
      'aliases': ['javascript', 'js', 'dom', 'es6', 'جافاسكربت', 'جافا سكربت']},
-    {'key': 'react', 'name': 'React', 'mode': BROWSER, 'ready': False, 'art': 'components',
+    {'key': 'react', 'name': 'React', 'mode': BROWSER, 'ready': True, 'art': 'components',
      'aliases': ['react', 'reactjs', 'react.js', 'jsx', 'رياكت']},
     {'key': 'git', 'name': 'Git and GitHub', 'mode': READING, 'ready': False, 'art': 'git',
      'aliases': ['git', 'github', 'version control']},
@@ -111,6 +112,8 @@ def practice(path, exercise_count=0):
         return HANDS_ON
     if path.kind == path.JOB:
         return SOON
+    if path.ai_generated:  # its exercises were written and checked when it was made: none passed the check
+        return READING
     langs = path_languages(path)
     return SOON if any(lang['mode'] != READING for lang in langs) else READING
 
@@ -132,3 +135,22 @@ def grouped():
     """LANGUAGES grouped by mode, for the panel and the page."""
     return [(mode, MODE_LABELS[mode], [lang for lang in LANGUAGES if lang['mode'] == mode])
             for mode in (SERVER, BROWSER, READING)]
+
+
+# --- Catalog filters -------------------------------------------------------
+
+def length_band(hours):
+    return 'short' if hours < 10 else 'medium' if hours <= 30 else 'long'
+
+
+def filter_data(skill, jobs=()):
+    """What the catalog filters match a skill path card on (see catalog.html)."""
+    path = skill.path
+    return {
+        'langs': ' '.join(lang['key'] for lang in path_languages(path)),
+        'level': path.level or '',
+        'length': length_band(path.hours),
+        'practice': practice(path, skill.exercise_count),
+        'progress': {'done': 'done', 'skipped': 'done', 'progress': 'progress'}.get(skill.status, 'new'),
+        'jobs': ' '.join(jobs),
+    }

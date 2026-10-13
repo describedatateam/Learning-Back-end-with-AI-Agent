@@ -92,8 +92,10 @@
 {% block content %}
 <main class="wide">
   <div class="crumbs">
-    <a href="{% url 'learn:dashboard' %}">{% translate "All exercises" %}</a>
-    <span class="muted">/ {% blocktranslate trimmed with week=exercise.week %}Week {{ week }}{% endblocktranslate %} / #{{ exercise.number|stringformat:"02d" }}</span>
+    {% if chapter %}<a href="{% url 'learn:path' chapter.course.path.slug %}"><bdi>{{ chapter.course.path.title }}</bdi></a>
+    <span class="muted">/ <a href="{% url 'learn:chapter' chapter.course.path.slug chapter.slug %}"><bdi>{{ chapter.title }}</bdi></a></span>
+    {% else %}<a href="{% url 'learn:dashboard' %}">{% translate "All exercises" %}</a>
+    <span class="muted">/ {% blocktranslate trimmed with week=exercise.week %}Week {{ week }}{% endblocktranslate %} / #{{ exercise.number|stringformat:"02d" }}</span>{% endif %}
     <span id="status-badge">
       {% if progress.passed %}<span class="badge done">{% translate "Passed" %}</span>
       {% elif progress %}<span class="badge wip">{% translate "In progress" %}</span>
@@ -110,7 +112,7 @@
       <div class="tabs" role="tablist">
         <button class="active" data-tab="lesson">{% translate "Lesson" %}</button>
         <button data-tab="hints">{% blocktranslate trimmed with n=exercise.hints|length %}Hints ({{ n }}){% endblocktranslate %}</button>
-        <button data-tab="quiz">{% blocktranslate trimmed with n=quiz|length %}Quiz ({{ n }}){% endblocktranslate %}</button>
+        {% if quiz %}<button data-tab="quiz">{% blocktranslate trimmed with n=quiz|length %}Quiz ({{ n }}){% endblocktranslate %}</button>{% endif %}
         <button data-tab="tutor">{% translate "Tutor" %}</button>
       </div>
       <div class="tab-body lesson" id="tab-lesson">

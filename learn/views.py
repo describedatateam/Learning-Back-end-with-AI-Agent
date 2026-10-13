@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, flashcards, gamification, generator, languages, notebook, placement, projects, tutor, web_exercises
+from . import catalog, flashcards, gamification, generated_exercises, generator, languages, notebook, placement, projects, tutor, web_exercises
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
     CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, Project,
@@ -34,10 +34,11 @@ WEEK_TITLES = {
 }
 
 
-def _exercise_or_404(slug):
+def _exercise_or_404(slug, request=None):
     exercise = get_exercise(slug)
-    if exercise is None:
-        raise Http404('No such exercise')
+    owner = generated_exercises.owner_id(exercise)
+    if exercise is None or (owner is not None and (request is None or request.user.id != owner)):
+        raise Http404('No such exercise')  # a generated exercise is only for its path's owner
     return exercise
 
 
@@ -149,15 +150,33 @@ def path_catalog(request):
         generated = [catalog.skill_view(p, states, skipped, False, marks) for p in
                      Path.objects.filter(owner=request.user).order_by('-created_at').prefetch_related('courses__chapters')]
     tab = 'mine' if request.GET.get('tab') == 'mine' and request.user.is_authenticated else 'featured'
+    in_jobs = {}
+    for job in jobs:
+        for view in job.prerequisites + job.skills:
+            in_jobs.setdefault(view.path.id, []).append(job.path.slug)
+    shown = generated if tab == 'mine' else skills
+    for skill in shown:
+        skill.filters = languages.filter_data(skill, in_jobs.get(skill.path.id, ()))
+    used = {key for skill in shown for key in skill.filters['langs'].split()}
     return render(request, 'learn/catalog.html', {
         'jobs': jobs, 'skills': skills, 'generated': generated, 'current': current if chosen else None, 'tab': tab,
         'player': gamification.player_state(request.user),
+        'filter_langs': [lang for lang in languages.LANGUAGES if lang['key'] in used],
+        'filter_levels': [level for level in generator.LEVELS if any(s.filters['level'] == level for s in shown)],
     })
+
+
+def _check_context(request, path):
+    """For a generated path's owner: the browser exercises still waiting to be checked (see _check_exercises.html)."""
+    if not path.owner_id or path.owner_id != request.user.id:
+        return {}
+    return {'check_url': reverse('learn:check_exercises', args=[path.slug]),
+            'check_pending': len(generated_exercises.pending_chapters(path))}
 
 
 def path_detail(request, slug):
     path = get_object_or_404(_visible_paths(request.user), slug=slug)
-    context = {'path': path, 'player': gamification.player_state(request.user)}
+    context = {'path': path, 'player': gamification.player_state(request.user), **_check_context(request, path)}
     if path.kind == Path.JOB:
         context['job'] = catalog.job_view(path, request.user)
         context['is_current'] = (request.user.is_authenticated
@@ -268,11 +287,27 @@ def generate_path(request):
                 context['error'] = generator.friendly_error(exc)
             else:
                 path = generator.save_path(request.user, data, request_data)
+                generated_exercises.check_new_path(path)  # Python now; HTML, CSS and JS in the browser on the path page
                 log_event(request, LearningEvent.PATH_GENERATED, path.slug, skill=form['skill'],
                           level=form['level'], hours_per_week=form['hours'])
                 return redirect('learn:path', path.slug)
     context['form'] = form
     return render(request, 'learn/generate.html', context)
+
+
+@login_required
+def check_exercises(request, slug):
+    """The owner's browser checks a generated path's pending web exercises: GET what to run, POST what happened."""
+    path = get_object_or_404(Path, slug=slug, owner=request.user)
+    if request.method == 'POST':
+        data = json.loads(request.body or '{}')
+        chapter = next((ch for ch in generated_exercises.pending_chapters(path) if ch.slug == data.get('chapter')), None)
+        if chapter is None:
+            return JsonResponse({'error': 'Nothing to check.'}, status=400)
+        status = generated_exercises.record_browser_check(chapter, data.get('solution'), data.get('starter'))
+        return JsonResponse({'status': status})
+    return JsonResponse({'exercises': [generated_exercises.browser_check_data(ch)
+                                       for ch in generated_exercises.pending_chapters(path)]})
 
 
 @login_required
@@ -311,6 +346,9 @@ def chapter_detail(request, slug, chapter):
         'path': path, 'chapter': chapter, 'lesson': lesson_html(chapter.content.get('lesson', '')),
         'slides': chapter.content.get('slides', []), 'quiz': quiz, 'progress': progress,
         'mind_map': chapter.content.get('mind_map', ''),
+        'exercise': chapter.content.get('exercise'), 'exercise_slug': generated_exercises.slug_for(chapter),
+        'exercise_state': catalog.exercise_states(request.user).get(generated_exercises.slug_for(chapter)),
+        **_check_context(request, path),
         'previous': chapters[index - 1] if index > 0 else None,
         'next': chapters[index + 1] if index + 1 < len(chapters) else None,
         'number': index + 1, 'count': len(chapters), 'pass_needed': math.ceil(QUIZ_PASS_SHARE * len(quiz)),
@@ -650,7 +688,7 @@ def _web_exercise_detail(request, exercise):
     local = exercise.localized(get_language())
     return render(request, 'learn/web_exercise.html', {
         'exercise': local,
-        'chapter': _exercise_chapter(exercise.slug),
+        'chapter': getattr(exercise, 'chapter', None) or _exercise_chapter(exercise.slug),
         'progress': progress,
         'files': files,
         'starter_files': starter,
@@ -665,11 +703,11 @@ def _web_exercise_detail(request, exercise):
 
 @login_required
 def exercise_detail(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     if exercise.kind == 'web':
         return _web_exercise_detail(request, exercise)
     exercises = load_exercises()
-    index = exercises.index(exercise)
+    index = exercises.index(exercise) if exercise in exercises else None  # generated exercises stand alone
     progress = ExerciseProgress.objects.filter(user=request.user, slug=slug).first()
     public_quiz = [{'question': q['question'], 'options': q['options']} for q in exercise.quiz]
     return render(request, 'learn/exercise.html', {
@@ -678,8 +716,9 @@ def exercise_detail(request, slug):
         'code': progress.code if progress and progress.code else exercise.starter,
         'starter': exercise.starter,
         'quiz': public_quiz,
-        'previous': exercises[index - 1] if index > 0 else None,
-        'next': exercises[index + 1] if index + 1 < len(exercises) else None,
+        'previous': exercises[index - 1] if index else None,
+        'next': exercises[index + 1] if index is not None and index + 1 < len(exercises) else None,
+        'chapter': getattr(exercise, 'chapter', None),
         'can_run': _can_run(request),
         'player': gamification.player_state(request.user),
         'rewards': gamification.exercise_rewards(exercise),
@@ -687,13 +726,13 @@ def exercise_detail(request, slug):
         'tutor_history': _chat_history(request.user, slug),
         'tutor_backend': tutor.backend_label(),
         'tests': list_tests(exercise),
-        'has_slides': _slides_path(exercise).exists(),
+        'has_slides': bool(exercise.path) and _slides_path(exercise).exists(),
     })
 
 
 @require_POST
 def run(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to run code.'}, status=403)
     data = json.loads(request.body or '{}')
@@ -736,7 +775,7 @@ def run(request, slug):
 
 @require_POST
 def run_code_selection(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to run code.'}, status=403)
     data = json.loads(request.body or '{}')
@@ -759,7 +798,7 @@ def _slides_path(exercise):
 @login_required
 def slides(request, slug):
     """The exercise's slide deck as a PDF (built by materials/export_pdfs.py)."""
-    path = _slides_path(_exercise_or_404(slug))
+    path = _slides_path(_exercise_or_404(slug, request))
     if not path.exists():
         raise Http404('No slides for this exercise yet')
     return FileResponse(path.open('rb'), content_type='application/pdf', filename=path.name)
@@ -768,7 +807,7 @@ def slides(request, slug):
 @login_required
 @require_POST
 def quiz(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     data = json.loads(request.body or '{}')
     answers = data.get('answers', [])
     results = []
@@ -792,7 +831,7 @@ def quiz(request, slug):
 @login_required
 @require_POST
 def solution(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     progress, _ = ExerciseProgress.objects.get_or_create(user=request.user, slug=slug)
     if not progress.passed and not progress.solution_viewed:
         # Peeking before passing forfeits this exercise's no-peek bonus.
@@ -826,7 +865,7 @@ def _topic_target(request, topic):
         if not chapter.content:
             raise Http404('This chapter has no lesson yet')
         return None, chapter
-    return _exercise_or_404(topic), None
+    return _exercise_or_404(topic, request), None
 
 
 @login_required
@@ -949,7 +988,7 @@ def notebook_page(request):
 
 @require_POST
 def notebook_generate(request, slug):
-    exercise = _exercise_or_404(slug)
+    exercise = _exercise_or_404(slug, request)
     if not _can_run(request):
         return JsonResponse({'error': 'Log in to use the notebook.'}, status=403)
     if not ExerciseProgress.objects.filter(user=request.user, slug=slug, passed=True).exists():

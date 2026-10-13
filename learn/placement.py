@@ -29,7 +29,7 @@ MAX_CODE_CHARS = 20000
 
 @dataclass
 class Task:
-    """A coding task. It has what the grader needs from an Exercise: `path` and `file`."""
+    """A coding task. It has what the grader needs from an Exercise: `path`, `file` and `grader_source`."""
     id: int
     prompt: str
     chapter: str
@@ -41,6 +41,10 @@ class Task:
     def starter(self):
         name = 'starter.js' if self.language == 'javascript' else 'starter.py'
         return (self.path / name).read_text(encoding='utf-8')
+
+    @property
+    def grader_source(self):
+        return (self.path / 'grader_tests.py').read_text(encoding='utf-8')
 
     @property
     def tests(self):

@@ -78,7 +78,7 @@ tests in the exercise context are for your understanding only; the learner canno
 
 
 def _exercise_context(exercise):
-    instructions = (exercise.path / 'instructions.md').read_text(encoding='utf-8')
+    instructions = exercise.instructions
     grader = exercise.grader_source
     return (
         f'<exercise number="{exercise.number}" week="{exercise.week}" title="{exercise.title}">\n'

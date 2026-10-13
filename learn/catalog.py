@@ -4,8 +4,8 @@ Progress comes from the exercises a learner has passed. A chapter is done when
 all its exercises pass; chapters without exercises yet can't be finished, so
 they show as "coming soon". A prerequisite marked "I already know this" (or a
 passed placement test) counts as done, and chapters proven in a placement test
-are skipped. AI-generated chapters have a lesson and quiz instead of exercises:
-passing the quiz finishes them.
+are skipped. AI-generated chapters have a lesson and quiz, and sometimes a checked
+exercise: passing the quiz (and the exercise, if there is one) finishes them.
 """
 import json
 from dataclasses import dataclass, field
@@ -177,8 +177,11 @@ class SkillView:
 def _chapter_status(chapter, exercises, skipped, mark=None):
     if skipped or mark == SKIPPED:
         return SKIPPED
-    if chapter.content:
-        return DONE if mark == DONE else PROGRESS if mark else TODO
+    if chapter.content:  # a generated chapter: its quiz, plus its exercise when it has a working one
+        states = [state for _, state in exercises]
+        if mark == DONE and all(state == 'passed' for state in states):
+            return DONE
+        return PROGRESS if mark or any(states) else TODO
     if not exercises:
         return SOON
     states = [state for _, state in exercises]

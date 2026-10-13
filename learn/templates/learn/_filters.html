@@ -1,0 +1,34 @@
+{% load i18n ui %}
+{# Catalog filters. Cards carry data-* values from languages.filter_data; the script in catalog.html hides what doesn't match. #}
+<details class="card filters" data-filters>
+  <summary>{% icon 'filter' %}<strong>{% translate "Filters" %}</strong><span class="tab-count num" data-filter-count hidden></span><span class="meta push" data-filter-shown></span></summary>
+  <div class="filter-grid">
+    {% if tab == 'featured' %}
+    <label>{% translate "Profession" %}
+      <select name="job"><option value="">{% translate "All professions" %}</option>{% for job in jobs %}<option value="{{ job.path.slug }}">{{ job.path.title }}</option>{% endfor %}</select></label>
+    {% endif %}
+    <label>{% translate "Language or framework" %}
+      <select name="lang"><option value="">{% translate "All languages" %}</option>{% for lang in filter_langs %}<option value="{{ lang.key }}">{{ lang.name }}</option>{% endfor %}</select></label>
+    <label>{% translate "Level" %}
+      <select name="level"><option value="">{% translate "All levels" %}</option>{% for level in filter_levels %}<option value="{{ level }}">{% include "learn/_level.html" %}</option>{% endfor %}</select></label>
+    <label>{% translate "Length" %}
+      <select name="length"><option value="">{% translate "Any length" %}</option>
+        <option value="short">{% translate "Under 10 hours" %}</option>
+        <option value="medium">{% translate "10 to 30 hours" %}</option>
+        <option value="long">{% translate "Over 30 hours" %}</option></select></label>
+    <label>{% translate "Practice" %}
+      <select name="practice"><option value="">{% translate "Hands-on or reading" %}</option>
+        <option value="hands-on">{% translate "Hands-on" %}</option>
+        <option value="soon">{% translate "Hands-on soon" %}</option>
+        <option value="reading">{% translate "Reading and quizzes" %}</option></select></label>
+    {% if user.is_authenticated %}
+    <label>{% translate "My progress" %}
+      <select name="progress"><option value="">{% translate "Any progress" %}</option>
+        <option value="new">{% translate "Not started" %}</option>
+        <option value="progress">{% translate "In progress" %}</option>
+        <option value="done">{% translate "Finished" %}</option></select></label>
+    {% endif %}
+  </div>
+  <button class="btn quiet" type="button" data-filter-clear>{% icon 'rotate-ccw' %}{% translate "Clear filters" %}</button>
+</details>
+<div class="notice info" data-filter-empty hidden>{% icon 'filter' %}<span>{% translate "No paths match these filters." %}</span></div>

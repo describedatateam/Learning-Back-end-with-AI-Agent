@@ -30,6 +30,19 @@
     <p class="meta"><a href="#tutor-section">{% icon 'bot' %} {% translate "Stuck? Ask the tutor about this chapter" %}</a></p>
   </article>
 
+  {% include "learn/_check_exercises.html" %}
+  {% if exercise.status == 'ok' %}
+  <section class="card hands-on-card">
+    <span class="metric-icon">{% icon 'square-terminal' css='icon-lg' %}</span>
+    <div>
+      <p class="meta">{% translate "Hands-on exercise" %} · {% if exercise.language == 'python' %}{% translate "checked on the server" %}{% else %}{% translate "runs in your browser" %}{% endif %}</p>
+      <h2><bdi>{{ exercise.title }}</bdi></h2>
+      <p class="meta">{% translate "Write the code, run the tests, and ask the tutor when you're stuck. Finish the exercise and the quiz to complete this chapter." %}</p>
+    </div>
+    <a class="btn {% if exercise_state == 'passed' %}secondary{% else %}primary{% endif %}" href="{% url 'learn:exercise' exercise_slug %}">{% if exercise_state == 'passed' %}{% icon 'circle-check' %}{% translate "Passed, open again" %}{% elif exercise_state %}{% translate "Continue the exercise" %}{% else %}{% translate "Start the exercise" %}{% endif %}{% icon 'arrow-right' css='icon-flip' %}</a>
+  </section>
+  {% endif %}
+
   {% if slides %}
   <h2>{% translate "Slides" %}</h2>
   <section class="card slides" data-slides dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">

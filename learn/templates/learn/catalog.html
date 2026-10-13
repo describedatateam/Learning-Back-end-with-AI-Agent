@@ -24,6 +24,8 @@
   </nav>
   {% endif %}
 
+  {% if tab == 'mine' and generated or tab == 'featured' and skills %}{% include "learn/_filters.html" %}{% endif %}
+
   {% if tab == 'mine' %}
   {% if generated %}
   <div class="card-grid three">
@@ -42,7 +44,7 @@
   <h2>{% translate "Job paths" %}</h2>
   <div class="card-grid">
     {% for job in jobs %}
-    <a class="card job path-card" href="{% url 'learn:path' job.path.slug %}">
+    <a class="card job path-card" href="{% url 'learn:path' job.path.slug %}" data-job-card="{{ job.path.slug }}">
       {% path_art job.path %}
       <div class="card-head"><span class="tag job">{% translate "Job path" %}</span><span class="tag">{% include "learn/_level.html" with level=job.path.level %}</span>{% practice_tag job.path job.exercises_passed.1 %}{% if current and current.id == job.path.id %}<span class="tag skill push">{% translate "Your path" %}</span>{% endif %}</div>
       <h3><bdi>{{ job.path.title }}</bdi></h3>
@@ -72,4 +74,41 @@
 
   <p class="meta all-exercises"><a href="{% url 'learn:dashboard' %}">{% icon 'list-checks' %}{% translate "All back-end exercises, XP and badges" %}</a> · <a href="{% url 'learn:languages' %}">{% icon 'languages' %}{% translate "What you can practise in each language" %}</a></p>
 </main>
+<script>
+(() => {
+  const box = document.querySelector('[data-filters]');
+  if (!box) return;
+  const selects = [...box.querySelectorAll('select')];
+  const cards = [...document.querySelectorAll('[data-filter-card]')];
+  const shownText = "{{ _('{shown} of {total} paths')|escapejs }}";
+  const params = new URLSearchParams(location.search);
+  selects.forEach((s) => { if (params.has(s.name) && [...s.options].some((o) => o.value === params.get(s.name))) s.value = params.get(s.name); });
+  const matches = (card, name, value) => {
+    if (name === 'lang' || name === 'job') return (card.dataset[name === 'lang' ? 'langs' : 'jobs'] || '').split(' ').includes(value);
+    return card.dataset[name] === value;
+  };
+  function apply() {
+    const active = selects.filter((s) => s.value);
+    let shown = 0;
+    cards.forEach((card) => {
+      card.hidden = !active.every((s) => matches(card, s.name, s.value));
+      if (!card.hidden) shown += 1;
+    });
+    const job = box.querySelector('select[name=job]');
+    document.querySelectorAll('[data-job-card]').forEach((card) => { card.hidden = Boolean(job && job.value && card.dataset.jobCard !== job.value); });
+    const count = box.querySelector('[data-filter-count]');
+    count.textContent = active.length;
+    count.hidden = !active.length;
+    box.querySelector('[data-filter-shown]').textContent = active.length ? shownText.replace('{shown}', shown).replace('{total}', cards.length) : '';
+    document.querySelector('[data-filter-empty]').hidden = shown > 0;
+    const url = new URL(location.href);
+    selects.forEach((s) => (s.value ? url.searchParams.set(s.name, s.value) : url.searchParams.delete(s.name)));
+    history.replaceState(null, '', url);
+  }
+  selects.forEach((s) => s.addEventListener('change', apply));
+  box.querySelector('[data-filter-clear]').addEventListener('click', () => { selects.forEach((s) => { s.value = ''; }); apply(); });
+  if (matchMedia('(min-width: 900px)').matches || selects.some((s) => s.value)) box.open = true;
+  apply();
+})();
+</script>
 {% endblock %}

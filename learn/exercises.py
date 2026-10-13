@@ -50,6 +50,10 @@ class Exercise:
         return self
 
     @property
+    def instructions(self):
+        return (self.path / 'instructions.md').read_text(encoding='utf-8')
+
+    @property
     def grader_source(self):
         return (self.path / 'grader_tests.py').read_text(encoding='utf-8')
 
@@ -80,22 +84,23 @@ def load_exercises():
 
 
 def get_exercise(slug):
-    """A Python exercise (learn/content/) or a browser one (learn/web_content/)."""
+    """A Python exercise (learn/content/), a browser one (learn/web_content/) or one in a generated chapter."""
     for exercise in load_exercises():
         if exercise.slug == slug:
             return exercise
+    from .generated_exercises import get_generated
     from .web_exercises import get_web_exercise
-    return get_web_exercise(slug)
+    return get_web_exercise(slug) or get_generated(slug)
 
 
 def list_tests(exercise):
     """The grader tests in display order: [{'id': 'Class.test_x', 'description': ...}]."""
-    return _list_tests(exercise.path / 'grader_tests.py')
+    return _list_tests(exercise.grader_source)
 
 
-@lru_cache(maxsize=None)
-def _list_tests(grader_path):
-    tree = ast.parse(grader_path.read_text(encoding='utf-8'))
+@lru_cache(maxsize=64)
+def _list_tests(grader_source):
+    tree = ast.parse(grader_source)
     tests = []
     for cls in tree.body:
         if not isinstance(cls, ast.ClassDef):
@@ -115,10 +120,10 @@ def _run_runner(exercise, code, extra_args=(), extra_files=None):
     """Copy the exercise into a temp dir, run runner.py there and return its JSON."""
     with tempfile.TemporaryDirectory(prefix='learn-') as workdir:
         workdir = Path(workdir)
-        support = exercise.path / 'support'
-        if support.exists():
+        support = exercise.path / 'support' if exercise.path else None
+        if support and support.exists():
             shutil.copytree(support, workdir, dirs_exist_ok=True)
-        shutil.copy(exercise.path / 'grader_tests.py', workdir / 'grader_tests.py')
+        (workdir / 'grader_tests.py').write_text(exercise.grader_source, encoding='utf-8')
         learner_file = workdir / exercise.file
         learner_file.parent.mkdir(parents=True, exist_ok=True)
         learner_file.write_text(code, encoding='utf-8')

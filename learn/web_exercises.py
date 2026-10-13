@@ -45,6 +45,11 @@ class WebExercise:
     number = 0
     week = 0          # PASS_XP falls back to its default for week 0
     code_language = 'html'
+    libs = ()         # extra libraries for the browser runner ('react', 'tailwind'); generated exercises set them
+
+    @property
+    def instructions(self):
+        return (self.path / 'instructions.md').read_text(encoding='utf-8')
 
     @property
     def file(self):
