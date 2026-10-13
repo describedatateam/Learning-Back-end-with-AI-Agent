@@ -18,10 +18,10 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, flashcards, gamification, generated_exercises, generator, languages, notebook, placement, projects, tutor, web_exercises
+from . import catalog, flashcards, gamification, generated_exercises, generator, lab, languages, notebook, placement, projects, tutor, web_exercises
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
-    CardReview, Chapter, ChapterProgress, ExerciseProgress, LearningEvent, NotebookEntry, Path, PathChoice, Project,
+    CardReview, Chapter, ChapterProgress, ExerciseProgress, LabProject, LearningEvent, NotebookEntry, Path, PathChoice, Project,
     SkippedPath, TutorMessage, XPEvent,
 )
 
@@ -670,6 +670,90 @@ def project_delete(request, project_id):
     return redirect('learn:project')
 
 
+# --- The Lab: free-play projects (Day 8c) ---------------------------------------
+
+def _lab_or_404(request, lab_id):
+    return get_object_or_404(LabProject, id=lab_id, user=request.user)
+
+
+@login_required
+def lab_home(request):
+    """The learner's Lab projects, and a form to start a new one."""
+    labs = LabProject.objects.filter(user=request.user)
+    error = ''
+    if request.method == 'POST':
+        kind = request.POST.get('kind', '')
+        if kind not in lab.KINDS:
+            error = gettext('Choose what kind of project to start.')
+        elif labs.count() >= lab.MAX_PROJECTS:
+            error = gettext('You have reached the limit of %(n)d Lab projects. Delete one to start another.') % {'n': lab.MAX_PROJECTS}
+        else:
+            project = LabProject.objects.create(
+                user=request.user, kind=kind,
+                title=lab.clean_title(request.POST.get('title')) or gettext('My first project'),
+                idea=str(request.POST.get('idea', '')).strip()[:2000], files=lab.starter_files(kind),
+            )
+            return redirect('learn:lab_project', project.id)
+    return render(request, 'learn/lab.html', {
+        'labs': labs, 'kinds': [dict(kind, key=key) for key, kind in lab.KINDS.items()],
+        'error': error, 'chosen': request.POST.get('kind') or 'web',
+        'player': gamification.player_state(request.user),
+    })
+
+
+@login_required
+def lab_project(request, lab_id):
+    """The Lab editor: file tabs, live preview or Python output, and the project coach."""
+    project = _lab_or_404(request, lab_id)
+    kind = lab.KINDS[project.kind]
+    topic = lab.topic(project)
+    files = lab.clean_files(project.kind, project.files)
+    return render(request, 'learn/lab_project.html', {
+        'lab': project, 'kind': kind, 'files': files,
+        'file_list': [{'name': name, 'text': text, 'mode': lab.MODES.get(FilePath(name).suffix, 'text')}
+                      for name, text in files.items()],
+        'player': gamification.player_state(request.user),
+        'tutor_topic': topic, 'tutor_lab': True, 'tutor_backend': tutor.backend_label(),
+        'tutor_history': _chat_history(request.user, topic), 'can_run': _can_run(request),
+    })
+
+
+@login_required
+@require_POST
+def lab_save(request, lab_id):
+    """Save the files (and the title, when it changed) as the learner types."""
+    project = _lab_or_404(request, lab_id)
+    data = json.loads(request.body or '{}')
+    if 'files' in data:
+        project.files = lab.clean_files(project.kind, data['files'])
+    if lab.clean_title(data.get('title')):
+        project.title = lab.clean_title(data['title'])
+    project.save()
+    return JsonResponse({'saved': True, 'title': project.title})
+
+
+@login_required
+@require_POST
+def lab_run(request, lab_id):
+    """Run a Python Lab project's main.py in the guarded runner."""
+    project = _lab_or_404(request, lab_id)
+    if lab.KINDS[project.kind]['browser']:
+        return JsonResponse({'error': 'This project runs in the browser.'}, status=400)
+    data = json.loads(request.body or '{}')
+    code = str(data.get('code', ''))[:lab.MAX_FILE_CHARS]
+    result = run_snippet(code)
+    return JsonResponse({'status': result.get('status'), 'output': result.get('output', ''), 'error': result.get('error')})
+
+
+@login_required
+@require_POST
+def lab_delete(request, lab_id):
+    project = _lab_or_404(request, lab_id)
+    TutorMessage.objects.filter(user=request.user, topic=lab.topic(project)).delete()
+    project.delete()
+    return redirect('learn:lab')
+
+
 def _exercise_chapter(slug):
     """The featured chapter that lists this exercise, for the breadcrumb."""
     chapters = Chapter.objects.select_related('course__path').filter(course__path__owner__isnull=True)
@@ -858,6 +942,9 @@ def _topic_target(request, topic):
     if tutor.project_id(topic) is not None:
         _project_or_404(request, tutor.project_id(topic))
         return None, None
+    if lab.lab_id(topic) is not None:
+        _lab_or_404(request, lab.lab_id(topic))
+        return None, None
     chapter_id = tutor.chapter_id(topic)
     if chapter_id is not None:
         chapter = get_object_or_404(Chapter.objects.select_related('course__path'), id=chapter_id,
@@ -894,6 +981,8 @@ def tutor_ask(request, topic):
             'card__chapter').first()
         turn = tutor.build_card_turn(question, review.card, data.get('code'), data.get('output'),
                                      bool(data.get('revealed'))) if review else question
+    elif lab.lab_id(topic) is not None:
+        turn = lab.build_turn(question, data.get('files'), data.get('output'), tutor.MAX_CODE_CHARS)
     else:
         turn = tutor.build_learner_turn(
             question, exercise=exercise, code=data.get('code'), result=data.get('result'), progress=progress,
@@ -904,8 +993,9 @@ def tutor_ask(request, topic):
     messages = [{'role': m.role, 'content': m.content, 'display': m.display} for m in history]
     messages.append({'role': 'user', 'content': turn})
     project = _project_or_404(request, tutor.project_id(topic)) if tutor.project_id(topic) is not None else None
+    lab_project = _lab_or_404(request, lab.lab_id(topic)) if lab.lab_id(topic) is not None else None
     system = tutor.build_system(exercise, chapter, flashcards=topic == tutor.FLASHCARD_TOPIC, project=project,
-                                learner=request.user)
+                                learner=request.user, lab_project=lab_project)
     user = request.user
     if exercise:
         log_event(request, LearningEvent.HINT, topic, _seconds_spent(data))

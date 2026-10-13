@@ -1,0 +1,226 @@
+{% extends "learn/base.html" %}
+{% load i18n static ui %}
+
+{% block body_class %}rail{% endblock %}
+{% block title %}{{ lab.title }} · {% translate "Lab" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="wide lab" data-view="code">
+  <header class="lab-head">
+    <a class="icon-btn" href="{% url 'learn:lab' %}" title="{% translate 'All Lab projects' %}">{% icon 'chevron-left' css='icon-flip' label=_('All Lab projects') %}</a>
+    <input id="lab-title" class="lab-title" value="{{ lab.title }}" maxlength="80" dir="auto" aria-label="{% translate 'Project name' %}">
+    <span class="meta lab-saved" id="saved" role="status">{% icon 'cloud-check' %}<span>{% translate "Saved" %}</span></span>
+    <button class="btn quiet" type="button" id="download" title="{% translate 'Download the files as a .zip' %}">{% icon 'download' %}<span class="lab-hide-sm">{% translate "Download .zip" %}</span></button>
+    <form method="post" action="{% url 'learn:lab_delete' lab.id %}" id="delete-form">
+      {% csrf_token %}
+      <button class="btn quiet" type="submit" title="{% translate 'Delete this project' %}">{% icon 'trash-2' label=_('Delete this project') %}</button>
+    </form>
+  </header>
+
+  <nav class="lab-switch" role="tablist" aria-label="{% translate 'Lab views' %}">
+    <button type="button" role="tab" data-view="code" class="active" aria-selected="true">{% icon 'code' %}{% translate "Code" %}</button>
+    <button type="button" role="tab" data-view="out">{% if kind.browser %}{% icon 'eye' %}{% translate "Preview" %}{% else %}{% icon 'terminal' %}{% translate "Output" %}{% endif %}</button>
+    <button type="button" role="tab" data-view="tutor">{% icon 'bot' %}{% translate "Tutor" %}</button>
+  </nav>
+
+  <div class="lab-layout">
+    <section class="card ide lab-code">
+      <div class="ide-head">
+        <div class="file-tabs" dir="ltr" role="tablist" aria-label="{% translate 'Files' %}">
+          {% for name in files %}<button type="button" role="tab" data-file="{{ name }}"{% if forloop.first %} class="active" aria-selected="true"{% endif %}>{{ name }}</button>{% endfor %}
+        </div>
+        <button class="btn primary" type="button" id="run">{% icon 'play' %}{% translate "Run" %}</button>
+      </div>
+      <div class="ide-editor" dir="ltr">
+        {% for f in file_list %}
+        <textarea class="code-box ide-code" data-file="{{ f.name }}" data-mode="{{ f.mode }}" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="{{ f.name }}"{% if not forloop.first %} hidden{% endif %}>{{ f.text }}</textarea>
+        {% endfor %}
+      </div>
+      {% if kind.browser %}{% include "learn/_keybar.html" %}{% else %}{% include "learn/_keybar.html" with tab="    " %}{% endif %}
+    </section>
+
+    <section class="card lab-side">
+      <div class="web-tabs out-tabs" role="tablist">
+        {% if kind.browser %}
+        <button type="button" role="tab" class="active" data-out="preview">{% icon 'eye' %}{% translate "Preview" %}</button>
+        <button type="button" role="tab" data-out="console">{% icon 'code' %}{% translate "Console" %} <span class="meta num" id="log-count"></span></button>
+        {% else %}
+        <button type="button" role="tab" class="active" data-out="console">{% icon 'terminal' %}{% translate "Output" %}</button>
+        {% endif %}
+        <button type="button" role="tab" data-out="tutor" class="lab-tutor-tab">{% icon 'bot' %}{% translate "Tutor" %}</button>
+      </div>
+      {% if kind.browser %}<div class="out-pane" id="out-preview"><iframe id="preview" class="preview web-preview lab-preview" title="{% translate 'Preview' %}"></iframe></div>{% endif %}
+      <div class="out-pane" id="out-console"{% if kind.browser %} hidden{% endif %}>
+        <pre class="run-output web-console lab-console" id="console" dir="ltr"><span class="muted">{% if kind.browser %}{% translate "console.log output from the preview shows here." %}{% else %}{% translate "Press Run to see what your program prints." %}{% endif %}</span></pre>
+      </div>
+      <div class="out-pane lab-tutor" id="out-tutor" hidden>
+        {% include "learn/_tutor.html" %}
+      </div>
+    </section>
+  </div>
+</main>
+
+{{ kind.libs|json_script:"lab-libs" }}
+{% endblock %}
+
+{% block script %}
+{% if kind.browser %}
+{% with cm="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16" %}
+<script src="{{ cm }}/mode/xml/xml.min.js"></script>
+<script src="{{ cm }}/mode/javascript/javascript.min.js"></script>
+<script src="{{ cm }}/mode/css/css.min.js"></script>
+<script src="{{ cm }}/mode/htmlmixed/htmlmixed.min.js"></script>
+{% endwith %}
+<script src="{% static 'learn/js/web-runner.js' %}"></script>
+{% endif %}
+<script src="{% static 'learn/js/editor-tools.js' %}"></script>
+<script>
+(() => {
+  const T = {
+    saving: "{{ _('Saving…')|escapejs }}",
+    saved: "{{ _('Saved')|escapejs }}",
+    offline: "{{ _('Not saved yet. Your work is kept on this device until the connection is back.')|escapejs }}",
+    remove: "{{ _('Delete this project and its tutor chat? This cannot be undone.')|escapejs }}",
+    running: "{{ _('Running…')|escapejs }}",
+    nothing: "{{ _('(nothing printed)')|escapejs }}",
+    unreachable: "{{ _('Could not reach the server. Check your connection.')|escapejs }}",
+  };
+  const browser = {{ kind.browser|yesno:"true,false" }};
+  const urls = { save: "{% url 'learn:lab_save' lab.id %}", run: "{% url 'learn:lab_run' lab.id %}" };
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const post = (url, body) => fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf }, body: JSON.stringify(body),
+  }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => [...document.querySelectorAll(sel)];
+  const libs = JSON.parse($('#lab-libs').textContent);
+  const backupKey = 'learn-lab:{{ lab.id }}';
+  const main = $('main.lab');
+
+  // Tabs: the phone switch (Code / Preview / Tutor) and the output side.
+  const tabs = (buttons, attr, show) => buttons.forEach((b) => b.addEventListener('click', () => {
+    buttons.forEach((x) => { x.classList.toggle('active', x === b); x.setAttribute('aria-selected', x === b); });
+    show(b.dataset[attr]);
+  }));
+  const outButtons = $$('.out-tabs button');
+  const showOut = (name) => outButtons.find((b) => b.dataset.out === name)?.click();
+  tabs(outButtons, 'out', (name) => $$('.out-pane').forEach((p) => { p.hidden = p.id !== `out-${name}`; }));
+  tabs($$('.lab-switch button'), 'view', (view) => {
+    main.dataset.view = view;
+    if (view === 'tutor') showOut('tutor');
+    else if (view === 'out') showOut(browser ? 'preview' : 'console');
+    else Object.values(editors).forEach((ed) => ed.refresh());
+  });
+  const showView = (view) => $(`.lab-switch [data-view="${view}"]`).click();
+
+  // Editors: CodeMirror when it loaded, the plain text box otherwise.
+  const editors = {};
+  let active = null;
+  $$('.ide-code').forEach((box) => {
+    const name = box.dataset.file, mode = box.dataset.mode;
+    if (mode === 'python-plus' && window.createPythonEditor) {
+      const ed = window.createPythonEditor(box, { onRun: run, onChange: changed });
+      editors[name] = { get: ed.getValue, set: ed.setValue, cm: ed.cm, refresh: ed.refresh, show: () => {} };
+    } else if (window.CodeMirror && CodeMirror.modes[mode]) {
+      const cm = CodeMirror.fromTextArea(box, { mode, theme: 'vscode', lineNumbers: true, tabSize: 2, indentUnit: 2,
+        autoCloseBrackets: true, matchBrackets: true, styleActiveLine: true, inputStyle: 'contenteditable',
+        extraKeys: { 'Ctrl-Enter': () => run(), 'Cmd-Enter': () => run() } });
+      cm.getWrapperElement().dataset.file = name;
+      if (box.hidden) cm.getWrapperElement().hidden = true;
+      cm.on('change', changed);
+      editors[name] = { get: () => cm.getValue(), set: (v) => cm.setValue(v), cm, refresh: () => cm.refresh(),
+        show: (on) => { cm.getWrapperElement().hidden = !on; if (on) cm.refresh(); } };
+    } else {
+      box.addEventListener('input', changed);
+      editors[name] = { get: () => box.value, set: (v) => { box.value = v; }, box, refresh: () => {}, show: (on) => { box.hidden = !on; } };
+    }
+  });
+  active = Object.keys(editors)[0];
+  const files = () => Object.fromEntries(Object.entries(editors).map(([name, ed]) => [name, ed.get()]));
+  tabs($$('.file-tabs button'), 'file', (name) => { active = name; Object.entries(editors).forEach(([n, ed]) => ed.show(n === name)); });
+  EditorTools.keyBar($('.key-bar'), () => editors[active].cm || editors[active].box);
+
+  // Output: live preview and console for web projects, server output for Python.
+  const consoleBox = $('#console'), logCount = $('#log-count');
+  let logs = 0, lastOutput = '';
+  const onLog = ({ level, line }) => {
+    if (!logs) consoleBox.textContent = '';
+    logs += 1;
+    if (logCount) logCount.textContent = logs;
+    lastOutput = (lastOutput + '\n' + line).slice(-4000);
+    const row = document.createElement('div');
+    row.className = level === 'error' ? 'bad' : '';
+    row.textContent = line;
+    consoleBox.appendChild(row);
+  };
+  const refresh = () => {
+    if (!browser) return;
+    logs = 0; lastOutput = '';
+    logCount.textContent = '';
+    consoleBox.textContent = '';
+    WebRunner.preview($('#preview'), { files: files(), libs }, onLog);
+  };
+  async function run() {
+    if (window.matchMedia('(max-width: 960px)').matches) showView('out');
+    else showOut(browser ? 'preview' : 'console');
+    if (browser) { refresh(); return; }
+    const button = $('#run');
+    button.disabled = true;
+    consoleBox.textContent = T.running;
+    try {
+      const data = await post(urls.run, { code: files()['main.py'] });
+      lastOutput = (data.output || '') + (data.error ? `\n${data.error}` : '');
+      consoleBox.textContent = '';
+      const out = document.createElement('div');
+      out.textContent = data.output || (data.error ? '' : T.nothing);
+      consoleBox.appendChild(out);
+      if (data.error) {
+        const err = document.createElement('div');
+        err.className = 'bad';
+        err.textContent = data.error;
+        consoleBox.appendChild(err);
+      }
+    } catch (e) { consoleBox.textContent = T.unreachable; } finally { button.disabled = false; }
+  }
+  $('#run').addEventListener('click', run);
+  window.tutorContext = () => ({ files: files(), output: lastOutput });
+
+  // Saving: a moment after typing stops, with a copy on this device in case the connection drops.
+  const saved = $('#saved');
+  const status = (text, icon) => { saved.querySelector('span').textContent = text; saved.classList.toggle('warn', icon === 'warn'); };
+  let saveTimer = null, previewTimer = null;
+  async function save(extra = {}) {
+    saveTimer = null;
+    status(T.saving);
+    try {
+      await post(urls.save, { files: files(), ...extra });
+      status(T.saved);
+      try { localStorage.removeItem(backupKey); } catch (e) {}
+    } catch (e) { status(T.offline, 'warn'); }
+  }
+  function changed() {
+    status(T.saving);
+    try { localStorage.setItem(backupKey, JSON.stringify(files())); } catch (e) {}
+    clearTimeout(saveTimer); clearTimeout(previewTimer);
+    saveTimer = setTimeout(save, 1200);
+    previewTimer = setTimeout(refresh, 600);
+  }
+  try {  // a backup newer than the last save (the connection dropped): put it back and save it
+    const backup = JSON.parse(localStorage.getItem(backupKey) || 'null');
+    if (backup) { Object.entries(backup).forEach(([n, v]) => editors[n] && editors[n].set(v)); save(); }
+  } catch (e) {}
+  $('#lab-title').addEventListener('change', (e) => { if (e.target.value.trim()) save({ title: e.target.value }); });
+  document.addEventListener('visibilitychange', () => {  // leaving the page or switching apps: save now
+    if (!document.hidden || !saveTimer) return;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    fetch(urls.save, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ files: files() }) }).catch(() => {});
+  });
+
+  $('#download').addEventListener('click', () => EditorTools.downloadZip($('#lab-title').value, files()));
+  $('#delete-form').addEventListener('submit', (e) => { if (!confirm(T.remove)) e.preventDefault(); });
+  refresh();
+})();
+</script>
+{% endblock %}

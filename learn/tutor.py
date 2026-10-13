@@ -174,8 +174,11 @@ def build_card_turn(question, card, code=None, output=None, revealed=False):
     )
 
 
-def build_system(exercise, chapter=None, flashcards=False, project=None, learner=None):
-    if project:
+def build_system(exercise, chapter=None, flashcards=False, project=None, learner=None, lab_project=None):
+    if lab_project:
+        from .lab import tutor_context
+        context = tutor_context(lab_project)
+    elif project:
         from .projects import tutor_context
         context = tutor_context(project, learner)
     elif flashcards:

@@ -1,0 +1,55 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Lab" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <header class="page-head">
+    <h1>{% translate "Lab" %}</h1>
+    <p class="muted">{% translate "Build your own idea, no tests and no grades. Write code, see it run, and ask the tutor what to try next. Your projects save to your account, and you can download them as a .zip any time." %}</p>
+  </header>
+
+  {% if labs %}
+  <section class="proj-list" aria-label="{% translate 'Your Lab projects' %}">
+    {% for p in labs %}
+    <a class="card proj-card" href="{% url 'learn:lab_project' p.id %}">
+      <span class="metric-icon lab-kind-{{ p.kind }}">{% icon 'flask-conical' %}</span>
+      <div class="proj-card-body">
+        <strong dir="auto">{{ p.title }}</strong>
+        <span class="meta">{% for k in kinds %}{% if k.key == p.kind %}{{ k.label }}{% endif %}{% endfor %} · {% blocktranslate trimmed with when=p.updated_at|timesince %}edited {{ when }} ago{% endblocktranslate %}</span>
+      </div>
+      {% icon 'chevron-right' css='icon-flip' %}
+    </a>
+    {% endfor %}
+  </section>
+  <h2>{% translate "Start another project" %}</h2>
+  {% endif %}
+
+  {% if error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ error }}</span></div>{% endif %}
+  <form class="card gen-form" method="post">
+    {% csrf_token %}
+    <fieldset class="lab-kinds">
+      <legend>{% translate "What will you build with?" %}</legend>
+      {% for k in kinds %}
+      <label class="lab-kind">
+        <input type="radio" name="kind" value="{{ k.key }}"{% if k.key == chosen %} checked{% endif %}>
+        <span class="metric-icon">{% icon k.icon %}</span>
+        <span><strong>{{ k.label }}</strong><span class="meta">{{ k.blurb }}</span></span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <div class="field">
+      <label for="title">{% translate "Project name" %}</label>
+      <input id="title" name="title" maxlength="80" dir="auto" placeholder="{% translate 'For example: My recipe cards' %}">
+    </div>
+    <div class="field">
+      <label for="idea">{% translate "Your idea" %} <span class="meta">{% translate "(optional, helps the tutor coach you)" %}</span></label>
+      <textarea id="idea" name="idea" rows="3" maxlength="2000" dir="auto" placeholder="{% translate 'For example: a page that shows my favourite recipes as cards, with a button to show the steps.' %}"></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{% icon 'plus' %}{% translate "Start project" %}</button>
+    </div>
+  </form>
+</main>
+{% endblock %}

@@ -1,5 +1,5 @@
 {% extends "learn/base.html" %}
-{% load i18n ui %}
+{% load i18n static ui %}
 
 {% block body_class %}rail{% endblock %}
 {% block title %}{{ exercise.title }} · Describe{% endblock %}
@@ -162,6 +162,7 @@
       <div class="editor-head">
         <span class="file" dir="ltr">{{ exercise.file }}</span>
         <span class="kbd" title="{% translate "Ctrl+/ toggles comments · Ctrl+Space shows suggestions" %}">{% blocktranslate trimmed %}<b>Shift+Enter</b> run selection · <b>Ctrl+Enter</b> run tests{% endblocktranslate %}</span>
+        <button class="btn" id="download" title="{% translate 'Download the files as a .zip' %}">{% icon 'download' label=_('Download .zip') %}</button>
         <button class="btn" id="reset">{% translate "Reset" %}</button>
         <button class="btn" id="run-selection" {% if not can_run %}disabled title="{% translate "Open this page from localhost to run code" %}"{% else %}title="{% translate "Run the highlighted code (or the current line)" %}"{% endif %}>▶ {% translate "Run selection" %}</button>
         <button class="btn primary" id="run" {% if not can_run %}disabled title="{% translate "Open this page from localhost to run code" %}"{% endif %}>▶ {% translate "Run tests" %}</button>
@@ -169,6 +170,7 @@
       <div class="editor" id="editor-box" dir="ltr">
         <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off">{{ code }}</textarea>
       </div>
+      {% include "learn/_keybar.html" with tab="    " %}
       <div class="bottom-tabs tabs">
         <button class="active" data-panel="results">{% translate "Tests" %} <span class="count">({{ tests|length }})</span></button>
         <button data-panel="console">{% translate "Console" %}</button>
@@ -199,6 +201,7 @@
 {% endblock %}
 
 {% block script %}
+<script src="{% static 'learn/js/editor-tools.js' %}"></script>
 {% blocktranslate trimmed with xp=rewards.no_peek asvar peek_warning %}Peek at the solution? You learn more by struggling a little first, and you will lose the +{{ xp }} XP no-peek bonus for this exercise.{% endblocktranslate %}
 <script>
 (() => {
@@ -320,6 +323,8 @@
   const icons = {passed: '✓', failed: '✗', error: '!', running: '…', none: '○'};
 
   window.tutorContext = () => ({code: editor.getValue(), result: lastResult});
+  $('#download').addEventListener('click', () => EditorTools.downloadZip('{{ exercise.slug|escapejs }}', {'{{ exercise.file|escapejs }}': editor.getValue()}));
+  EditorTools.keyBar(document.querySelector('.key-bar'), () => editor.cm || textarea);
 
   function renderTests() {
     const known = TESTS.filter((t) => status[t.id]);

@@ -1,0 +1,11 @@
+{% comment %}Symbols phone keyboards hide, for the editor above. Include with tab (the text Tab inserts). Wired by EditorTools.keyBar.{% endcomment %}
+{% load i18n %}
+<div class="key-bar" dir="ltr" role="toolbar" aria-label="{% translate 'Symbols' %}">
+  <button type="button" data-insert="{{ tab|default:'  ' }}">Tab</button>
+  <button type="button" data-move="-1" aria-label="{% translate 'Cursor left' %}">&larr;</button>
+  <button type="button" data-move="1" aria-label="{% translate 'Cursor right' %}">&rarr;</button>
+  {% for key in "{}()[]<>=;:/" %}<button type="button" data-insert="{{ key }}">{{ key }}</button>{% endfor %}
+  <button type="button" data-insert="&quot;">&quot;</button>
+  <button type="button" data-insert="'">'</button>
+  <button type="button" data-insert="`">`</button>
+</div>
