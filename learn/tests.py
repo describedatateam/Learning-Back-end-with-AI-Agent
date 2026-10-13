@@ -11,11 +11,12 @@ from datetime import timedelta
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from django.urls import reverse
 from django.utils.html import escape
 
 from . import gamification, notebook, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
-from .models import ExerciseProgress, InviteCode, LearningEvent, NotebookEntry, TutorMessage, XPEvent
+from .models import ExerciseProgress, InviteCode, LabProject, LearningEvent, NotebookEntry, TutorMessage, XPEvent
 
 
 class SignedInTestCase(TestCase):
@@ -1955,3 +1956,81 @@ class CatalogFilterTests(SignedInTestCase):
         self.assertContains(page, 'data-progress="new"')
         mine = self.client.get('/learn/paths/?tab=mine')
         self.assertNotContains(mine, 'class="card filters"')  # nothing generated yet
+
+
+class LabTests(SignedInTestCase):
+    """Day 8c: the Lab keeps a learner's own projects, runs Python ones and coaches with the tutor."""
+
+    def start(self, kind='web', **extra):
+        response = self.client.post(reverse('learn:lab'), {'kind': kind, 'title': 'Recipe cards', **extra})
+        return LabProject.objects.get(id=int(response['Location'].rstrip('/').split('/')[-1]))
+
+    def test_start_project_with_starter_files(self):
+        lab_project = self.start('react', idea='Cards for my recipes')
+        self.assertEqual(lab_project.user, self.user)
+        self.assertEqual(set(lab_project.files), {'index.html', 'style.css', 'script.js'})
+        self.assertIn('ReactDOM.createRoot', lab_project.files['script.js'])
+        page = self.client.get(reverse('learn:lab_project', args=[lab_project.id]))
+        self.assertContains(page, 'Recipe cards')
+        self.assertContains(page, 'data-mode="javascript"')
+        self.assertContains(page, 'class="key-bar"')
+        self.assertContains(self.client.get(reverse('learn:lab')), 'Recipe cards')
+
+    def test_unknown_kind_is_refused(self):
+        response = self.client.post(reverse('learn:lab'), {'kind': 'cobol'})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(LabProject.objects.exists())
+
+    def test_save_keeps_only_the_kinds_files(self):
+        lab_project = self.start()
+        response = self.client.post(reverse('learn:lab_save', args=[lab_project.id]), {
+            'files': {'index.html': '<h1>Hi</h1>', 'evil.py': 'x'}, 'title': '  New   name ',
+        }, content_type='application/json')
+        self.assertEqual(response.json()['title'], 'New name')
+        lab_project.refresh_from_db()
+        self.assertEqual(lab_project.files, {'index.html': '<h1>Hi</h1>', 'style.css': '', 'script.js': ''})
+
+    def test_other_learners_cannot_open_or_save(self):
+        lab_project = self.start()
+        other = User.objects.create_user('other', password='pw')
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse('learn:lab_project', args=[lab_project.id])).status_code, 404)
+        response = self.client.post(reverse('learn:lab_save', args=[lab_project.id]), {'files': {}},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+        response = self.client.post(reverse('learn:tutor_ask', args=[f'lab-{lab_project.id}']), {'question': 'hi'},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+    def test_python_project_runs_on_the_server(self):
+        lab_project = self.start('python')
+        data = self.client.post(reverse('learn:lab_run', args=[lab_project.id]), {'code': 'print(6 * 7)'},
+                                content_type='application/json').json()
+        self.assertEqual(data['output'].strip(), '42')
+        web = self.start('web')
+        response = self.client.post(reverse('learn:lab_run', args=[web.id]), {'code': 'print(1)'},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_removes_project_and_chat(self):
+        lab_project = self.start()
+        TutorMessage.objects.create(user=self.user, topic=f'lab-{lab_project.id}', role='user', content='q', display='q')
+        self.client.post(reverse('learn:lab_delete', args=[lab_project.id]))
+        self.assertFalse(LabProject.objects.exists())
+        self.assertFalse(TutorMessage.objects.filter(topic=f'lab-{lab_project.id}').exists())
+
+    def test_tutor_coaches_the_project(self):
+        from learn import lab
+        lab_project = self.start('python', idea='A quiz game')
+        system = tutor.build_system(None, lab_project=lab_project)
+        self.assertIn('project coach', system[1]['text'])
+        self.assertIn('A quiz game', system[1]['text'])
+        turn = lab.build_turn('Why?', {'main.py': 'print(1)'}, 'NameError')
+        self.assertIn('--- main.py ---', turn)
+        self.assertIn('NameError', turn)
+        self.assertTrue(turn.endswith('Why?'))
+
+    def test_exercise_editors_offer_download(self):
+        page = self.client.get(reverse('learn:exercise', args=['flexbox-navbar']))
+        self.assertContains(page, 'id="download"')
+        self.assertContains(page, 'editor-tools.js')

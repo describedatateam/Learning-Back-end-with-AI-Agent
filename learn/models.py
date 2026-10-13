@@ -387,3 +387,21 @@ class ProjectMember(models.Model):
 
     def __str__(self):
         return f'{self.user} on {self.project}'
+
+
+class LabProject(models.Model):
+    """A learner's own playground project in the Lab: a few files of one kind (see learn/lab.py)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='lab_projects')
+    title = models.CharField(max_length=80)
+    kind = models.CharField(max_length=10)       # a key of lab.KINDS: web, react, tailwind or python
+    idea = models.TextField(blank=True)          # what the learner wants to build, for the tutor
+    files = models.JSONField(default=dict)       # file name -> text
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+
+    def __str__(self):
+        return f'{self.user} · {self.title}'

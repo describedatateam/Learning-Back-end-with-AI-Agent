@@ -59,6 +59,7 @@
         <div class="file-tabs" dir="ltr" role="tablist" aria-label="{% translate 'Files' %}">
           {% for name in exercise.files %}<button type="button" role="tab" data-file="{{ name }}"{% if forloop.first %} class="active" aria-selected="true"{% endif %}>{{ name }}</button>{% endfor %}
         </div>
+        <button class="btn quiet" type="button" id="download" title="{% translate 'Download the files as a .zip' %}">{% icon 'download' label=_('Download .zip') %}</button>
         <button class="btn quiet" type="button" id="reset" title="{% translate 'Start again from the starter code' %}">{% icon 'rotate-ccw' %}{% translate "Reset" %}</button>
         <button class="btn primary" type="button" id="run">{% icon 'play' %}{% translate "Run tests" %}</button>
       </div>
@@ -67,6 +68,7 @@
         <textarea class="code-box ide-code" data-file="{{ name }}" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="{{ name }}"{% if not forloop.first %} hidden{% endif %}>{{ text }}</textarea>
         {% endfor %}
       </div>
+      {% include "learn/_keybar.html" %}
       <div class="web-tabs out-tabs" role="tablist">
         {% if exercise.preview %}<button type="button" role="tab" class="active" data-out="preview">{% icon 'eye' %}{% translate "Preview" %}</button>{% endif %}
         <button type="button" role="tab" data-out="tests"{% if not exercise.preview %} class="active"{% endif %}>{% icon 'list-checks' %}{% translate "Tests" %} <span class="meta num" id="test-count">{{ tests|length }}</span></button>
@@ -107,6 +109,7 @@
 <script src="{{ cm }}/mode/htmlmixed/htmlmixed.min.js"></script>
 {% endwith %}
 <script src="{% static 'learn/js/web-runner.js' %}"></script>
+<script src="{% static 'learn/js/editor-tools.js' %}"></script>
 <script>
 (() => {
   const T = {
@@ -162,7 +165,7 @@
       cm.getWrapperElement().dataset.file = name;
       if (box.hidden) cm.getWrapperElement().hidden = true;
       cm.on('change', changed);
-      editors[name] = { get: () => cm.getValue(), set: (v) => cm.setValue(v), show: (on) => { cm.getWrapperElement().hidden = !on; if (on) cm.refresh(); } };
+      editors[name] = { get: () => cm.getValue(), set: (v) => cm.setValue(v), cm, show: (on) => { cm.getWrapperElement().hidden = !on; if (on) cm.refresh(); } };
     } else {
       box.addEventListener('input', changed);
       box.addEventListener('keydown', (e) => {
@@ -171,11 +174,14 @@
         box.setRangeText('  ', box.selectionStart, box.selectionEnd, 'end');
         changed();
       });
-      editors[name] = { get: () => box.value, set: (v) => { box.value = v; }, show: (on) => { box.hidden = !on; } };
+      editors[name] = { get: () => box.value, set: (v) => { box.value = v; }, box, show: (on) => { box.hidden = !on; } };
     }
   });
   const files = () => Object.fromEntries(Object.entries(editors).map(([name, ed]) => [name, ed.get()]));
-  tabs($$('.file-tabs button'), 'file', (name) => Object.entries(editors).forEach(([n, ed]) => ed.show(n === name)));
+  let active = Object.keys(editors)[0];
+  tabs($$('.file-tabs button'), 'file', (name) => { active = name; Object.entries(editors).forEach(([n, ed]) => ed.show(n === name)); });
+  EditorTools.keyBar($('.key-bar'), () => editors[active].cm || editors[active].box);
+  $('#download').addEventListener('click', () => EditorTools.downloadZip('{{ exercise.slug|escapejs }}', files()));
 
   // Live preview and console, a moment after typing stops.
   const consoleBox = $('#console'), logCount = $('#log-count');
