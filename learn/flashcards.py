@@ -155,7 +155,7 @@ def source_text(chapter):
     for slug in chapter.exercises:
         exercise = get_exercise(slug)
         if exercise:
-            text = (exercise.path / 'instructions.md').read_text(encoding='utf-8')
+            text = exercise.instructions
             parts.append(f'Exercise "{exercise.title}":\n' + text[:3000])
     return '\n\n'.join(parts)
 

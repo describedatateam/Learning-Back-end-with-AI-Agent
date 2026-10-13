@@ -1228,11 +1228,11 @@ class Day5Tests(SignedInTestCase):
         self.assertEqual(practice(Path.objects.get(slug='git-github'), 0), READING)
         generated = self.generated_path()
         self.assertEqual(art_for(generated), 'style')  # Tailwind is CSS
-        self.assertEqual(practice(generated), SOON)
+        self.assertEqual(practice(generated), READING)  # no exercise passed its check
         page = self.client.get('/learn/paths/')
         self.assertContains(page, 'art-api')
         self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'art-style')
-        self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'Hands-on soon')
+        self.assertContains(self.client.get('/learn/paths/?tab=mine'), 'Reading and quizzes')
         self.assertContains(page, 'Reading and quizzes')
         path_page = self.client.get(f'/learn/paths/{generated.slug}/')
         self.assertContains(path_page, 'class="journey"')
@@ -1834,3 +1834,124 @@ class WebExerciseTests(SignedInTestCase):
         self.assertContains(self.client.get('/learn/flexbox-navbar/'), 'nav{}')
         solution = self.client.post('/learn/flexbox-navbar/solution/').json()
         self.assertIn('display: flex', solution['files']['style.css'])
+
+
+PYTHON_EXERCISE = {
+    'language': 'python', 'title': 'Add two numbers', 'instructions': 'Write `add(a, b)` that returns the sum.',
+    'hints': ['Use `+`.'],
+    'starter': 'def add(a, b):\n    # TODO: return the sum\n    return None\n',
+    'solution': 'def add(a, b):\n    return a + b\n',
+    'tests': ('import unittest\nfrom exercise import add\n\n\nclass AddTests(unittest.TestCase):\n'
+              '    def test_01_small(self):\n        """Adds small numbers"""\n        self.assertEqual(add(2, 3), 5)\n\n'
+              '    def test_02_negative(self):\n        """Adds negative numbers"""\n        self.assertEqual(add(-2, -3), -5)\n'),
+}
+WEB_EXERCISE = {
+    'language': 'tailwind', 'title': 'Make the heading bold', 'instructions': 'Add `font-bold` to the heading.',
+    'hints': ['Tailwind has a class for font weight.'], 'files': ['index.html'],
+    'starter': {'index.html': '<h1 class="text-2xl">Hello</h1>'},
+    'solution': {'index.html': '<h1 class="text-2xl font-bold">Hello</h1>'},
+    'tests': [{'id': 'bold', 'description': 'The heading is bold'}],
+    'tests_js': "test('bold', () => { expect(css($('h1'), 'font-weight')).toBe('700'); });",
+}
+
+
+class GeneratedExerciseTests(SignedInTestCase):
+    """Exercises Gemini writes into generated chapters are shown only once they are proven to work."""
+
+    def make_path(self, *exercises, owner=None):
+        from .generator import clean_path, save_path
+        data = sample_generated_path()
+        chapters = data['courses'][0]['chapters'] + data['courses'][1]['chapters']
+        for chapter, exercise in zip(chapters, exercises):
+            chapter['exercise'] = exercise
+        cleaned, errors = clean_path(data)
+        self.assertEqual(errors, [])
+        return save_path(owner or self.user, cleaned, {'skill': 'Tailwind basics', 'language': 'en'})
+
+    def chapters(self, path):
+        from .models import Chapter
+        return list(Chapter.objects.filter(course__path=path).order_by('course__order', 'order'))
+
+    def test_clean_exercise_keeps_runnable_languages_only(self):
+        from .generated_exercises import clean_exercise
+        errors = []
+        self.assertEqual(clean_exercise(PYTHON_EXERCISE, 'c1', errors)['status'], 'pending')
+        self.assertIsNone(clean_exercise({**PYTHON_EXERCISE, 'language': 'php'}, 'c1', errors))
+        self.assertIsNone(clean_exercise(None, 'c1', errors))
+        self.assertEqual(errors, [])
+        clean_exercise({**WEB_EXERCISE, 'tests_js': "test('other', () => {});"}, 'c1', errors)
+        self.assertIn('c1 exercise tests_js must call test() once for every test id.', errors)
+
+    def test_python_exercises_are_checked_when_the_path_is_saved(self):
+        from .generated_exercises import check_new_path
+        broken = {**PYTHON_EXERCISE, 'starter': PYTHON_EXERCISE['solution']}  # the starter already passes
+        path = self.make_path(PYTHON_EXERCISE, broken, WEB_EXERCISE)
+        check_new_path(path)
+        first, second, third = self.chapters(path)
+        self.assertEqual(first.content['exercise']['status'], 'ok')
+        self.assertEqual(first.exercises, [first.slug + '-ex'])
+        self.assertEqual(second.content['exercise']['status'], 'broken')
+        self.assertEqual(second.exercises, [])
+        self.assertEqual(third.content['exercise']['status'], 'pending')  # waits for the browser
+
+        page = self.client.get(f'/learn/paths/{path.slug}/chapters/{first.slug}/')
+        self.assertContains(page, 'Start the exercise')
+        self.assertNotContains(self.client.get(f'/learn/paths/{path.slug}/chapters/{second.slug}/'), 'Start the exercise')
+        exercise_page = self.client.get(f'/learn/{first.slug}-ex/')
+        self.assertContains(exercise_page, 'Add two numbers')
+        result = self.client.post(f'/learn/{first.slug}-ex/run/', {'code': PYTHON_EXERCISE['solution']},
+                                  content_type='application/json').json()
+        self.assertTrue(result['all_passed'])
+        # The chapter is finished by its quiz and its exercise together.
+        from .catalog import skill_view, exercise_states, chapter_marks
+        from .models import ChapterProgress
+        ChapterProgress.objects.create(user=self.user, chapter=first, done=True)
+        view = skill_view(path, exercise_states(self.user), set(), marks=chapter_marks(self.user))
+        self.assertEqual(view.chapters[0].status, 'done')
+        self.assertEqual(view.exercise_count, 1)
+
+    def test_browser_exercises_are_checked_by_the_owners_browser(self):
+        path = self.make_path(WEB_EXERCISE, {**WEB_EXERCISE, 'title': 'Already solved'})
+        url = f'/learn/paths/{path.slug}/check-exercises/'
+        self.assertContains(self.client.get(f'/learn/paths/{path.slug}/'), 'data-check-exercises')
+        pending = self.client.get(url).json()['exercises']
+        self.assertEqual([e['libs'] for e in pending], [['tailwind'], ['tailwind']])
+        passed, failed = [{'id': 'bold', 'outcome': 'passed'}], [{'id': 'bold', 'outcome': 'failed'}]
+        first, second = self.chapters(path)[:2]
+        self.assertEqual(self.client.post(url, {'chapter': first.slug, 'solution': passed, 'starter': failed},
+                                          content_type='application/json').json()['status'], 'ok')
+        self.assertEqual(self.client.post(url, {'chapter': second.slug, 'solution': passed, 'starter': passed},
+                                          content_type='application/json').json()['status'], 'broken')
+        self.assertEqual(self.client.get(url).json()['exercises'], [])
+        self.assertEqual(self.client.post(url, {'chapter': first.slug}, content_type='application/json').status_code, 400)
+        self.assertNotContains(self.client.get(f'/learn/paths/{path.slug}/'), 'data-check-exercises')
+        page = self.client.get(f'/learn/{first.slug}-ex/')
+        self.assertContains(page, 'web-libs')
+        self.assertContains(page, '["tailwind"]')
+
+    def test_only_the_owner_sees_a_generated_exercise(self):
+        from .generated_exercises import check_new_path
+        path = self.make_path(PYTHON_EXERCISE)
+        check_new_path(path)
+        slug = self.chapters(path)[0].slug + '-ex'
+        self.client.force_login(User.objects.create_user('other', password='pw'))
+        self.assertEqual(self.client.get(f'/learn/{slug}/').status_code, 404)
+        self.assertEqual(self.client.post(f'/learn/{slug}/run/', {}, content_type='application/json').status_code, 404)
+        self.assertEqual(self.client.get(f'/learn/paths/{path.slug}/check-exercises/').status_code, 404)
+
+
+class CatalogFilterTests(SignedInTestCase):
+    def setUp(self):
+        super().setUp()
+        from .catalog import load_catalog
+        load_catalog()
+
+    def test_cards_carry_what_the_filters_match(self):
+        page = self.client.get('/learn/paths/')
+        self.assertContains(page, 'class="card filters"')
+        self.assertContains(page, '<option value="frontend-developer">')
+        self.assertContains(page, 'data-langs="html css"')
+        self.assertContains(page, 'data-jobs="')
+        self.assertContains(page, 'data-progress="new"')
+        mine = self.client.get('/learn/paths/?tab=mine')
+        self.assertNotContains(mine, 'class="card filters"')  # nothing generated yet

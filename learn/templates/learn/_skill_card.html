@@ -1,6 +1,6 @@
 {% load i18n ui %}
 {# One skill path card, featured or generated, so both look the same. Needs `skill` (a SkillView). #}
-<a class="card path-card" href="{% url 'learn:path' skill.path.slug %}">
+<a class="card path-card" href="{% url 'learn:path' skill.path.slug %}"{% if skill.filters %} data-filter-card{% for key, value in skill.filters.items %} data-{{ key }}="{{ value }}"{% endfor %}{% endif %}>
   {% path_art skill.path %}
   <div class="card-head"><span class="tag skill">{% translate "Skill path" %}</span>{% if skill.path.ai_generated %}{% include "learn/_ai_tag.html" %}{% endif %}{% if skill.prerequisite %}<span class="tag">{% translate "Prerequisite" %}</span>{% endif %}{% if skill.skipped %}<span class="tag">{% translate "Already known" %}</span>{% endif %}{% practice_tag skill.path skill.exercise_count %}</div>
   <h3><bdi>{{ skill.path.title }}</bdi></h3>

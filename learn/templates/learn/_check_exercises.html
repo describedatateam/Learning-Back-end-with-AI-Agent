@@ -1,0 +1,13 @@
+{% load i18n static ui %}
+{# Shown to a generated path's owner while its new browser exercises are being checked. Needs check_url and check_pending. #}
+{% if check_pending %}
+<div class="notice info check-exercises" role="status" data-check-exercises="{{ check_url }}"
+     data-progress="{% translate 'Checking hands-on exercises: {done} of {total} done' %}"
+     data-failed="{% translate 'The hands-on exercises could not be checked. Reload the page to try again.' %}">
+  {% csrf_token %}{% icon 'loader-circle' css='spin' %}
+  <span><strong>{% translate "Checking this path's hands-on exercises" %}</strong><br>
+    <span class="meta" data-status>{% translate "Each one is shown only if its own solution passes and the starter code doesn't. Keep this page open." %}</span></span>
+</div>
+<script src="{% static 'learn/js/web-runner.js' %}"></script>
+<script src="{% static 'learn/js/check-exercises.js' %}" defer></script>
+{% endif %}

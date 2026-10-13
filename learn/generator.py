@@ -19,14 +19,14 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext
 
-from . import diagrams, tutor
+from . import diagrams, generated_exercises, tutor
 from .models import Chapter, Course, Path
 
 LEVELS = ('beginner', 'intermediate', 'advanced')
 DAILY_LIMIT = int(os.environ.get('LEARN_GENERATE_DAILY_LIMIT', 5))  # per learner, to protect the free Gemini quota
 MAX_SKILL_CHARS = 80
 TIMEOUT_SECONDS = 150
-MAX_OUTPUT_TOKENS = 32000
+MAX_OUTPUT_TOKENS = 60000  # exercises with starter, solution and tests make the reply long
 STOP_WORDS = {'a', 'an', 'and', 'the', 'with', 'for', 'to', 'of', 'in', 'basics', 'basic', 'fundamentals',
               'foundations', 'intro', 'introduction', 'beginner', 'beginners', 'programming', 'learn', 'course'}
 
@@ -34,7 +34,8 @@ GENERATE_PROMPT = """\
 You design short, practical skill paths for Describe, a self-paced learning platform \
 for a cohort of beginner and junior web developers (Python, Django, HTML, CSS, JavaScript, SQL). \
 A skill path is made of courses, a course of chapters. Each chapter teaches one idea with a \
-short lesson, a few slides and a quiz.
+short lesson, a few slides, a quiz and, where the topic can be practised in code, a hands-on exercise \
+with automatic tests.
 
 Reply with a single JSON object and nothing else, in exactly this shape:
 {
@@ -74,7 +75,7 @@ Diagrams (Mermaid syntax, drawn on the page):
 (browser and server), and "erDiagram" for data that links together.
 - Labels are 1 to 4 words in {language}. Put a label in double quotes if it has brackets, colons or other symbols.
 - No styling, no classDef, no click, no %% directives, no HTML. At most 12 nodes per diagram.\
-"""
+""" + generated_exercises.PROMPT
 
 
 class GenerationError(Exception):
@@ -295,6 +296,7 @@ def clean_path(data):
                 'lesson': lesson,
                 'slides': _slides(chapter.get('slides'), here, errors),
                 'quiz': _quiz(chapter.get('quiz'), here, errors),
+                'exercise': generated_exercises.clean_exercise(chapter.get('exercise'), here, errors),
             })
         path['courses'].append({
             'title': _text(course.get('title'), f'{where} title', errors, 120),
@@ -325,6 +327,6 @@ def save_path(user, data, request):
                 course=course, order=ch_order, slug=f'{slug}-{number}', title=chapter['title'],
                 learning_goal=chapter['learning_goal'], exercise_idea=chapter['exercise_idea'],
                 content={'lesson': chapter['lesson'], 'slides': chapter['slides'], 'quiz': chapter['quiz'],
-                         'mind_map': chapter['mind_map']},
+                         'mind_map': chapter['mind_map'], **({'exercise': chapter['exercise']} if chapter.get('exercise') else {})},
             )
     return path

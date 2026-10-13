@@ -6,6 +6,7 @@
 {% block content %}
 <main class="narrow">
   <p class="meta crumbs"><a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a> {% icon 'chevron-right' css='icon-flip' %} {% if job %}{% translate "Job path" %}{% else %}{% translate "Skill path" %}{% endif %}</p>
+  {% include "learn/_check_exercises.html" %}
 
   {% if job %}
   <section class="card path-hero job">

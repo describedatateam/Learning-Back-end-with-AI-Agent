@@ -21,7 +21,7 @@
       <div class="web-tabs" role="tablist">
         <button type="button" role="tab" class="active" data-tab="lesson">{% icon 'book-open' %}{% translate "Lesson" %}</button>
         <button type="button" role="tab" data-tab="hints">{% icon 'circle-help' %}{% translate "Hints" %}</button>
-        <button type="button" role="tab" data-tab="quiz">{% icon 'list-checks' %}{% translate "Quiz" %}</button>
+        {% if quiz %}<button type="button" role="tab" data-tab="quiz">{% icon 'list-checks' %}{% translate "Quiz" %}</button>{% endif %}
         <button type="button" role="tab" data-tab="tutor">{% icon 'bot' %}{% translate "Tutor" %}</button>
       </div>
       <div class="web-pane lesson" id="tab-lesson">
@@ -96,6 +96,7 @@
 {{ starter_files|json_script:"starter-files" }}
 {{ exercise.tests_source|json_script:"web-tests" }}
 {{ exercise.api|json_script:"web-api" }}
+{{ exercise.libs|json_script:"web-libs" }}
 {% endblock %}
 
 {% block script %}
@@ -137,6 +138,7 @@
   const starter = JSON.parse($('#starter-files').textContent);
   const tests = JSON.parse($('#web-tests').textContent);
   const api = JSON.parse($('#web-api').textContent);
+  const libs = JSON.parse($('#web-libs').textContent);
   const draftKey = 'learn-web-draft:{{ exercise.slug }}';
 
   // Tabs: lesson side and output side.
@@ -191,7 +193,7 @@
     logs = 0;
     logCount.textContent = '';
     consoleBox.textContent = '';
-    if ($('#preview')) WebRunner.preview($('#preview'), { files: files(), api }, onLog);
+    if ($('#preview')) WebRunner.preview($('#preview'), { files: files(), api, libs }, onLog);
   };
   let timer = null;
   function changed() {
@@ -216,7 +218,7 @@
     showOut('tests');
     $$('#test-list li').forEach((li) => { li.className = 'running'; });
     try {
-      const result = await WebRunner.run({ files: files(), tests, api });
+      const result = await WebRunner.run({ files: files(), tests, api, libs });
       const byId = Object.fromEntries(result.tests.map((t) => [t.id, t]));
       $$('#test-list li').forEach((li) => {
         const t = byId[li.dataset.test] || { outcome: 'error' };

@@ -11,6 +11,7 @@ urlpatterns = [
     path('languages/', views.supported_languages, name='languages'),
     path('paths/<slug:slug>/', views.path_detail, name='path'),
     path('paths/<slug:slug>/placement/', views.placement_test, name='placement'),
+    path('paths/<slug:slug>/check-exercises/', views.check_exercises, name='check_exercises'),
     path('paths/<slug:slug>/delete/', views.delete_path, name='delete_path'),
     path('paths/<slug:slug>/chapters/<slug:chapter>/', views.chapter_detail, name='chapter'),
     path('paths/<slug:slug>/choose/', views.choose_path, name='choose_path'),

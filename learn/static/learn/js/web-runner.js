@@ -10,6 +10,9 @@
  *       Plain JavaScript, console.log collected (flashcards).
  *
  * `files` maps 'index.html', 'style.css' and 'script.js' to their text.
+ * `libs` adds self-hosted libraries to the page: 'react' (React 18, with script.js
+ * turned from JSX into plain JavaScript here first, by Babel loaded on demand) and
+ * 'tailwind' (Tailwind CSS v4's browser build).
  * `tests` is JavaScript calling test('id', async () => { ... }) with expect(),
  * waitFor(), $ and $$ (see HARNESS). `api` is a fake API for fetch():
  * {'/api/users': {status: 200, body: [...]}}. Nothing reaches the network.
@@ -17,6 +20,12 @@
 window.WebRunner = (() => {
   const TIMEOUT_MS = 5000;
   const TEST_TIMEOUT_MS = 2000;
+  const VENDOR = new URL('../vendor/', document.currentScript.src).href;
+  const LIB_FILES = {
+    react: ['react-18.3.1.min.js', 'react-dom-18.3.1.min.js'],
+    tailwind: ['tailwindcss-browser-4.0.17.js'],
+  };
+  const BABEL = 'babel-standalone-7.26.4.min.js';
 
   // Runs first inside the frame: console capture, error capture, fake fetch and the test helpers.
   const HARNESS = String.raw`
@@ -30,7 +39,11 @@ window.WebRunner = (() => {
   };
   const logs = [];
   ['log', 'info', 'warn', 'error'].forEach((level) => {
-    console[level] = (...args) => { const line = args.map(show).join(' '); logs.push(line); send('log', { level, line }); };
+    console[level] = (...args) => {
+      const line = args.map(show).join(' ');
+      if (line.startsWith('The browser build of Tailwind CSS')) return;  // its production notice, not the learner's
+      logs.push(line); send('log', { level, line });
+    };
   });
   let loadError = null;
   window.addEventListener('error', (e) => {
@@ -89,6 +102,9 @@ window.WebRunner = (() => {
       async start() {
         if (document.readyState !== 'complete') await new Promise((r) => window.addEventListener('load', r));
         await new Promise((r) => setTimeout(r, 0));
+        // Tailwind and React draw just after load: give them a moment so tests see their styles and elements.
+        // (Not requestAnimationFrame: browsers pause it in off-screen frames like the test frame.)
+        if (window.React || document.querySelector('script[data-lib="tailwind"]')) await new Promise((r) => setTimeout(r, 60));
         const results = [];
         for (const t of tests) {
           try {
@@ -109,7 +125,7 @@ window.WebRunner = (() => {
   // Learner text can't close our <script> tags early.
   const safe = (code) => String(code || '').replace(/<\/(script)/gi, '<\\/$1');
 
-  function build({ files = {}, tests = '', api = {}, token }) {
+  function build({ files = {}, tests = '', api = {}, libs = [], token }) {
     let html = files['index.html'];
     if (html == null || !html.trim()) html = '<!doctype html><html><head></head><body></body></html>';
     // The page links style.css and script.js; they are put inline instead.
@@ -119,7 +135,8 @@ window.WebRunner = (() => {
     const harness = HARNESS.replace('__TOKEN__', () => JSON.stringify(token))
       .replace('__API__', () => JSON.stringify(api || {}))
       .replace(/__TEST_MS__/g, () => String(TEST_TIMEOUT_MS));
-    const head = `<script>${safe(harness)}<\/script>` + (files['style.css'] ? `<style>${files['style.css'].replace(/<\/(style)/gi, '<\\/$1')}</style>` : '');
+    const libTags = libs.flatMap((lib) => (LIB_FILES[lib] || []).map((file) => `<script data-lib="${lib}" src="${VENDOR + file}"><\/script>`)).join('');
+    const head = `<script>${safe(harness)}<\/script>` + libTags + (files['style.css'] ? `<style>${files['style.css'].replace(/<\/(style)/gi, '<\\/$1')}</style>` : '');
     const tail = (files['script.js'] ? `<script>${safe(files['script.js'])}\n<\/script>` : '')
       + (tests ? `<script>${safe(tests)}\n<\/script>` : '') + '<script>__learn.start();<\/script>';
     const headTag = html.match(/<head\b[^>]*>/i);
@@ -136,7 +153,32 @@ window.WebRunner = (() => {
   });
   const newToken = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-  function run({ files, tests = '', api = {} }) {
+  // Babel is about 3 MB, so it loads only the first time a React exercise runs.
+  let babel = null;
+  const loadBabel = () => babel || (babel = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = VENDOR + BABEL;
+    script.onload = () => resolve(window.Babel);
+    script.onerror = () => { babel = null; reject(new Error('Could not load the JSX compiler. Check your connection and try again.')); };
+    document.head.appendChild(script);
+  }));
+
+  // React's script.js is JSX: turn it into plain JavaScript before it goes in the frame.
+  async function prepare(files, libs) {
+    if (!libs.includes('react') || !files['script.js']) return { files };
+    try {
+      const Babel = await loadBabel();
+      const code = Babel.transform(files['script.js'], { presets: ['react'], filename: 'script.js' }).code;
+      return { files: Object.assign({}, files, { 'script.js': code }) };
+    } catch (e) {
+      return { files, error: (e.name === 'SyntaxError' ? 'SyntaxError: ' : '') + String(e.message || e).split('\n')[0] };
+    }
+  }
+
+  async function run({ files, tests = '', api = {}, libs = [] }) {
+    const prepared = await prepare(files, libs);
+    if (prepared.error) return { logs: [prepared.error], error: prepared.error, tests: [], timedOut: false };
+    files = prepared.files;
     return new Promise((resolve) => {
       const frame = document.createElement('iframe');
       frame.setAttribute('sandbox', 'allow-scripts');
@@ -162,17 +204,19 @@ window.WebRunner = (() => {
         wait();
         if (data.type === 'log') logs.push(data.line);
       } });
-      frame.srcdoc = build({ files, tests, api, token });
+      frame.srcdoc = build({ files, tests, api, libs, token });
       document.body.appendChild(frame);
     });
   }
 
-  function preview(frame, { files, api = {} }, onLog) {
+  async function preview(frame, { files, api = {}, libs = [] }, onLog) {
+    const prepared = await prepare(files, libs);
     for (const [token, handler] of handlers) if (handler.frame === frame) handlers.delete(token);
     const token = newToken();
     handlers.set(token, { frame, fn: (data) => { if (data.type === 'log' && onLog) onLog(data); } });
     frame.setAttribute('sandbox', 'allow-scripts allow-modals');
-    frame.srcdoc = build({ files, api, token });
+    frame.srcdoc = build({ files: prepared.files, api, libs, token });
+    if (prepared.error && onLog) onLog({ level: 'error', line: prepared.error });
   }
 
   async function runJs(code) {
