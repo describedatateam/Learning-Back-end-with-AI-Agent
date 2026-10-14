@@ -7,9 +7,9 @@
 {% block style %}
   .crumbs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; }
   .crumbs .spacer { flex: 1; }
-  .layout { display: grid; grid-template-columns: minmax(340px, 5fr) 7fr; gap: 18px; align-items: start; }
-  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .layout { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr); gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .panel { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
   .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 8px; }
   .tabs button {
     border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600;

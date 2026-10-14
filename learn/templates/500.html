@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Something went wrong · Describe</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
+</head>
+<body class="public-page">
+  <header class="public-top">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+  </header>
+  <main class="narrow error-page">
+    <section class="card empty-state">
+      <h1>Something went wrong on our side</h1>
+      <p class="muted">Wait a moment and try again, or go back to the home page.</p>
+      <div lang="ar" dir="rtl">
+        <h2>حدث خطأ من جهتنا</h2>
+        <p class="muted">انتظر قليلًا ثم حاول مرة أخرى، أو ارجع إلى الصفحة الرئيسية.</p>
+      </div>
+      <div class="actions"><a class="btn primary" href="/">Home · الرئيسية</a></div>
+    </section>
+  </main>
+</body>
+</html>

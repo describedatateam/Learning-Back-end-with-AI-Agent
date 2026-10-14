@@ -9,12 +9,13 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from datetime import timedelta
 
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.urls import reverse
 from django.utils.html import escape
 
-from . import gamification, notebook, tutor
+from . import case_study, demo, gamification, notebook, tutor
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_tests
 from .models import ExerciseProgress, InviteCode, LabProject, LearningEvent, NotebookEntry, TutorMessage, XPEvent
 
@@ -2334,3 +2335,59 @@ class GitHubTests(SignedInTestCase):
     def test_lab_page_has_the_github_button(self):
         page = self.client.get(reverse('learn:lab_project', args=[self.lab.id]))
         self.assertContains(page, 'id="github-dialog"')
+
+
+class CaseStudyTests(TestCase):
+    """Day 10: the case study page, the demo learner and friendly error pages."""
+
+    def setUp(self):
+        call_command('load_catalog', stdout=io.StringIO())
+
+    @override_settings(LEARN_REQUIRE_LOGIN=True)
+    def test_case_study_opens_without_signing_in(self):
+        page = self.client.get(reverse('case_study'))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'Building Describe in ten days')
+        self.assertContains(page, reverse('login'))
+        self.assertNotContains(page, '/p/demo/')  # no sample link until make_demo has run
+
+    def test_case_study_in_arabic(self):
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = 'ar'
+        page = self.client.get(reverse('case_study'))
+        self.assertContains(page, 'dir="rtl"')
+        self.assertContains(page, 'بناء Describe في عشرة أيام')
+
+    def test_numbers_count_real_learners_only(self):
+        learner = User.objects.create_user('lina', password='pw')
+        User.objects.create_user('boss', password='pw', is_staff=True)
+        demo.build('demo-pass')
+        ExerciseProgress.objects.create(user=learner, slug='http-requests', passed=True)
+        LearningEvent.objects.create(user=learner, kind=LearningEvent.PASSED, slug='http-requests')
+        numbers = case_study.numbers()
+        self.assertEqual(numbers['learners'], 1)
+        self.assertEqual(numbers['active'], 1)
+        self.assertEqual(numbers['passed'], 1)
+        self.assertEqual(numbers['job_paths'], 3)
+        self.assertEqual(numbers['labs'], 0)
+
+    def test_make_demo_builds_a_public_learner_and_can_run_again(self):
+        out = io.StringIO()
+        call_command('make_demo', '--password', 'demo-pass', stdout=out)
+        call_command('make_demo', '--password', 'demo-pass', stdout=out)
+        self.assertIn('Username: demo', out.getvalue())
+        user = User.objects.get(username=demo.USERNAME)
+        self.assertEqual(ExerciseProgress.objects.filter(user=user, passed=True).count(), demo.PASSED)
+        self.assertGreaterEqual(gamification.player_state(user)['best_streak'], demo.PASSED)
+        self.assertEqual(LabProject.objects.filter(user=user).count(), 1)
+        self.assertTrue(self.client.login(username='demo', password='demo-pass'))
+        self.client.logout()
+        folio = self.client.get(reverse('portfolio_public', args=['demo']))
+        self.assertContains(folio, 'Study group tracker')
+        self.assertContains(folio, 'Study timer')
+        self.assertContains(self.client.get(reverse('case_study')), '/p/demo/')
+
+    @override_settings(DEBUG=False, ALLOWED_HOSTS=['testserver'])
+    def test_missing_pages_get_the_friendly_404(self):
+        page = self.client.get('/p/nobody-here/')
+        self.assertEqual(page.status_code, 404)
+        self.assertContains(page, 'Browse paths', status_code=404)

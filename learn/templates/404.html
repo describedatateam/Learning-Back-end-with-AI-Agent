@@ -1,0 +1,27 @@
+{% load static i18n ui %}{% get_current_language as LANG %}{% get_current_language_bidi as RTL %}<!doctype html>
+<html lang="{{ LANG }}" dir="{% if RTL %}rtl{% else %}ltr{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% translate "Page not found" %} · Describe</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
+</head>
+<body class="public-page">
+  <header class="public-top">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+  </header>
+  <main class="narrow error-page">
+    <section class="card empty-state">
+      {% icon 'compass' css='icon-lg' %}
+      <h1>{% translate "We couldn't find that page" %}</h1>
+      <p class="muted">{% translate "The link may be old, or the page may be private. Check the address, or start again from home." %}</p>
+      <div class="actions">
+        <a class="btn primary" href="{% url 'home' %}">{% icon 'house' %}{% translate "Go home" %}</a>
+        <a class="btn" href="{% url 'learn:catalog' %}">{% icon 'compass' %}{% translate "Browse paths" %}</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
