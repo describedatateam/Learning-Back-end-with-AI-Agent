@@ -1,0 +1,24 @@
+{% load i18n ui %}
+{# NotebookLM video and audio overviews of a chapter (learn/media.py). Needs `media` from media.for_chapter. #}
+<section class="card media-card">
+  <h2>{% icon 'video' %}{% translate "Watch and listen" %}</h2>
+  {% if media.note %}<p class="meta" dir="auto">{{ media.note }}</p>{% endif %}
+  {% with v=media.video a=media.audio %}
+  {% if v %}
+  <div class="media-item">
+    <p class="meta">{% icon 'video' %}{% translate "Video overview" %}</p>
+    {% if v.kind == 'frame' %}<div class="media-frame"><iframe src="{{ v.src }}" title="{% translate 'Video overview' %}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>{% endif %}
+    <a class="btn quiet" href="{{ v.url }}" target="_blank" rel="noopener">{% if v.kind == 'frame' %}{% translate "Open in a new tab" %}{% else %}{% translate "Watch the video" %}{% endif %}{% icon 'external-link' %}</a>
+  </div>
+  {% endif %}
+  {% if a %}
+  <div class="media-item">
+    <p class="meta">{% icon 'headphones' %}{% translate "Audio overview" %}</p>
+    {% if a.kind == 'frame' %}<div class="media-frame short"><iframe src="{{ a.src }}" title="{% translate 'Audio overview' %}" loading="lazy" allow="autoplay"></iframe></div>
+    {% elif a.kind == 'audio' %}<audio controls preload="none" src="{{ a.src }}"></audio>{% endif %}
+    <a class="btn quiet" href="{{ a.url }}" target="_blank" rel="noopener">{% if a.kind == 'link' %}{% translate "Listen" %}{% else %}{% translate "Open in a new tab" %}{% endif %}{% icon 'external-link' %}</a>
+  </div>
+  {% endif %}
+  {% endwith %}
+  <p class="meta media-credit">{% translate "Made with NotebookLM from this chapter." %}</p>
+</section>

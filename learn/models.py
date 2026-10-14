@@ -363,6 +363,7 @@ class Project(models.Model):
     done = models.JSONField(default=list, blank=True)   # ids of ticked milestone tasks, like "m2-t1"
     claims = models.JSONField(default=dict, blank=True)  # task id -> id of the teammate doing it
     join_code = models.CharField(max_length=8, blank=True, db_index=True)  # teammates join with it
+    repo_url = models.URLField(blank=True)  # where the team keeps the code, shown on portfolios
     language = models.CharField(max_length=5, default='en')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -397,6 +398,8 @@ class LabProject(models.Model):
     kind = models.CharField(max_length=10)       # a key of lab.KINDS: web, react, tailwind or python
     idea = models.TextField(blank=True)          # what the learner wants to build, for the tutor
     files = models.JSONField(default=dict)       # file name -> text
+    github_repo = models.URLField(blank=True)    # the repo it was last pushed to (learn/github.py)
+    pushed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -405,3 +408,56 @@ class LabProject(models.Model):
 
     def __str__(self):
         return f'{self.user} · {self.title}'
+
+
+class Portfolio(models.Model):
+    """A learner's public page (learn/portfolio.py): what they finished and built. Private until they publish it."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='portfolio')
+    handle = models.SlugField(max_length=40, unique=True)  # the page lives at /p/<handle>/
+    public = models.BooleanField(default=False)
+    name = models.CharField(max_length=80, blank=True)
+    headline = models.CharField(max_length=120, blank=True)
+    about = models.TextField(blank=True)
+    github = models.CharField(max_length=39, blank=True)  # a GitHub username
+    website = models.URLField(blank=True)
+    show_stats = models.BooleanField(default=True)
+    project_ids = models.JSONField(default=list, blank=True)  # learn.Project ids to show (owned or joined)
+    lab_ids = models.JSONField(default=list, blank=True)      # LabProject ids to show
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.handle} ({"public" if self.public else "private"})'
+
+
+class GitHubAccount(models.Model):
+    """A learner's GitHub sign-in, used to push Lab projects to their own repos (learn/github.py)."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='github_account')
+    login = models.CharField(max_length=39)
+    token = models.CharField(max_length=255)  # OAuth token with the public_repo scope; never shown anywhere
+    connected_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.user} as {self.login}'
+
+
+class ChapterMedia(models.Model):
+    """NotebookLM video and audio overviews for a chapter, added in admin.
+
+    Keyed by the chapter's slug, not a foreign key: `load_catalog` rebuilds chapters,
+    and the links must survive that.
+    """
+
+    chapter_slug = models.SlugField(unique=True)
+    video_url = models.URLField(blank=True, help_text='YouTube (unlisted is fine) or a Google Drive share link.')
+    audio_url = models.URLField(blank=True, help_text='Google Drive share link, or a direct .mp3/.m4a/.wav link.')
+    note = models.CharField(max_length=200, blank=True, help_text='Optional line shown with the media.')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'chapter media'
+
+    def __str__(self):
+        return self.chapter_slug

@@ -9,6 +9,7 @@
   <nav class="crumbs meta">
     {% if chapter %}<a href="{% url 'learn:path' chapter.course.path.slug %}"><bdi>{{ chapter.course.path.title }}</bdi></a>{% icon 'chevron-right' css='icon-flip' %}<bdi>{{ chapter.title }}</bdi>
     {% else %}<a href="{% url 'learn:catalog' %}">{% translate "Paths" %}</a>{% endif %}
+    {% if media %}{% include "learn/_media_links.html" with links=media %}{% endif %}
     <span id="status-badge" class="push">
       {% if progress.passed %}<span class="badge done">{% translate "Passed" %}</span>
       {% elif progress %}<span class="badge wip">{% translate "In progress" %}</span>

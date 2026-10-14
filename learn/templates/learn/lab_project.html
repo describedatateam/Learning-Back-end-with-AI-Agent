@@ -10,6 +10,7 @@
     <a class="icon-btn" href="{% url 'learn:lab' %}" title="{% translate 'All Lab projects' %}">{% icon 'chevron-left' css='icon-flip' label=_('All Lab projects') %}</a>
     <input id="lab-title" class="lab-title" value="{{ lab.title }}" maxlength="80" dir="auto" aria-label="{% translate 'Project name' %}">
     <span class="meta lab-saved" id="saved" role="status">{% icon 'cloud-check' %}<span>{% translate "Saved" %}</span></span>
+    <button class="btn quiet" type="button" id="github-open" title="{% translate 'Send the files to GitHub' %}">{% icon 'git-branch' %}<span class="lab-hide-sm">GitHub</span></button>
     <button class="btn quiet" type="button" id="download" title="{% translate 'Download the files as a .zip' %}">{% icon 'download' %}<span class="lab-hide-sm">{% translate "Download .zip" %}</span></button>
     <form method="post" action="{% url 'learn:lab_delete' lab.id %}" id="delete-form">
       {% csrf_token %}
@@ -60,6 +61,32 @@
   </div>
 </main>
 
+<dialog class="card gh-dialog" id="github-dialog" aria-labelledby="gh-title">
+  <form method="dialog" class="gh-close"><button class="icon-btn" type="submit">{% icon 'x' label=_('Close') %}</button></form>
+  <h2 id="gh-title">{% icon 'git-branch' %}{% translate "Send to GitHub" %}</h2>
+  {% if github_error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ github_error }}</span></div>{% endif %}
+  {% if github_account %}
+  <p class="meta">{% blocktranslate trimmed with login=github_account.login %}Your saved files go to a public repo on <bdi>{{ login }}</bdi>'s GitHub, as one commit. Send again any time to update it.{% endblocktranslate %}</p>
+  <div class="field">
+    <label for="gh-repo">{% translate "Repo name" %}</label>
+    <div class="handle-input" dir="ltr"><span class="meta">{{ github_account.login }}/</span><input id="gh-repo" value="{{ github_repo_name }}" maxlength="100" autocapitalize="off" spellcheck="false"></div>
+  </div>
+  <div class="notice warning" id="gh-exists" hidden>{% icon 'triangle-alert' %}<span>{% translate "You already have a repo with this name. Add these files to it? Files with the same names are replaced; the others stay." %}</span></div>
+  <div class="notice" id="gh-result" role="status" hidden></div>
+  <div class="actions">
+    <button class="btn primary" type="button" id="gh-push">{% icon 'upload' %}<span>{% if lab.github_repo %}{% translate "Send update" %}{% else %}{% translate "Create repo and send" %}{% endif %}</span></button>
+    <button class="btn" type="button" id="gh-add" hidden>{% translate "Yes, add to it" %}</button>
+    {% if lab.github_repo %}<a class="btn quiet" href="{{ lab.github_repo }}" target="_blank" rel="noopener">{% translate "Open repo" %}{% icon 'external-link' %}</a>{% endif %}
+  </div>
+  <p class="meta"><a href="{% url 'learn:portfolio' %}#github">{% translate "GitHub settings and portfolio" %}</a></p>
+  {% elif github_available %}
+  <p class="meta">{% translate "Connect your GitHub account once. Then every Lab project can go to a public repo of your own, ready to link from your portfolio or CV." %}</p>
+  <div class="actions"><a class="btn primary" href="{% url 'learn:github_connect' %}?next={{ request.path|urlencode }}">{% icon 'git-branch' %}{% translate "Connect GitHub" %}</a></div>
+  {% else %}
+  <p class="meta">{% translate "GitHub sign-in is not set up on this server yet. Download the .zip and upload the files on github.com instead: New repository, then Add file, Upload files." %}</p>
+  {% endif %}
+</dialog>
+
 {{ kind.libs|json_script:"lab-libs" }}
 {% endblock %}
 
@@ -84,6 +111,11 @@
     running: "{{ _('Running…')|escapejs }}",
     nothing: "{{ _('(nothing printed)')|escapejs }}",
     unreachable: "{{ _('Could not reach the server. Check your connection.')|escapejs }}",
+    pushing: "{{ _('Sending to GitHub…')|escapejs }}",
+    created: "{{ _('Done! Your new repo:')|escapejs }}",
+    updated: "{{ _('Done! Updated:')|escapejs }}",
+    sendUpdate: "{{ _('Send update')|escapejs }}",
+    reconnect: "{{ _('Connect GitHub')|escapejs }}",
   };
   const browser = {{ kind.browser|yesno:"true,false" }};
   const urls = { save: "{% url 'learn:lab_save' lab.id %}", run: "{% url 'learn:lab_run' lab.id %}" };
@@ -196,7 +228,8 @@
       await post(urls.save, { files: files(), ...extra });
       status(T.saved);
       try { localStorage.removeItem(backupKey); } catch (e) {}
-    } catch (e) { status(T.offline, 'warn'); }
+      return true;
+    } catch (e) { status(T.offline, 'warn'); return false; }
   }
   function changed() {
     status(T.saving);
@@ -219,6 +252,39 @@
   });
 
   $('#download').addEventListener('click', () => EditorTools.downloadZip($('#lab-title').value, files()));
+
+  // GitHub: save first, so the push sends exactly what is in the editor.
+  const dialog = $('#github-dialog');
+  $('#github-open').addEventListener('click', () => dialog.showModal());
+  {% if github_error %}dialog.showModal();{% endif %}
+  const pushButton = $('#gh-push'), addButton = $('#gh-add'), result = $('#gh-result'), exists = $('#gh-exists');
+  async function push(addToExisting) {
+    pushButton.disabled = addButton.disabled = true;
+    exists.hidden = true; addButton.hidden = true; result.hidden = false;
+    result.className = 'notice info'; result.textContent = T.pushing;
+    try {
+      clearTimeout(saveTimer);
+      if (!(await save())) throw new Error('not saved');
+      const r = await fetch("{% url 'learn:lab_github' lab.id %}", { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ repo: $('#gh-repo').value.trim(), add_to_existing: addToExisting }) });
+      const data = await r.json();
+      if (data.exists) { result.hidden = true; exists.hidden = false; addButton.hidden = false; return; }
+      if (data.error) {
+        result.className = 'notice error'; result.textContent = data.error;
+        if (data.reconnect) { const a = Object.assign(document.createElement('a'), { href: "{% url 'learn:github_connect' %}?next={{ request.path|urlencode }}", textContent: T.reconnect }); result.append(' ', a); }
+        return;
+      }
+      result.className = 'notice success'; result.textContent = data.created ? T.created : T.updated;
+      const link = Object.assign(document.createElement('a'), { href: data.url, target: '_blank', rel: 'noopener', textContent: data.url.replace('https://', '') });
+      link.dir = 'ltr';
+      result.append(' ', link);
+      pushButton.querySelector('span').textContent = T.sendUpdate;
+    } catch (e) { result.className = 'notice error'; result.textContent = T.unreachable; }
+    finally { pushButton.disabled = addButton.disabled = false; }
+  }
+  pushButton?.addEventListener('click', () => push(false));
+  addButton?.addEventListener('click', () => push(true));
   $('#delete-form').addEventListener('submit', (e) => { if (!confirm(T.remove)) e.preventDefault(); });
   refresh();
 })();

@@ -170,6 +170,21 @@ The last line restarts the site (the same as **Reload** on the Web tab, but it c
 **Generate a skill path** uses the same `GEMINI_API_KEY` as the tutor. On a free account, if Gemini can't be
 reached, the page says so and nothing is saved; placement tests work without any AI.
 
+## Let learners push Lab projects to GitHub (optional, free)
+
+1. On github.com open **Settings > Developer settings > OAuth Apps > New OAuth App**.
+2. Homepage URL: `https://WafaAlhayek.pythonanywhere.com`. Authorization callback URL: `https://WafaAlhayek.pythonanywhere.com/learn/github/callback/`. Register it, then press **Generate a new client secret**.
+3. In a Bash console, add both to `.env` (paste your own values), then restart:
+
+```bash
+cd ~/Learning-Back-end-with-AI-Agent
+echo "GITHUB_CLIENT_ID=paste-the-client-id" >> .env
+echo "GITHUB_CLIENT_SECRET=paste-the-secret" >> .env
+touch /var/www/*_wsgi.py
+```
+
+Without these, the GitHub button explains that learners can download the .zip instead. NotebookLM video and audio links are added in **Admin > Chapter media**.
+
 ## Invite testers
 
 In the same Bash console (after the update commands above), make one code per tester:

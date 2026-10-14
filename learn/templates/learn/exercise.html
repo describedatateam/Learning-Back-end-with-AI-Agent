@@ -102,6 +102,7 @@
       {% else %}<span class="badge new">{% translate "Not started" %}</span>{% endif %}
     </span>
     <span class="spacer"></span>
+    {% if media %}{% include "learn/_media_links.html" with links=media %}{% endif %}
     {% if has_slides %}<a class="btn" href="{% url 'learn:slides' exercise.slug %}" target="_blank" rel="noopener">{% icon 'presentation' %}{% translate "Slides" %}</a>{% endif %}
     {% if previous %}<a class="btn" href="{% url 'learn:exercise' previous.slug %}"><span class="icon-flip" style="display:inline-block">←</span> <bdi>{{ previous.title }}</bdi></a>{% endif %}
     {% if next %}<a class="btn" href="{% url 'learn:exercise' next.slug %}"><bdi>{{ next.title }}</bdi> <span class="icon-flip" style="display:inline-block">→</span></a>{% endif %}

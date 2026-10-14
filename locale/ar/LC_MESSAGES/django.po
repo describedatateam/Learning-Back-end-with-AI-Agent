@@ -2569,6 +2569,403 @@ msgstr "نسّق صفحة باستخدام الأصناف الجاهزة (utilit
 msgid "A script that prints its output."
 msgstr "برنامج يطبع ناتجه."
 
+#: learn/github.py:76
+msgid "This server can't reach GitHub right now. Try again later, or download the .zip instead."
+msgstr "لا يستطيع هذا الخادم الوصول إلى GitHub الآن. حاول لاحقًا، أو نزّل ملف ‎.zip‎ بدلًا من ذلك."
+
+#: learn/github.py:91
+msgid "Your GitHub sign-in has expired or was removed. Connect GitHub again."
+msgstr "انتهى تسجيل دخولك إلى GitHub أو أُلغي. اربط GitHub من جديد."
+
+#: learn/github.py:93 learn/github.py:105
+#, python-format
+msgid "GitHub said %(code)s."
+msgstr "ردّ GitHub بالرمز %(code)s."
+
+#: learn/github.py:107
+msgid "GitHub did not send a sign-in token."
+msgstr "لم يرسل GitHub رمز تسجيل الدخول."
+
+#: learn/templates/learn/_media.html:4
+msgid "Watch and listen"
+msgstr "شاهد واستمع"
+
+#: learn/templates/learn/_media.html:9 learn/templates/learn/_media.html:10
+msgid "Video overview"
+msgstr "نظرة عامة بالفيديو"
+
+#: learn/templates/learn/_media.html:11 learn/templates/learn/_media.html:19
+msgid "Open in a new tab"
+msgstr "افتح في تبويب جديد"
+
+#: learn/templates/learn/_media.html:11
+msgid "Watch the video"
+msgstr "شاهد الفيديو"
+
+#: learn/templates/learn/_media.html:16 learn/templates/learn/_media.html:17
+msgid "Audio overview"
+msgstr "نظرة عامة صوتية"
+
+#: learn/templates/learn/_media.html:19
+msgid "Listen"
+msgstr "استمع"
+
+#: learn/templates/learn/_media.html:23
+msgid "Made with NotebookLM from this chapter."
+msgstr "صُنعت باستخدام NotebookLM من هذا الفصل."
+
+#: learn/templates/learn/_media_links.html:1
+msgid "Video"
+msgstr "فيديو"
+
+#: learn/templates/learn/_media_links.html:1
+msgid "Audio"
+msgstr "صوت"
+
+#: learn/templates/learn/lab_project.html:13
+msgid "Send the files to GitHub"
+msgstr "أرسل الملفات إلى GitHub"
+
+#: learn/templates/learn/lab_project.html:66
+msgid "Send to GitHub"
+msgstr "أرسل إلى GitHub"
+
+#: learn/templates/learn/lab_project.html:69
+#, python-format
+msgid "Your saved files go to a public repo on <bdi>%(login)s</bdi>'s GitHub, as one commit. Send again any time to update it."
+msgstr "تذهب ملفاتك المحفوظة إلى مستودع عام في حساب <bdi>%(login)s</bdi> على GitHub، في حفظة (commit) واحدة. أرسل مرة أخرى متى شئت لتحديثه."
+
+#: learn/templates/learn/lab_project.html:71
+msgid "Repo name"
+msgstr "اسم المستودع"
+
+#: learn/templates/learn/lab_project.html:74
+msgid "You already have a repo with this name. Add these files to it? Files with the same names are replaced; the others stay."
+msgstr "لديك مستودع بهذا الاسم بالفعل. هل تضيف هذه الملفات إليه؟ الملفات التي تحمل الأسماء نفسها تُستبدل، والباقي يبقى كما هو."
+
+#: learn/templates/learn/lab_project.html:77 learn/templates/learn/lab_project.html:117
+msgid "Send update"
+msgstr "أرسل التحديث"
+
+#: learn/templates/learn/lab_project.html:77
+msgid "Create repo and send"
+msgstr "أنشئ المستودع وأرسل"
+
+#: learn/templates/learn/lab_project.html:78
+msgid "Yes, add to it"
+msgstr "نعم، أضف إليه"
+
+#: learn/templates/learn/lab_project.html:79
+msgid "Open repo"
+msgstr "افتح المستودع"
+
+#: learn/templates/learn/lab_project.html:81
+msgid "GitHub settings and portfolio"
+msgstr "إعدادات GitHub والملف التعريفي"
+
+#: learn/templates/learn/lab_project.html:83
+msgid "Connect your GitHub account once. Then every Lab project can go to a public repo of your own, ready to link from your portfolio or CV."
+msgstr "اربط حسابك على GitHub مرة واحدة. بعدها يمكن إرسال أي مشروع من المختبر إلى مستودع عام خاص بك، جاهز لتضع رابطه في ملفك التعريفي أو سيرتك الذاتية."
+
+#: learn/templates/learn/lab_project.html:84 learn/templates/learn/lab_project.html:118 learn/templates/learn/portfolio.html:117
+msgid "Connect GitHub"
+msgstr "اربط GitHub"
+
+#: learn/templates/learn/lab_project.html:86
+msgid "GitHub sign-in is not set up on this server yet. Download the .zip and upload the files on github.com instead: New repository, then Add file, Upload files."
+msgstr "تسجيل الدخول عبر GitHub غير مُعدّ على هذا الخادم بعد. نزّل ملف ‎.zip‎ وارفع الملفات على github.com بدلًا من ذلك: New repository، ثم Add file، ثم Upload files."
+
+#: learn/templates/learn/lab_project.html:114
+msgid "Sending to GitHub…"
+msgstr "جارٍ الإرسال إلى GitHub…"
+
+#: learn/templates/learn/lab_project.html:115
+msgid "Done! Your new repo:"
+msgstr "تم! مستودعك الجديد:"
+
+#: learn/templates/learn/lab_project.html:116
+msgid "Done! Updated:"
+msgstr "تم! حُدّث:"
+
+#: learn/templates/learn/portfolio.html:11
+msgid "One page that shows what you finished and built: paths, your project's walkthrough, Lab projects and their GitHub repos. Share the link in your CV or LinkedIn."
+msgstr "صفحة واحدة تعرض ما أنهيته وما بنيته: المسارات، وخطوات مشروعك، ومشاريع المختبر ومستودعاتها على GitHub. شارك الرابط في سيرتك الذاتية أو على LinkedIn."
+
+#: learn/templates/learn/portfolio.html:13
+msgid "View my page"
+msgstr "اعرض صفحتي"
+
+#: learn/templates/learn/portfolio.html:16
+msgid "Saved."
+msgstr "تم الحفظ."
+
+#: learn/templates/learn/portfolio.html:16
+msgid "Your page is public."
+msgstr "صفحتك عامة الآن."
+
+#: learn/templates/learn/portfolio.html:21
+msgid "Public"
+msgstr "عامة"
+
+#: learn/templates/learn/portfolio.html:22
+msgid "Anyone with the link can open it, no account needed."
+msgstr "يمكن لأي شخص لديه الرابط فتحها، دون حساب."
+
+#: learn/templates/learn/portfolio.html:23
+msgid "Private"
+msgstr "خاصة"
+
+#: learn/templates/learn/portfolio.html:24
+msgid "Only you can see it. Tick \"Make my page public\" below to share it."
+msgstr "لا يراها أحد غيرك. فعّل «اجعل صفحتي عامة» في الأسفل لتشاركها."
+
+#: learn/templates/learn/portfolio.html:27
+msgid "Your portfolio link"
+msgstr "رابط ملفك التعريفي"
+
+#: learn/templates/learn/portfolio.html:28
+msgid "Copy link"
+msgstr "انسخ الرابط"
+
+#: learn/templates/learn/portfolio.html:33
+msgid "The page address needs 3 to 40 letters, numbers or dashes."
+msgstr "يحتاج عنوان الصفحة إلى 3 حتى 40 حرفًا إنجليزيًا أو رقمًا أو شرطة."
+
+#: learn/templates/learn/portfolio.html:34
+msgid "Someone already has that page address. Try another one."
+msgstr "هذا العنوان مستخدم من شخص آخر. جرّب عنوانًا آخر."
+
+#: learn/templates/learn/portfolio.html:35
+msgid "The website must be a full link that starts with https://"
+msgstr "يجب أن يكون الموقع رابطًا كاملًا يبدأ بـ https://"
+
+#: learn/templates/learn/portfolio.html:40
+msgid "About you"
+msgstr "عنك"
+
+#: learn/templates/learn/portfolio.html:43
+msgid "Name on the page"
+msgstr "الاسم على الصفحة"
+
+#: learn/templates/learn/portfolio.html:47
+msgid "Page address"
+msgstr "عنوان الصفحة"
+
+#: learn/templates/learn/portfolio.html:52
+msgid "Headline"
+msgstr "العنوان التعريفي"
+
+#: learn/templates/learn/portfolio.html:53
+msgid "For example: Junior back-end developer, Python and Django"
+msgstr "مثلًا: مطوّر واجهات خلفية مبتدئ، Python وDjango"
+
+#: learn/templates/learn/portfolio.html:56
+msgid "About"
+msgstr "نبذة"
+
+#: learn/templates/learn/portfolio.html:56
+msgid "(a few lines)"
+msgstr "(بضعة أسطر)"
+
+#: learn/templates/learn/portfolio.html:61
+msgid "GitHub username"
+msgstr "اسم المستخدم على GitHub"
+
+#: learn/templates/learn/portfolio.html:65
+msgid "Website or LinkedIn"
+msgstr "الموقع أو LinkedIn"
+
+#: learn/templates/learn/portfolio.html:70
+msgid "What the page shows"
+msgstr "ما تعرضه الصفحة"
+
+#: learn/templates/learn/portfolio.html:71
+msgid "Finished paths and your current job path always show. Choose the projects to add."
+msgstr "المسارات المكتملة ومسارك المهني الحالي تظهر دائمًا. اختر المشاريع التي تريد إضافتها."
+
+#: learn/templates/learn/portfolio.html:72
+msgid "My level, XP, exercises passed and badges"
+msgstr "مستواي ونقاط الخبرة والتمارين المجتازة والشارات"
+
+#: learn/templates/learn/portfolio.html:75
+msgid "My projects (SRS walkthroughs)"
+msgstr "مشاريعي (خطوات وثيقة المتطلبات)"
+
+#: learn/templates/learn/portfolio.html:79
+msgid "No projects yet."
+msgstr "لا توجد مشاريع بعد."
+
+#: learn/templates/learn/portfolio.html:79
+msgid "Start one in My project"
+msgstr "ابدأ واحدًا في «مشروعي»"
+
+#: learn/templates/learn/portfolio.html:84
+msgid "Lab projects"
+msgstr "مشاريع المختبر"
+
+#: learn/templates/learn/portfolio.html:88
+msgid "No Lab projects yet."
+msgstr "لا توجد مشاريع في المختبر بعد."
+
+#: learn/templates/learn/portfolio.html:88
+msgid "Open the Lab"
+msgstr "افتح المختبر"
+
+#: learn/templates/learn/portfolio.html:92
+msgid "Make my page public"
+msgstr "اجعل صفحتي عامة"
+
+#: learn/templates/learn/portfolio.html:92
+msgid "Anyone with the link can see it. Untick to hide it again."
+msgstr "يراها أي شخص لديه الرابط. ألغِ التحديد لإخفائها مجددًا."
+
+#: learn/templates/learn/portfolio.html:104
+#, python-format
+msgid "Connected as <bdi>%(login)s</bdi>. Open a Lab project and press GitHub to send its files to a repo of your own."
+msgstr "مرتبط باسم <bdi>%(login)s</bdi>. افتح مشروعًا في المختبر واضغط GitHub لإرسال ملفاته إلى مستودع خاص بك."
+
+#: learn/templates/learn/portfolio.html:106
+msgid "Connect once, then send any Lab project to a public repo on your GitHub account. Describe can only make and update public repos; it can't see your private ones."
+msgstr "اربط مرة واحدة، ثم أرسل أي مشروع من المختبر إلى مستودع عام في حسابك على GitHub. يستطيع Describe إنشاء المستودعات العامة وتحديثها فقط، ولا يرى مستودعاتك الخاصة."
+
+#: learn/templates/learn/portfolio.html:108
+msgid "GitHub sign-in is not set up on this server yet. You can still download any Lab project as a .zip and upload it to GitHub yourself."
+msgstr "تسجيل الدخول عبر GitHub غير مُعدّ على هذا الخادم بعد. ما زال بإمكانك تنزيل أي مشروع من المختبر كملف ‎.zip‎ ورفعه إلى GitHub بنفسك."
+
+#: learn/templates/learn/portfolio.html:114
+msgid "Disconnect"
+msgstr "افصل الربط"
+
+#: learn/templates/learn/portfolio_public.html:7
+#, python-format
+msgid "%(name)s's learning portfolio on Describe"
+msgstr "ملف %(name)s التعريفي للتعلّم على Describe"
+
+#: learn/templates/learn/portfolio_public.html:9
+msgid "Paths finished and projects built on Describe"
+msgstr "مسارات مكتملة ومشاريع مبنية على Describe"
+
+#: learn/templates/learn/portfolio_public.html:29
+msgid "This is your public page. Anyone with the link sees exactly this."
+msgstr "هذه صفحتك العامة. يرى أي شخص لديه الرابط ما تراه هنا تمامًا."
+
+#: learn/templates/learn/portfolio_public.html:29 learn/templates/learn/portfolio_public.html:30
+msgid "Edit it"
+msgstr "عدّلها"
+
+#: learn/templates/learn/portfolio_public.html:30
+msgid "Only you can see this page until you make it public."
+msgstr "لا يرى هذه الصفحة أحد غيرك حتى تجعلها عامة."
+
+#: learn/templates/learn/portfolio_public.html:42
+msgid "Website"
+msgstr "الموقع"
+
+#: learn/templates/learn/portfolio_public.html:43
+msgid "Share"
+msgstr "شارك"
+
+#: learn/templates/learn/portfolio_public.html:49
+msgid "Learning stats"
+msgstr "إحصاءات التعلّم"
+
+#: learn/templates/learn/portfolio_public.html:53
+#, python-format
+msgid "Best streak %(days)s day"
+msgid_plural "Best streak %(days)s days"
+msgstr[0] "أطول سلسلة: %(days)s يوم"
+msgstr[1] "أطول سلسلة: يوم واحد"
+msgstr[2] "أطول سلسلة: يومان"
+msgstr[3] "أطول سلسلة: %(days)s أيام"
+msgstr[4] "أطول سلسلة: %(days)s يومًا"
+msgstr[5] "أطول سلسلة: %(days)s يوم"
+
+#: learn/templates/learn/portfolio_public.html:76
+msgid "Made with AI for this learner"
+msgstr "صُنع بالذكاء الاصطناعي لهذا المتعلّم"
+
+#: learn/templates/learn/portfolio_public.html:82
+msgid "No finished paths yet."
+msgstr "لا توجد مسارات مكتملة بعد."
+
+#: learn/templates/learn/portfolio_public.html:88
+msgid "Projects"
+msgstr "المشاريع"
+
+#: learn/templates/learn/portfolio_public.html:93
+#, python-format
+msgid "%(p)s%% built"
+msgstr "تم بناء %(p)s%%"
+
+#: learn/templates/learn/portfolio_public.html:94
+msgid "Team project"
+msgstr "مشروع فريق"
+
+#: learn/templates/learn/portfolio_public.html:97
+#, python-format
+msgid "SRS with %(s)s user stories, %(m)s data models and %(e)s API endpoints"
+msgstr "وثيقة متطلبات فيها %(s)s قصص مستخدم و%(m)s نماذج بيانات و%(e)s نقاط API"
+
+#: learn/templates/learn/portfolio_public.html:103 learn/templates/learn/portfolio_public.html:124
+msgid "See the code"
+msgstr "اطّلع على الكود"
+
+#: learn/templates/learn/portfolio_public.html:111
+msgid "Built in the Lab"
+msgstr "بُني في المختبر"
+
+#: learn/templates/learn/portfolio_public.html:122
+msgid "Live preview"
+msgstr "معاينة مباشرة"
+
+#: learn/templates/learn/portfolio_public.html:140
+msgid "Nothing here yet. Finished paths and chosen projects will show up on this page."
+msgstr "لا شيء هنا بعد. ستظهر المسارات المكتملة والمشاريع المختارة في هذه الصفحة."
+
+#: learn/templates/learn/portfolio_public.html:144
+msgid "Learning with <a href=\"/\">Describe</a>"
+msgstr "يتعلّم مع <a href=\"/\">Describe</a>"
+
+#: learn/templates/learn/portfolio_public.html:156
+msgid "Link copied"
+msgstr "تم نسخ الرابط"
+
+#: learn/templates/learn/project.html:37
+msgid "Code repo"
+msgstr "مستودع الكود"
+
+#: learn/templates/learn/project.html:37
+msgid "(shown on your portfolio)"
+msgstr "(يظهر في ملفك التعريفي)"
+
+#: learn/views.py:548
+msgid "GitHub sign-in is not set up on this server yet."
+msgstr "تسجيل الدخول عبر GitHub غير مُعدّ على هذا الخادم بعد."
+
+#: learn/views.py:560
+msgid "That GitHub sign-in link expired. Try connecting again."
+msgstr "انتهت صلاحية رابط تسجيل الدخول إلى GitHub. حاول الربط مرة أخرى."
+
+#: learn/views.py:563
+msgid "GitHub was not connected."
+msgstr "لم يتم ربط GitHub."
+
+#: learn/views.py:595
+msgid "Connect GitHub first."
+msgstr "اربط GitHub أولًا."
+
+#: learn/views.py:599
+msgid "Use letters, numbers, dots, dashes or underscores for the repo name."
+msgstr "استخدم في اسم المستودع حروفًا إنجليزية أو أرقامًا أو نقاطًا أو شرطات."
+
+#: learn/templates/learn/portfolio_public.html:58
+msgid "Learning paths"
+msgstr "مسارات التعلّم"
+
+#: learn/templates/learn/portfolio_public.html:66
+msgid "Job path progress"
+msgstr "التقدّم في المسار المهني"
+
 #~ msgid "No cards due. Nice. New cards arrive as you finish chapters."
 #~ msgstr "لا توجد بطاقات مستحقة. أحسنت. تصلك بطاقات جديدة كلما أنهيت فصولًا."
 

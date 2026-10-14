@@ -2034,3 +2034,303 @@ class LabTests(SignedInTestCase):
         page = self.client.get(reverse('learn:exercise', args=['flexbox-navbar']))
         self.assertContains(page, 'id="download"')
         self.assertContains(page, 'editor-tools.js')
+
+
+class ChapterMediaTests(SignedInTestCase):
+    """Day 9: NotebookLM video and audio links, added in admin, show on chapters and exercises."""
+
+    def test_links_become_players(self):
+        from . import media
+        self.assertEqual(media.player('https://youtu.be/dQw4w9WgXcQ')['src'], 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        self.assertEqual(media.player('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3')['kind'], 'frame')
+        self.assertEqual(media.player('https://drive.google.com/file/d/abc_123/view?usp=sharing')['src'],
+                         'https://drive.google.com/file/d/abc_123/preview')
+        self.assertEqual(media.player('https://example.com/a.mp3', audio=True)['kind'], 'audio')
+        self.assertEqual(media.player('https://notebooklm.google.com/notebook/x')['kind'], 'link')
+        self.assertEqual(media.player('https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ')['kind'], 'link')
+        self.assertIsNone(media.player(''))
+
+    def test_media_shows_on_the_path_and_the_exercise(self):
+        from .catalog import current_job_path
+        from .models import Chapter, ChapterMedia
+        current_job_path(self.user)  # loads the catalog
+        chapter = Chapter.objects.exclude(exercises=[]).select_related('course__path').first()
+        ChapterMedia.objects.create(chapter_slug=chapter.slug, video_url='https://youtu.be/dQw4w9WgXcQ')
+        self.assertContains(self.client.get(reverse('learn:path', args=[chapter.course.path.slug])), 'class="media-chip"')
+        self.assertContains(self.client.get(reverse('learn:exercise', args=[chapter.exercises[0]])), 'https://youtu.be/dQw4w9WgXcQ')
+
+    def test_media_survives_reloading_the_catalog(self):
+        from .catalog import current_job_path, load_catalog
+        from .models import Chapter, ChapterMedia
+        current_job_path(self.user)
+        slug = Chapter.objects.first().slug
+        ChapterMedia.objects.create(chapter_slug=slug, audio_url='https://example.com/a.mp3')
+        load_catalog()
+        self.assertTrue(ChapterMedia.objects.filter(chapter_slug=slug).exists())
+
+    def test_generated_chapter_embeds_the_video(self):
+        from .models import Chapter, ChapterMedia, Course, Path as CatalogPath
+        path = CatalogPath.objects.create(slug='my-path', kind=CatalogPath.SKILL, title='Mine', owner=self.user, ai_generated=True)
+        course = Course.objects.create(path=path, order=0, title='C')
+        Chapter.objects.create(course=course, order=0, slug='my-chapter', title='Ch', content={'lesson': 'Hi', 'quiz': []})
+        ChapterMedia.objects.create(chapter_slug='my-chapter', video_url='https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                                    note='Five minutes')
+        page = self.client.get(reverse('learn:chapter', args=['my-path', 'my-chapter']))
+        self.assertContains(page, 'youtube-nocookie.com/embed/dQw4w9WgXcQ')
+        self.assertContains(page, 'Five minutes')
+
+
+class PortfolioTests(SignedInTestCase):
+    """Day 9: a public portfolio page that only shows what the learner chose."""
+
+    def setUp(self):
+        super().setUp()
+        self.lab = LabProject.objects.create(user=self.user, title='Recipe cards', kind='web',
+                                             files={'index.html': '<h1>Recipes</h1>', 'style.css': '', 'script.js': ''})
+        self.hidden_lab = LabProject.objects.create(user=self.user, title='Secret draft', kind='python',
+                                                    files={'main.py': 'print(1)'})
+
+    def save(self, **extra):
+        data = {'handle': 'learner', 'name': 'Lina', 'headline': 'Junior back-end developer', 'about': '',
+                'github': '@lina-dev', 'website': '', 'show_stats': 'on', 'labs': [self.lab.id], **extra}
+        return self.client.post(reverse('learn:portfolio'), data)
+
+    def test_settings_page_makes_a_private_portfolio(self):
+        page = self.client.get(reverse('learn:portfolio'))
+        self.assertContains(page, '/p/learner/')
+        self.assertContains(page, 'Private')
+        self.assertFalse(self.user.portfolio.public)
+
+    def test_private_page_is_hidden_from_others(self):
+        self.save()
+        self.client.logout()
+        with override_settings(LEARN_REQUIRE_LOGIN=True):
+            self.assertEqual(self.client.get('/p/learner/').status_code, 404)
+
+    def test_public_page_opens_without_logging_in(self):
+        self.save(public='on')
+        self.assertEqual(self.user.portfolio.github, 'lina-dev')
+        self.client.logout()
+        with override_settings(LEARN_REQUIRE_LOGIN=True):
+            page = self.client.get('/p/learner/')
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'Lina')
+        self.assertContains(page, 'Junior back-end developer')
+        self.assertContains(page, 'Recipe cards')
+        self.assertNotContains(page, 'Secret draft')
+        self.assertContains(page, 'github.com/lina-dev')
+
+    def test_owner_sees_private_page_with_a_note(self):
+        self.save()
+        page = self.client.get('/p/learner/')
+        self.assertContains(page, 'Only you can see this page')
+
+    def test_cannot_show_someone_elses_projects(self):
+        other = User.objects.create_user('other', password='pw')
+        theirs = LabProject.objects.create(user=other, title='Not mine', kind='web', files={})
+        self.save(public='on', labs=[self.lab.id, theirs.id])
+        self.assertEqual(self.user.portfolio.lab_ids, [self.lab.id])
+
+    def test_handle_must_be_free_and_valid(self):
+        other = User.objects.create_user('other', password='pw')
+        from .models import Portfolio
+        Portfolio.objects.create(user=other, handle='taken-name')
+        self.assertContains(self.save(handle='taken-name'), 'Someone already has that page address')
+        self.assertContains(self.save(handle='!'), 'needs 3 to 40 letters')
+        self.assertRedirects(self.save(handle='Lina Dev'), f'{reverse("learn:portfolio")}?saved=1')
+        self.assertEqual(Portfolio.objects.get(user=self.user).handle, 'lina-dev')
+
+    def test_finished_path_and_project_show(self):
+        from .models import Chapter, ChapterProgress, Course, Path as CatalogPath, Project
+        path = CatalogPath.objects.create(slug='css-basics', kind=CatalogPath.SKILL, title='CSS basics', owner=self.user)
+        course = Course.objects.create(path=path, order=0, title='C')
+        chapter = Chapter.objects.create(course=course, order=0, slug='css-1', title='Ch', content={'lesson': 'x', 'quiz': []})
+        ChapterProgress.objects.create(user=self.user, chapter=chapter, done=True)
+        project = Project.objects.create(user=self.user, title='Book club API', source='describe', srs={
+            'summary': 'An API for book clubs.', 'milestones': [
+                {'title': 'Set up', 'goal': '', 'tasks': [{'id': 'm1-t1', 'text': 'Start'}], 'chapters': []},
+                {'title': 'Models', 'goal': '', 'tasks': [{'id': 'm2-t1', 'text': 'Book'}], 'chapters': []}]},
+            done=['m1-t1'], repo_url='https://github.com/lina/book-club')
+        self.save(public='on', projects=[project.id])
+        page = self.client.get('/p/learner/')
+        self.assertContains(page, 'CSS basics')
+        self.assertContains(page, 'Book club API')
+        self.assertContains(page, '50% built')
+        self.assertContains(page, 'https://github.com/lina/book-club')
+
+    def test_project_repo_link(self):
+        from .models import Project
+        project = Project.objects.create(user=self.user, title='P', source='describe', srs={})
+        self.client.post(reverse('learn:project_repo', args=[project.id]), {'repo_url': 'javascript:alert(1)'})
+        project.refresh_from_db()
+        self.assertEqual(project.repo_url, '')
+        self.client.post(reverse('learn:project_repo', args=[project.id]), {'repo_url': 'https://github.com/a/b'})
+        project.refresh_from_db()
+        self.assertEqual(project.repo_url, 'https://github.com/a/b')
+
+
+GITHUB_ENV = {'GITHUB_CLIENT_ID': 'cid', 'GITHUB_CLIENT_SECRET': 'secret'}
+
+
+class FakeGitHub:
+    """Stands in for github.api: answers by method and path, and records every call."""
+
+    def __init__(self, existing=False, empty=False):
+        self.calls = []
+        self.existing, self.empty = existing, empty
+
+    def __call__(self, token, method, path, data=None):
+        from .github import GitHubError
+        self.calls.append((method, path, data))
+        repo = {'html_url': 'https://github.com/lina/recipe-cards', 'default_branch': 'main'}
+        if method == 'GET' and path == '/repos/lina/recipe-cards':
+            if not self.existing:
+                raise GitHubError('Not Found', status=404)
+            return repo
+        if method == 'POST' and path == '/user/repos':
+            return repo
+        if method == 'GET' and '/git/ref/heads/' in path:
+            if self.empty:
+                self.empty = False
+                raise GitHubError('Git Repository is empty.', status=409)
+            return {'object': {'sha': 'c1'}}
+        if method == 'GET' and '/git/commits/' in path:
+            return {'sha': 'c1', 'tree': {'sha': 't1'}}
+        if path.endswith('/git/trees'):
+            return {'sha': 't2'}
+        if path.endswith('/git/commits'):
+            return {'sha': 'c2'}
+        return {}
+
+
+class GitHubTests(SignedInTestCase):
+    """Day 9: connect GitHub once, then push a Lab project to a repo of the learner's own."""
+
+    def setUp(self):
+        super().setUp()
+        self.lab = LabProject.objects.create(user=self.user, title='Recipe cards', kind='web', idea='Cards for recipes',
+                                             files={'index.html': '<h1>Hi</h1>', 'style.css': 'h1{}', 'script.js': ''})
+
+    def connect(self):
+        from .models import GitHubAccount
+        return GitHubAccount.objects.create(user=self.user, login='lina', token='tok')
+
+    def push(self, **data):
+        return self.client.post(reverse('learn:lab_github', args=[self.lab.id]),
+                                json.dumps({'repo': 'recipe-cards', **data}), content_type='application/json')
+
+    def test_connect_without_setup_explains(self):
+        with mock.patch.dict('os.environ', {'GITHUB_CLIENT_ID': '', 'GITHUB_CLIENT_SECRET': ''}):
+            response = self.client.get(reverse('learn:github_connect'))
+        self.assertRedirects(response, reverse('learn:portfolio'))
+        self.assertContains(self.client.get(reverse('learn:portfolio')), 'not set up on this server yet')
+
+    def test_connect_sends_to_github_with_a_state(self):
+        with mock.patch.dict('os.environ', GITHUB_ENV):
+            response = self.client.get(reverse('learn:github_connect') + '?next=/learn/lab/1/')
+        self.assertTrue(response['Location'].startswith('https://github.com/login/oauth/authorize?'))
+        self.assertIn('scope=public_repo', response['Location'])
+        self.assertEqual(self.client.session['github_oauth']['next'], '/learn/lab/1/')
+
+    def test_connect_refuses_outside_next(self):
+        with mock.patch.dict('os.environ', GITHUB_ENV):
+            self.client.get(reverse('learn:github_connect') + '?next=https://evil.example/')
+        self.assertEqual(self.client.session['github_oauth']['next'], reverse('learn:portfolio'))
+
+    def test_callback_checks_the_state(self):
+        from .models import GitHubAccount
+        with mock.patch.dict('os.environ', GITHUB_ENV):
+            self.client.get(reverse('learn:github_connect'))
+            response = self.client.get(reverse('learn:github_callback') + '?code=x&state=wrong')
+        self.assertRedirects(response, reverse('learn:portfolio'))
+        self.assertFalse(GitHubAccount.objects.exists())
+
+    def test_callback_connects_and_fills_the_portfolio(self):
+        with mock.patch.dict('os.environ', GITHUB_ENV):
+            self.client.get(reverse('learn:github_connect'))
+            state = self.client.session['github_oauth']['state']
+            with mock.patch('learn.github.exchange_code', return_value='tok'), \
+                    mock.patch('learn.github.api', return_value={'login': 'lina'}):
+                self.client.get(reverse('learn:github_callback') + f'?code=x&state={state}')
+        self.assertEqual(self.user.github_account.login, 'lina')
+        self.assertEqual(self.user.portfolio.github, 'lina')
+        self.assertContains(self.client.get(reverse('learn:portfolio')), 'Connected as')
+
+    def test_push_needs_a_connection(self):
+        response = self.push()
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(response.json()['reconnect'])
+
+    def test_push_creates_the_repo_with_one_commit(self):
+        self.connect()
+        fake = FakeGitHub()
+        with mock.patch('learn.github.api', fake):
+            response = self.push()
+        self.assertEqual(response.json(), {'url': 'https://github.com/lina/recipe-cards', 'created': True})
+        create = next(c for c in fake.calls if c[1] == '/user/repos')
+        self.assertFalse(create[2]['private'])
+        tree = next(c for c in fake.calls if c[1].endswith('/git/trees'))[2]
+        self.assertEqual(tree['base_tree'], 't1')
+        self.assertEqual({e['path'] for e in tree['tree']}, {'README.md', 'index.html', 'style.css', 'script.js'})
+        self.assertIn('Cards for recipes', next(e for e in tree['tree'] if e['path'] == 'README.md')['content'])
+        self.assertIn(('PATCH', '/repos/lina/recipe-cards/git/refs/heads/main', {'sha': 'c2'}), fake.calls)
+        self.lab.refresh_from_db()
+        self.assertEqual(self.lab.github_repo, 'https://github.com/lina/recipe-cards')
+
+    def test_existing_repo_asks_first_then_keeps_other_files(self):
+        self.connect()
+        fake = FakeGitHub(existing=True)
+        with mock.patch('learn.github.api', fake):
+            response = self.push()
+            self.assertEqual(response.status_code, 409)
+            self.assertTrue(response.json()['exists'])
+            self.assertFalse(any(c[1].endswith('/git/trees') for c in fake.calls))
+            response = self.push(add_to_existing=True)
+        self.assertEqual(response.json()['created'], False)
+        tree = next(c for c in fake.calls if c[1].endswith('/git/trees'))[2]
+        self.assertNotIn('README.md', {e['path'] for e in tree['tree']})  # their README stays
+
+    def test_second_push_to_the_same_repo_needs_no_question(self):
+        self.connect()
+        self.lab.github_repo = 'https://github.com/lina/recipe-cards'
+        self.lab.save()
+        with mock.patch('learn.github.api', FakeGitHub(existing=True)):
+            self.assertEqual(self.push().status_code, 200)
+
+    def test_empty_repo_gets_a_readme_first(self):
+        self.connect()
+        fake = FakeGitHub(existing=True, empty=True)
+        with mock.patch('learn.github.api', fake):
+            self.push(add_to_existing=True)
+        self.assertTrue(any(c[0] == 'PUT' and c[1].endswith('/contents/README.md') for c in fake.calls))
+
+    def test_bad_repo_name(self):
+        self.connect()
+        self.assertEqual(self.push(repo='my repo/../x').status_code, 400)
+
+    def test_expired_sign_in_disconnects(self):
+        from .github import GitHubError
+        from .models import GitHubAccount
+        self.connect()
+        with mock.patch('learn.github.api', side_effect=GitHubError('expired', reconnect=True, status=401)):
+            response = self.push()
+        self.assertTrue(response.json()['reconnect'])
+        self.assertFalse(GitHubAccount.objects.exists())
+
+    def test_server_without_internet_says_so(self):
+        from urllib.error import URLError
+        from . import github
+        self.connect()
+        with mock.patch('learn.github.urlopen', side_effect=URLError('blocked')):
+            response = self.push()
+        self.assertIn("can't reach GitHub", response.json()['error'])
+
+    def test_suggested_repo_name(self):
+        from . import github
+        self.assertEqual(github.suggested_repo(self.lab), 'recipe-cards')
+        self.lab.title = 'بطاقات الوصفات'
+        self.assertEqual(github.suggested_repo(self.lab), f'describe-lab-{self.lab.id}')
+
+    def test_lab_page_has_the_github_button(self):
+        page = self.client.get(reverse('learn:lab_project', args=[self.lab.id]))
+        self.assertContains(page, 'id="github-dialog"')

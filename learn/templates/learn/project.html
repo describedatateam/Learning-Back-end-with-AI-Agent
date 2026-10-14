@@ -32,6 +32,14 @@
           <button class="btn" type="button" id="copy-code">{% icon 'copy' %}<span>{% translate "Copy" %}</span></button>
         </div>
         {% endif %}
+        <form class="repo-form" method="post" action="{% url 'learn:project_repo' project.id %}">
+          {% csrf_token %}
+          <label for="repo-url">{% icon 'git-branch' %}{% translate "Code repo" %} <span class="meta">{% translate "(shown on your portfolio)" %}</span></label>
+          <div class="join-row">
+            <input id="repo-url" name="repo_url" type="url" dir="ltr" maxlength="200" value="{{ project.repo_url }}" placeholder="https://github.com/you/project">
+            <button class="btn" type="submit">{% translate "Save" %}</button>
+          </div>
+        </form>
       </section>
 
       {% if srs.gaps or error %}
