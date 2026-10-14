@@ -3334,6 +3334,57 @@ msgstr "بُنيت بـ Django على استضافة مجانية، مع Gemini 
 msgid "How Describe was built"
 msgstr "كيف بُنيت Describe"
 
+msgid "Check the AI: this code came from an AI assistant. It runs, but one thing is wrong. Run the tests, find the flaw and fix it, changing as little as you can."
+msgstr "افحص كود الذكاء الاصطناعي: كتب مساعد ذكاء اصطناعي هذا الكود. إنه يعمل، لكن فيه خطأ واحد. شغّل الاختبارات، وجد الخلل وأصلحه بأقل تغيير ممكن."
+
+msgid "Check the AI"
+msgstr "افحص كود الذكاء الاصطناعي"
+
+msgid "An AI assistant wrote this code and one thing is wrong. Find it with the tests and fix it."
+msgstr "كتب مساعد ذكاء اصطناعي هذا الكود وفيه خطأ واحد. اكتشفه بالاختبارات وأصلحه."
+
+msgid "Fixed, open again"
+msgstr "تم الإصلاح، افتحه مجددًا"
+
+msgid "Continue checking"
+msgstr "تابع الفحص"
+
+msgid "Check the code"
+msgstr "افحص الكود"
+
+msgid "What was wrong"
+msgstr "ما الخطأ"
+
+msgid "Explain your fix"
+msgstr "اشرح إصلاحك"
+
+msgid "In one or two sentences: why does your change fix it? Explaining it is how you remember it."
+msgstr "في جملة أو جملتين: لماذا يُصلح تغييرك المشكلة؟ الشرح يساعدك على التذكّر."
+
+msgid "Spec first"
+msgstr "المواصفات أولًا"
+
+msgid "Say what should be built before anyone builds it"
+msgstr "حدّد ما يجب بناؤه قبل أن يبدأ أحد ببنائه"
+
+msgid "Answer the questions in your own words. Then ask the tutor below to build it from your spec, and check the result against what you wrote."
+msgstr "أجب عن الأسئلة بكلماتك. ثم اطلب من المعلّم في الأسفل بناءها من مواصفاتك، وتحقّق من النتيجة مقابل ما كتبت."
+
+msgid "Save my spec"
+msgstr "احفظ مواصفاتي"
+
+msgid "Bug"
+msgstr "خطأ برمجي"
+
+msgid "Missed edge case"
+msgstr "حالة حدّية منسية"
+
+msgid "Security flaw"
+msgstr "ثغرة أمنية"
+
+msgid "Design problem"
+msgstr "مشكلة في التصميم"
+
 #~ msgid "No cards due. Nice. New cards arrive as you finish chapters."
 #~ msgstr "لا توجد بطاقات مستحقة. أحسنت. تصلك بطاقات جديدة كلما أنهيت فصولًا."
 

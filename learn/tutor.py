@@ -124,7 +124,7 @@ def project_id(topic):
     return int(rest) if rest.isdigit() else None
 
 
-def _chapter_context(chapter):
+def _chapter_context(chapter, learner=None):
     path, content = chapter.course.path, chapter.content
     language = 'Arabic' if (path.request or {}).get('language') == 'ar' else 'English'
     slides = '\n'.join(f'- {s.get("title", "")}: ' + '; '.join(s.get('points', [])) for s in content.get('slides', []))
@@ -147,8 +147,24 @@ def _chapter_context(chapter):
         f'<slides>\n{slides}\n</slides>\n\n'
         f'<try_it>{chapter.exercise_idea}</try_it>\n'
         f'<quiz>\n{quiz}\n</quiz>\n'
-        '</chapter>'
+        + _spec_context(chapter, learner)
+        + '</chapter>'
     )
+
+
+def _spec_context(chapter, learner):
+    """The chapter's "spec first" task and the spec the learner saved, if any."""
+    task = chapter.content.get('spec_task')
+    if not task:
+        return ''
+    from .models import ChapterProgress
+
+    progress = ChapterProgress.objects.filter(user=learner, chapter=chapter).first() if learner else None
+    spec = (progress.notes.get('spec') if progress else '') or ''
+    return (f'<spec_task feature="{task.get("feature", "")}">\n'
+            + '\n'.join(f'- {q}' for q in task.get('questions', []))
+            + (f'\n<learner_spec>\n{spec}\n</learner_spec>' if spec else '\n(The learner has not saved a spec yet.)')
+            + '\n</spec_task>\n')
 
 
 FLASHCARD_CONTEXT = (
@@ -174,6 +190,62 @@ def build_card_turn(question, card, code=None, output=None, revealed=False):
     )
 
 
+# --- How much the tutor writes for the learner, by where they are -------------------
+# Learners who ask AI for concepts, or generate code and then make sure they understand it,
+# keep learning; learners who hand the work over don't. So AI is let in step by step.
+
+EXPLAIN, DRAFT, BUILD, REVIEW = 'explain', 'draft', 'build', 'review'
+STAGE_RULES = {
+    EXPLAIN: (
+        'Stage: foundations, explain only. The learner is building the basics, so they write every line. '
+        'Explain concepts, point to the line or idea that is off, and ask them to predict what code will do '
+        'before they run it. Do not write code that solves the task or any step of it; use small examples '
+        'with different names and data.'),
+    DRAFT: (
+        'Stage: generate then understand. You may draft one small step of code when they ask (never the '
+        'whole solution), but treat it like code from any AI: ask them to explain what each line does or '
+        'predict what the tests will say before they use it, and remind them to run the tests. If you are '
+        'unsure, say so; you can be wrong too.'),
+    BUILD: (
+        'Stage: build from their spec. Before writing a feature, ask for their spec if they have not given one: '
+        'what goes in, what comes out, edge cases, and how they will test it. Then you can write the code, '
+        'but they own checking it: ask what they would test, and name one edge case or security risk for '
+        'them to verify themselves.'),
+    REVIEW: (
+        'Stage: Check the AI. The starter code was "written by an AI assistant" and has one planted flaw '
+        'that the tests catch. Do not name the flaw or its line. Help them read the code like a reviewer: '
+        'ask what each part does, which input could break it, and what a failing test is telling them.'),
+}
+
+
+def _first_steps(chapter):
+    """The first course of a beginner path, where learners write everything themselves."""
+    return chapter.course.order == 0 and chapter.course.path.level in ('', 'beginner')
+
+
+def stage_for(exercise=None, chapter=None, flashcards=False, project=None, lab_project=None):
+    """Which STAGE_RULES apply where the learner is asking."""
+    from . import generated_exercises
+
+    if lab_project or project:
+        return BUILD  # their own idea or project: they spec, the tutor can build
+    if flashcards:
+        return EXPLAIN
+    if exercise is not None:  # a graded exercise: the tutor never writes the whole solution
+        if exercise.slug.endswith(generated_exercises.SUFFIXES[generated_exercises.CHECK_AI]):
+            return REVIEW
+        chapter = getattr(exercise, 'chapter', None)
+        if chapter is None:  # a featured exercise: week 1 is the basics
+            return EXPLAIN if getattr(exercise, 'week', 0) <= 1 else DRAFT
+        return EXPLAIN if _first_steps(chapter) else DRAFT
+    if chapter is not None:
+        if chapter.content.get('spec_task'):
+            return BUILD
+        if _first_steps(chapter):
+            return EXPLAIN
+    return DRAFT
+
+
 def build_system(exercise, chapter=None, flashcards=False, project=None, learner=None, lab_project=None):
     if lab_project:
         from .lab import tutor_context
@@ -186,12 +258,13 @@ def build_system(exercise, chapter=None, flashcards=False, project=None, learner
     elif exercise:
         context = _exercise_context(exercise)
     elif chapter:
-        context = _chapter_context(chapter)
+        context = _chapter_context(chapter, learner)
     else:
         context = _course_context()
+    stage = stage_for(exercise, chapter, flashcards, project, lab_project)
     return [
         {'type': 'text', 'text': TUTOR_PROMPT},
-        {'type': 'text', 'text': context},
+        {'type': 'text', 'text': f'{context}\n\n<stage name="{stage}">{STAGE_RULES[stage]}</stage>'},
     ]
 
 

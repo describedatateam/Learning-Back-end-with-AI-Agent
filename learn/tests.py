@@ -1942,6 +1942,111 @@ class GeneratedExerciseTests(SignedInTestCase):
         self.assertEqual(self.client.get(f'/learn/paths/{path.slug}/check-exercises/').status_code, 404)
 
 
+CHECK_AI = {
+    **PYTHON_EXERCISE, 'title': 'Check the AI: averages',
+    'instructions': 'An assistant was asked for `average(numbers)`. One thing is wrong.',
+    'flaw_kind': 'edge_case', 'explanation': 'An empty list divides by zero; AI often forgets empty input.',
+    'starter': 'def average(numbers):\n    return sum(numbers) / len(numbers)\n',
+    'solution': 'def average(numbers):\n    return sum(numbers) / len(numbers) if numbers else 0\n',
+    'tests': ('import unittest\nfrom exercise import average\n\n\nclass AverageTests(unittest.TestCase):\n'
+              '    def test_01_numbers(self):\n        """Averages numbers"""\n        self.assertEqual(average([2, 4]), 3)\n\n'
+              '    def test_02_empty(self):\n        """An empty list gives 0"""\n        self.assertEqual(average([]), 0)\n'),
+}
+
+
+class LearningWithAITests(SignedInTestCase):
+    """Check the AI tasks, explain-your-fix and spec-first notes, and the tutor's stages."""
+
+    def make_path(self, check=CHECK_AI, spec=True):
+        from .generator import clean_path, save_path
+        data = sample_generated_path()
+        first = data['courses'][0]['chapters'][0]
+        first['exercise'], first['check_ai'] = PYTHON_EXERCISE, check
+        if spec:
+            data['courses'][0]['chapters'][1]['spec_task'] = {
+                'feature': 'A card that shows a user profile.', 'questions': ['What goes in?', 'What could go wrong?']}
+        cleaned, errors = clean_path(data)
+        self.assertEqual(errors, [])
+        return save_path(self.user, cleaned, {'skill': 'Tailwind basics', 'language': 'en'})
+
+    def chapters(self, path):
+        from .models import Chapter
+        return list(Chapter.objects.filter(course__path=path).order_by('course__order', 'order'))
+
+    def test_check_ai_needs_a_known_flaw_kind_and_explanation(self):
+        from .generated_exercises import clean_exercise
+        errors = []
+        clean_exercise({**CHECK_AI, 'flaw_kind': 'typo', 'explanation': ''}, 'c1', errors, 'check_ai')
+        self.assertIn('c1 check_ai flaw_kind must be one of bug, edge_case, security, design.', errors)
+        self.assertIn('c1 check_ai needs an explanation.', errors)
+
+    def test_check_ai_is_proven_then_shown_with_its_explanation_after_the_fix(self):
+        from .generated_exercises import check_new_path
+        path = self.make_path()
+        check_new_path(path)
+        first = self.chapters(path)[0]
+        self.assertEqual(first.content['check_ai']['status'], 'ok')
+        self.assertEqual(first.exercises, [first.slug + '-ex', first.slug + '-check'])
+        url = f'/learn/paths/{path.slug}/chapters/{first.slug}/'
+        page = self.client.get(url)
+        self.assertContains(page, 'Check the code')
+        self.assertNotContains(page, 'divides by zero')  # not before they fix it
+        self.assertContains(self.client.get(f'/learn/{first.slug}-check/'), 'this code came from an AI assistant')
+        result = self.client.post(f'/learn/{first.slug}-check/run/', {'code': CHECK_AI['solution']},
+                                  content_type='application/json').json()
+        self.assertTrue(result['all_passed'])
+        page = self.client.get(url)
+        self.assertContains(page, 'divides by zero')
+        self.assertContains(page, 'Missed edge case')
+        self.client.post(url, {'note': 'explain', 'text': 'Empty lists have no length to divide by.'})
+        from .models import ChapterProgress
+        self.assertEqual(ChapterProgress.objects.get(chapter=first).notes['explain'],
+                         'Empty lists have no length to divide by.')
+        self.assertContains(self.client.get(url), 'Empty lists have no length')
+
+    def test_a_check_whose_flaw_the_tests_miss_is_hidden(self):
+        from .generated_exercises import check_new_path
+        path = self.make_path(check={**CHECK_AI, 'starter': CHECK_AI['solution']})
+        check_new_path(path)
+        first = self.chapters(path)[0]
+        self.assertEqual(first.content['check_ai']['status'], 'broken')
+        self.assertNotContains(self.client.get(f'/learn/paths/{path.slug}/chapters/{first.slug}/'), 'Check the code')
+        self.assertEqual(self.client.get(f'/learn/{first.slug}-check/').status_code, 404)
+
+    def test_spec_first_is_saved_and_given_to_the_tutor(self):
+        from . import tutor
+        path = self.make_path()
+        second = self.chapters(path)[1]
+        url = f'/learn/paths/{path.slug}/chapters/{second.slug}/'
+        self.assertContains(self.client.get(url), 'What could go wrong?')
+        self.client.post(url, {'note': 'spec', 'text': 'Name and photo in, a card out.'})
+        system = tutor.build_system(None, second, learner=self.user)[1]['text']
+        self.assertIn('Name and photo in, a card out.', system)
+        self.assertIn('<stage name="build">', system)
+
+    def test_tutor_stages_follow_the_path(self):
+        from . import tutor
+        from .exercises import get_exercise, load_exercises
+        from .generated_exercises import check_new_path
+        path = self.make_path()
+        check_new_path(path)
+        first, _, third = self.chapters(path)
+        self.assertEqual(tutor.stage_for(chapter=first), tutor.EXPLAIN)    # first course of a beginner path
+        self.assertEqual(tutor.stage_for(chapter=third), tutor.DRAFT)
+        self.assertEqual(tutor.stage_for(get_exercise(first.slug + '-check')), tutor.REVIEW)
+        self.assertEqual(tutor.stage_for(get_exercise(first.slug + '-ex')), tutor.EXPLAIN)
+        week1, later = load_exercises()[0], next(e for e in load_exercises() if e.week == 3)
+        self.assertEqual(tutor.stage_for(week1), tutor.EXPLAIN)
+        self.assertEqual(tutor.stage_for(later), tutor.DRAFT)
+        self.assertEqual(tutor.stage_for(flashcards=True), tutor.EXPLAIN)
+        self.assertIn('<stage name="review">', tutor.build_system(get_exercise(first.slug + '-check'))[1]['text'])
+
+    def test_generator_prompt_asks_for_the_routine(self):
+        from .generator import GENERATE_PROMPT
+        for phrase in ('"check_ai"', 'Spec first', 'an AI assistant gave', 'Each chapter has 2 slides'):
+            self.assertIn(phrase, GENERATE_PROMPT)
+
+
 class CatalogFilterTests(SignedInTestCase):
     def setUp(self):
         super().setUp()

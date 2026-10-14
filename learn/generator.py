@@ -35,7 +35,11 @@ You design short, practical skill paths for Describe, a self-paced learning plat
 for a cohort of beginner and junior web developers (Python, Django, HTML, CSS, JavaScript, SQL). \
 A skill path is made of courses, a course of chapters. Each chapter teaches one idea with a \
 short lesson, a few slides, a quiz and, where the topic can be practised in code, a hands-on exercise \
-with automatic tests.
+with automatic tests and a "Check the AI" task.
+
+Learners will work alongside AI assistants, so every chapter also trains judgment: reading code, \
+spotting what AI gets wrong, and saying clearly what should be built. Teach the idea first, then \
+let them check AI output against it.
 
 Reply with a single JSON object and nothing else, in exactly this shape:
 {
@@ -56,14 +60,17 @@ Reply with a single JSON object and nothing else, in exactly this shape:
         "slides": [{"title": "...", "points": ["short point", "short point", "short point"],
                     "diagram": "optional Mermaid diagram that replaces long points on at most one slide"}],
         "quiz": [{"question": "...", "options": ["...", "...", "...", "..."], "answer": index of the right option (0-3),
-                  "explanation": "one sentence on why"}]}
+                  "explanation": "one sentence on why"}],
+        "spec_task": only in the last chapter of each course, see Spec first below}
      ]}
   ]
 }
 
 Rules:
 - 2 or 3 courses, each with 2 to 4 chapters, in the order a learner should take them.
-- Each chapter has 3 slides and 3 quiz questions with 4 options each and exactly one right answer.
+- Each chapter has 2 slides and 3 quiz questions with 4 options each and exactly one right answer.
+- The third quiz question shows a short answer or code snippet "an AI assistant gave" about the chapter's \
+idea, with one mistake in it, and asks what is wrong with it. Its explanation says how to catch that mistake.
 - Size the path for the learner's hours per week so it takes about 2 to 4 weeks.
 - Match the learner's level: don't re-teach basics to an advanced learner.
 - Plain, friendly language, sentence-case titles, no emojis, no HTML tags, no links.
@@ -74,7 +81,14 @@ Diagrams (Mermaid syntax, drawn on the page):
 - In lessons and slides use "flowchart LR" for steps and flows, "sequenceDiagram" for two sides talking \
 (browser and server), and "erDiagram" for data that links together.
 - Labels are 1 to 4 words in {language}. Put a label in double quotes if it has brackets, colons or other symbols.
-- No styling, no classDef, no click, no %% directives, no HTML. At most 12 nodes per diagram.\
+- No styling, no classDef, no click, no %% directives, no HTML. At most 12 nodes per diagram.
+
+Spec first (the last chapter of each course gets "spec_task"):
+"spec_task": {"feature": "1 or 2 sentences: a small feature that uses this course's ideas",
+              "questions": ["3 to 5 short questions the learner answers in writing before anyone builds it: \
+what goes in, what comes out, which edge cases and errors, how a test would prove it works, what could go \
+wrong for security or other users"]}
+The learner writes the spec; later they can ask the tutor to build from it and check the result against it.\
 """ + generated_exercises.PROMPT
 
 
@@ -247,6 +261,15 @@ def _slides(items, where, errors):
     return slides
 
 
+def _spec_task(data, where, errors):
+    """The "spec first" task of a course's last chapter, or None."""
+    if not isinstance(data, dict) or not data:
+        return None
+    where = f'{where} spec_task'
+    questions = [_text(q, f'{where} question', errors, 300) for q in _list(data.get('questions'), f'{where} questions', errors, 2, 6)]
+    return {'feature': _text(data.get('feature'), f'{where} feature', errors, 500), 'questions': questions}
+
+
 def clean_path(data):
     """Return (cleaned path, problems). Only known keys are kept, and text is trimmed to sensible lengths."""
     errors = []
@@ -297,6 +320,9 @@ def clean_path(data):
                 'slides': _slides(chapter.get('slides'), here, errors),
                 'quiz': _quiz(chapter.get('quiz'), here, errors),
                 'exercise': generated_exercises.clean_exercise(chapter.get('exercise'), here, errors),
+                'check_ai': generated_exercises.clean_exercise(chapter.get('check_ai'), here, errors,
+                                                               generated_exercises.CHECK_AI),
+                'spec_task': _spec_task(chapter.get('spec_task'), here, errors),
             })
         path['courses'].append({
             'title': _text(course.get('title'), f'{where} title', errors, 120),
@@ -327,6 +353,7 @@ def save_path(user, data, request):
                 course=course, order=ch_order, slug=f'{slug}-{number}', title=chapter['title'],
                 learning_goal=chapter['learning_goal'], exercise_idea=chapter['exercise_idea'],
                 content={'lesson': chapter['lesson'], 'slides': chapter['slides'], 'quiz': chapter['quiz'],
-                         'mind_map': chapter['mind_map'], **({'exercise': chapter['exercise']} if chapter.get('exercise') else {})},
+                         'mind_map': chapter['mind_map'],
+                         **{key: chapter[key] for key in ('exercise', 'check_ai', 'spec_task') if chapter.get(key)}},
             )
     return path

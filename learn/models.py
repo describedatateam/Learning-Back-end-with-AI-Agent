@@ -269,6 +269,7 @@ class ChapterProgress(models.Model):
     quiz_correct = models.PositiveIntegerField(default=0)
     quiz_total = models.PositiveIntegerField(default=0)
     done = models.BooleanField(default=False)
+    notes = models.JSONField(default=dict, blank=True)  # what the learner wrote: {'explain': ..., 'spec': ...}
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
