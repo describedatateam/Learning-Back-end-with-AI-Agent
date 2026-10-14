@@ -21,6 +21,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from learn.accounts import signup
+from learn.views import portfolio_public
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,5 +31,6 @@ urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     path('api/', include('core.api_urls')),
     path('learn/', include('learn.urls')),
+    path('p/<slug:handle>/', portfolio_public, name='portfolio_public'),
     path('', include('core.urls')),
 ]

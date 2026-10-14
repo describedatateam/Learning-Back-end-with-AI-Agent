@@ -1,0 +1,169 @@
+{% load static i18n ui %}{% get_current_language as LANG %}{% get_current_language_bidi as RTL %}<!doctype html>
+<html lang="{{ LANG }}" dir="{% if RTL %}rtl{% else %}ltr{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ display_name }} · {% translate "Portfolio" %}</title>
+  <meta name="description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% blocktranslate with name=display_name %}{{ name }}'s learning portfolio on Describe{% endblocktranslate %}{% endif %}">
+  <meta property="og:title" content="{{ display_name }} · {% translate 'Portfolio' %}">
+  <meta property="og:description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% translate 'Paths finished and projects built on Describe' %}{% endif %}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:type" content="profile">
+  {% if not portfolio.public %}<meta name="robots" content="noindex">{% endif %}
+  <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
+</head>
+<body class="public-page">
+  <header class="public-top">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+    <form class="lang-switch" action="{% url 'set_language' %}" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% if LANG == 'ar' %}<button type="submit" name="language" value="en" lang="en">English</button>{% else %}<button type="submit" name="language" value="ar" lang="ar">العربية</button>{% endif %}
+    </form>
+  </header>
+
+  <main class="narrow folio">
+    {% if is_owner %}
+    <div class="notice {% if portfolio.public %}info{% else %}warning{% endif %}" role="status">
+      {% if portfolio.public %}{% icon 'globe' %}<span>{% translate "This is your public page. Anyone with the link sees exactly this." %} <a href="{% url 'learn:portfolio' %}">{% translate "Edit it" %}</a></span>
+      {% else %}{% icon 'eye-off' %}<span>{% translate "Only you can see this page until you make it public." %} <a href="{% url 'learn:portfolio' %}">{% translate "Edit it" %}</a></span>{% endif %}
+    </div>
+    {% endif %}
+
+    <section class="card folio-hero">
+      <span class="folio-avatar" aria-hidden="true">{{ display_name|first|upper }}</span>
+      <div class="folio-who">
+        <h1 dir="auto">{{ display_name }}</h1>
+        {% if portfolio.headline %}<p class="folio-headline" dir="auto">{{ portfolio.headline }}</p>{% endif %}
+        {% if portfolio.about %}<p class="muted" dir="auto">{{ portfolio.about|linebreaksbr }}</p>{% endif %}
+        <div class="folio-links">
+          {% if portfolio.github %}<a class="btn" href="https://github.com/{{ portfolio.github }}" target="_blank" rel="noopener me">{% icon 'git-branch' %}<span dir="ltr">github.com/{{ portfolio.github }}</span></a>{% endif %}
+          {% if portfolio.website %}<a class="btn" href="{{ portfolio.website }}" target="_blank" rel="noopener me nofollow">{% icon 'link' %}{% translate "Website" %}</a>{% endif %}
+          <button class="btn quiet" type="button" data-share="{{ page_url }}">{% icon 'share-2' %}<span>{% translate "Share" %}</span></button>
+        </div>
+      </div>
+    </section>
+
+    {% if stats %}
+    <section class="folio-stats" aria-label="{% translate 'Learning stats' %}">
+      <div class="card metric"><div><p class="meta">{% translate "Level" %}</p><p class="metric-value num" dir="ltr">Lv {{ stats.level.number }}</p><p class="meta">{{ stats.level.title }}</p></div><span class="metric-icon xp">{% icon 'zap' %}</span></div>
+      <div class="card metric"><div><p class="meta">XP</p><p class="metric-value num">{{ stats.xp }}</p></div><span class="metric-icon xp">{% icon 'sparkles' %}</span></div>
+      <div class="card metric"><div><p class="meta">{% translate "Exercises passed" %}</p><p class="metric-value num">{{ stats.exercises }}</p></div><span class="metric-icon">{% icon 'code' %}</span></div>
+      <div class="card metric"><div><p class="meta">{% translate "Badges" %}</p><p class="metric-value num">{{ stats.badges }}</p>{% if stats.best_streak %}<p class="meta">{% blocktranslate trimmed count days=stats.best_streak %}Best streak {{ days }} day{% plural %}Best streak {{ days }} days{% endblocktranslate %}</p>{% endif %}</div><span class="metric-icon">{% icon 'award' %}</span></div>
+    </section>
+    {% endif %}
+
+    <section class="folio-section">
+      <h2>{% icon 'graduation-cap' %}{% translate "Learning paths" %}</h2>
+      {% if job %}
+      <div class="card folio-row">
+        <span class="metric-icon">{% icon 'briefcase' %}</span>
+        <div class="folio-row-body">
+          <p class="meta">{% translate "Job path" %}{% if job.percent == 100 %} · {% translate "Completed" %}{% else %} · {% translate "In progress" %}{% endif %}</p>
+          <strong dir="auto">{{ job.path.title }}</strong>
+          <div class="progress-row">
+            <div class="progress{% if job.percent == 100 %} complete{% endif %}" role="progressbar" aria-valuenow="{{ job.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{% translate 'Job path progress' %}"><div style="width: {{ job.percent }}%"></div></div>
+            <span class="meta num">{{ job.percent }}%</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% for skill in paths %}
+      <div class="card folio-row">
+        <span class="metric-icon done">{% icon 'circle-check' %}</span>
+        <div class="folio-row-body">
+          <p class="meta">{% translate "Skill path" %} · {% translate "Completed" %}{% if skill.path.ai_generated %} · {% translate "Made with AI for this learner" %}{% endif %}</p>
+          <strong dir="auto">{{ skill.path.title }}</strong>
+          <p class="meta">{% blocktranslate trimmed count n=skill.total %}{{ n }} chapter{% plural %}{{ n }} chapters{% endblocktranslate %}{% if skill.exercise_count %} · {% blocktranslate trimmed count n=skill.exercise_count %}{{ n }} exercise{% plural %}{{ n }} exercises{% endblocktranslate %}{% endif %}</p>
+        </div>
+      </div>
+      {% empty %}
+      {% if not job %}<p class="meta">{% translate "No finished paths yet." %}</p>{% endif %}
+      {% endfor %}
+    </section>
+
+    {% if projects %}
+    <section class="folio-section">
+      <h2>{% icon 'file-text' %}{% translate "Projects" %}</h2>
+      {% for row in projects %}
+      <article class="card folio-project">
+        <div class="card-head">
+          <h3 dir="auto">{{ row.project.title }}</h3>
+          {% if row.progress.percent == 100 %}<span class="badge done">{% icon 'circle-check' %}{% translate "Finished" %}</span>{% else %}<span class="badge wip">{% blocktranslate with p=row.progress.percent %}{{ p }}% built{% endblocktranslate %}</span>{% endif %}
+          {% if row.team %}<span class="tag">{% icon 'users' %}{% translate "Team project" %}</span>{% endif %}
+        </div>
+        {% if row.summary %}<p class="muted" dir="auto">{{ row.summary }}</p>{% endif %}
+        <p class="meta">{% blocktranslate trimmed with s=row.stories m=row.models e=row.endpoints %}SRS with {{ s }} user stories, {{ m }} data models and {{ e }} API endpoints{% endblocktranslate %}</p>
+        <ol class="folio-milestones">
+          {% for m in row.milestones %}
+          <li class="{% if m.finished %}is-done{% elif m.current %}is-current{% endif %}">{% if m.finished %}{% icon 'circle-check' %}{% elif m.current %}{% icon 'circle-dot' %}{% else %}{% icon 'circle' %}{% endif %}<span dir="auto">{{ m.title }}</span></li>
+          {% endfor %}
+        </ol>
+        {% if row.project.repo_url %}<a class="btn" href="{{ row.project.repo_url }}" target="_blank" rel="noopener nofollow">{% icon 'git-branch' %}{% translate "See the code" %}{% icon 'external-link' %}</a>{% endif %}
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if labs %}
+    <section class="folio-section">
+      <h2>{% icon 'flask-conical' %}{% translate "Built in the Lab" %}</h2>
+      <div class="folio-labs">
+      {% for row in labs %}
+      <article class="card folio-lab" data-lab="{{ row.script_id }}">
+        <div class="card-head"><span class="tag">{% icon row.kind.icon %}{{ row.kind.label }}</span></div>
+        <h3 dir="auto">{{ row.lab.title }}</h3>
+        {% if row.lab.idea %}<p class="muted" dir="auto">{{ row.lab.idea|truncatechars:220 }}</p>{% endif %}
+        <div class="actions">
+          {% if row.kind.browser %}<button class="btn primary" type="button" data-preview>{% icon 'play' %}{% translate "Try it" %}</button>{% endif %}
+          {% if row.lab.github_repo %}<a class="btn" href="{{ row.lab.github_repo }}" target="_blank" rel="noopener">{% icon 'git-branch' %}GitHub{% icon 'external-link' %}</a>{% endif %}
+        </div>
+        {% if row.kind.browser %}<iframe class="preview folio-preview" title="{% translate 'Live preview' %}" hidden></iframe>{% endif %}
+        <details class="folio-code">
+          <summary>{% icon 'code' %}{% translate "See the code" %}</summary>
+          {% for name, text in row.files.items %}{% if text %}
+          <p class="meta" dir="ltr">{{ name }}</p>
+          <pre class="code-view" dir="ltr">{{ text }}</pre>
+          {% endif %}{% endfor %}
+        </details>
+        {% if row.kind.browser %}{{ row.data|json_script:row.script_id }}{% endif %}
+      </article>
+      {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if not paths and not job and not projects and not labs %}
+    <section class="card empty-state">
+      {% icon 'briefcase' css='icon-lg' %}
+      <p>{% translate "Nothing here yet. Finished paths and chosen projects will show up on this page." %}</p>
+    </section>
+    {% endif %}
+
+    <footer class="folio-foot meta">{% blocktranslate trimmed %}Learning with <a href="/">Describe</a>{% endblocktranslate %}</footer>
+  </main>
+
+  {% if labs %}
+  <script src="{% static 'learn/js/web-runner.js' %}"></script>
+  {% endif %}
+  <script>
+  document.querySelectorAll('[data-share]').forEach((button) => button.addEventListener('click', async () => {
+    const url = button.dataset.share;
+    try {
+      if (navigator.share) { await navigator.share({ title: document.title, url }); return; }
+      await navigator.clipboard.writeText(url);
+      button.querySelector('span').textContent = "{{ _('Link copied')|escapejs }}";
+    } catch (e) {}
+  }));
+  document.querySelectorAll('[data-preview]').forEach((button) => button.addEventListener('click', () => {
+    const card = button.closest('[data-lab]');
+    const frame = card.querySelector('iframe');
+    const { files, libs } = JSON.parse(document.getElementById(card.dataset.lab).textContent);
+    frame.hidden = false;
+    WebRunner.preview(frame, { files, libs }, () => {});
+    frame.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }));
+  </script>
+</body>
+</html>

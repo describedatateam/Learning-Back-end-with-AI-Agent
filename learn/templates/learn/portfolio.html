@@ -1,0 +1,131 @@
+{% extends "learn/base.html" %}
+{% load i18n ui %}
+
+{% block title %}{% translate "Portfolio" %} · Describe{% endblock %}
+
+{% block content %}
+<main class="narrow">
+  <header class="page-head with-action">
+    <div>
+      <h1>{% translate "Portfolio" %}</h1>
+      <p class="muted">{% translate "One page that shows what you finished and built: paths, your project's walkthrough, Lab projects and their GitHub repos. Share the link in your CV or LinkedIn." %}</p>
+    </div>
+    <a class="btn secondary" href="{% url 'portfolio_public' portfolio.handle %}" target="_blank" rel="noopener">{% icon 'eye' %}{% translate "View my page" %}</a>
+  </header>
+
+  {% if saved %}<div class="notice success" role="status">{% icon 'circle-check' %}<span>{% translate "Saved." %}{% if portfolio.public %} {% translate "Your page is public." %}{% endif %}</span></div>{% endif %}
+  {% if github_error %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>{{ github_error }}</span></div>{% endif %}
+
+  <section class="card share-card">
+    <div class="share-state">
+      {% if portfolio.public %}<span class="badge done">{% icon 'globe' %}{% translate "Public" %}</span>
+      <span class="meta">{% translate "Anyone with the link can open it, no account needed." %}</span>
+      {% else %}<span class="badge muted">{% icon 'eye-off' %}{% translate "Private" %}</span>
+      <span class="meta">{% translate 'Only you can see it. Tick "Make my page public" below to share it.' %}</span>{% endif %}
+    </div>
+    <div class="share-row">
+      <input id="public-url" class="share-url" value="{{ public_url }}" readonly dir="ltr" aria-label="{% translate 'Your portfolio link' %}">
+      <button class="btn" type="button" data-copy="#public-url">{% icon 'copy' %}<span>{% translate "Copy link" %}</span></button>
+    </div>
+  </section>
+
+  {% if errors %}<div class="notice error" role="alert">{% icon 'circle-x' %}<span>
+    {% if 'handle' in errors %}{% translate "The page address needs 3 to 40 letters, numbers or dashes." %}{% endif %}
+    {% if 'taken' in errors %}{% translate "Someone already has that page address. Try another one." %}{% endif %}
+    {% if 'website' in errors %}{% translate "The website must be a full link that starts with https://" %}{% endif %}
+  </span></div>{% endif %}
+
+  <form class="card gen-form portfolio-form" method="post">
+    {% csrf_token %}
+    <h2>{% translate "About you" %}</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="name">{% translate "Name on the page" %}</label>
+        <input id="name" name="name" maxlength="80" dir="auto" value="{{ portfolio.name }}" placeholder="{{ user.get_username }}">
+      </div>
+      <div class="field">
+        <label for="handle">{% translate "Page address" %}</label>
+        <div class="handle-input" dir="ltr"><span class="meta">/p/</span><input id="handle" name="handle" maxlength="40" value="{{ portfolio.handle }}" required autocapitalize="off" spellcheck="false"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="headline">{% translate "Headline" %}</label>
+      <input id="headline" name="headline" maxlength="120" dir="auto" value="{{ portfolio.headline }}" placeholder="{% translate 'For example: Junior back-end developer, Python and Django' %}">
+    </div>
+    <div class="field">
+      <label for="about">{% translate "About" %} <span class="meta">{% translate "(a few lines)" %}</span></label>
+      <textarea id="about" name="about" rows="4" maxlength="600" dir="auto">{{ portfolio.about }}</textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="github">{% translate "GitHub username" %}</label>
+        <input id="github" name="github" maxlength="39" dir="ltr" value="{{ portfolio.github }}" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="website">{% translate "Website or LinkedIn" %}</label>
+        <input id="website" name="website" type="url" maxlength="200" dir="ltr" value="{{ portfolio.website }}" placeholder="https://">
+      </div>
+    </div>
+
+    <h2>{% translate "What the page shows" %}</h2>
+    <p class="meta">{% translate "Finished paths and your current job path always show. Choose the projects to add." %}</p>
+    <label class="check-row"><input type="checkbox" name="show_stats"{% if portfolio.show_stats %} checked{% endif %}><span>{% translate "My level, XP, exercises passed and badges" %}</span></label>
+
+    <fieldset class="pick-list">
+      <legend>{% icon 'file-text' %}{% translate "My projects (SRS walkthroughs)" %}</legend>
+      {% for p in my_projects %}
+      <label class="check-row"><input type="checkbox" name="projects" value="{{ p.id }}"{% if p.id in portfolio.project_ids %} checked{% endif %}><span dir="auto">{{ p.title }}</span></label>
+      {% empty %}
+      <p class="meta">{% translate "No projects yet." %} <a href="{% url 'learn:project' %}">{% translate "Start one in My project" %}</a></p>
+      {% endfor %}
+    </fieldset>
+
+    <fieldset class="pick-list">
+      <legend>{% icon 'flask-conical' %}{% translate "Lab projects" %}</legend>
+      {% for p in my_labs %}
+      <label class="check-row"><input type="checkbox" name="labs" value="{{ p.id }}"{% if p.id in portfolio.lab_ids %} checked{% endif %}><span><span dir="auto">{{ p.title }}</span>{% if p.github_repo %} <span class="meta">· {% icon 'git-branch' %}GitHub</span>{% endif %}</span></label>
+      {% empty %}
+      <p class="meta">{% translate "No Lab projects yet." %} <a href="{% url 'learn:lab' %}">{% translate "Open the Lab" %}</a></p>
+      {% endfor %}
+    </fieldset>
+
+    <label class="check-row public-toggle"><input type="checkbox" name="public"{% if portfolio.public %} checked{% endif %}><span><strong>{% translate "Make my page public" %}</strong><span class="meta">{% translate "Anyone with the link can see it. Untick to hide it again." %}</span></span></label>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">{% icon 'check' %}{% translate "Save" %}</button>
+    </div>
+  </form>
+
+  <section class="card github-card" id="github">
+    <span class="metric-icon">{% icon 'git-branch' css='icon-lg' %}</span>
+    <div class="github-body">
+      <h2>GitHub</h2>
+      {% if github_account %}
+      <p class="meta">{% blocktranslate trimmed with login=github_account.login %}Connected as <bdi>{{ login }}</bdi>. Open a Lab project and press GitHub to send its files to a repo of your own.{% endblocktranslate %}</p>
+      {% elif github_available %}
+      <p class="meta">{% translate "Connect once, then send any Lab project to a public repo on your GitHub account. Describe can only make and update public repos; it can't see your private ones." %}</p>
+      {% else %}
+      <p class="meta">{% translate "GitHub sign-in is not set up on this server yet. You can still download any Lab project as a .zip and upload it to GitHub yourself." %}</p>
+      {% endif %}
+    </div>
+    {% if github_account %}
+    <form method="post" action="{% url 'learn:github_disconnect' %}">
+      {% csrf_token %}
+      <button class="btn quiet" type="submit">{% translate "Disconnect" %}</button>
+    </form>
+    {% elif github_available %}
+    <a class="btn primary" href="{% url 'learn:github_connect' %}">{% icon 'git-branch' %}{% translate "Connect GitHub" %}</a>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
+
+{% block script %}
+<script>
+document.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', async () => {
+  const box = document.querySelector(button.dataset.copy);
+  try { await navigator.clipboard.writeText(box.value); } catch (e) { box.select(); document.execCommand('copy'); }
+  button.querySelector('span').textContent = "{{ _('Copied')|escapejs }}";
+}));
+</script>
+{% endblock %}

@@ -14,6 +14,7 @@ from pathlib import Path as FilePath
 from django.db import transaction
 from django.utils.text import slugify
 
+from .media import chapters_with_media
 from .models import (
     Chapter, ChapterProgress, Course, ExerciseProgress, Path, PathChoice, PathStep, PlacementAttempt, SkippedPath,
 )
@@ -95,6 +96,7 @@ class ChapterView:
     status: str
     exercises: list  # [(exercise, state)]
     current: bool = False
+    media: dict = None  # {'video': url, 'audio': url}: NotebookLM overviews linked in admin
 
     @property
     def has_work(self):
@@ -201,17 +203,18 @@ def mark_current(skill):
     return None
 
 
-def skill_view(path, states, skipped, prerequisite=False, marks=None):
+def skill_view(path, states, skipped, prerequisite=False, marks=None, media=None):
     from .exercises import get_exercise
 
     marks = marks or {}
+    media = chapters_with_media() if media is None else media
     courses = []
     for course in path.courses.all():
         chapters = []
         for chapter in course.chapters.all():
             exercises = [(e, states.get(e.slug)) for e in map(get_exercise, chapter.exercises) if e]
             status = _chapter_status(chapter, exercises, path.id in skipped, marks.get(chapter.slug))
-            chapters.append(ChapterView(chapter, status, exercises))
+            chapters.append(ChapterView(chapter, status, exercises, media=media.get(chapter.slug)))
         courses.append((course, chapters))
     return SkillView(path, prerequisite, path.id in skipped, courses)
 
@@ -273,9 +276,10 @@ def job_view(path, user, states=None):
     states = exercise_states(user) if states is None else states
     skipped = skipped_ids(user)
     marks = chapter_marks(user)
+    media = chapters_with_media()
     prerequisites, skills = [], []
     for step in path.steps.select_related('skill').prefetch_related('skill__courses__chapters'):
-        view = skill_view(step.skill, states, skipped, step.prerequisite, marks)
+        view = skill_view(step.skill, states, skipped, step.prerequisite, marks, media)
         (prerequisites if step.prerequisite else skills).append(view)
     capstone = [(e, states.get(e.slug)) for e in map(get_exercise, path.capstone.get('exercises', [])) if e]
     job = JobView(path, prerequisites, skills, capstone)

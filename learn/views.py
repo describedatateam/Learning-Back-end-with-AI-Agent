@@ -18,11 +18,11 @@ from django.views.decorators.http import require_POST
 
 import markdown
 
-from . import catalog, flashcards, gamification, generated_exercises, generator, lab, languages, notebook, placement, projects, tutor, web_exercises
+from . import catalog, flashcards, gamification, generated_exercises, generator, github, lab, languages, media, notebook, placement, portfolio, projects, tutor, web_exercises
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
-    CardReview, Chapter, ChapterProgress, ExerciseProgress, LabProject, LearningEvent, NotebookEntry, Path, PathChoice, Project,
-    SkippedPath, TutorMessage, XPEvent,
+    CardReview, Chapter, ChapterProgress, ExerciseProgress, GitHubAccount, LabProject, LearningEvent, NotebookEntry, Path,
+    PathChoice, Portfolio, Project, SkippedPath, TutorMessage, XPEvent,
 )
 
 MAX_SECONDS_SPENT = 6 * 60 * 60  # ignore page timers left open overnight
@@ -345,7 +345,7 @@ def chapter_detail(request, slug, chapter):
     context = {
         'path': path, 'chapter': chapter, 'lesson': lesson_html(chapter.content.get('lesson', '')),
         'slides': chapter.content.get('slides', []), 'quiz': quiz, 'progress': progress,
-        'mind_map': chapter.content.get('mind_map', ''),
+        'mind_map': chapter.content.get('mind_map', ''), 'media': media.for_chapter(chapter.slug),
         'exercise': chapter.content.get('exercise'), 'exercise_slug': generated_exercises.slug_for(chapter),
         'exercise_state': catalog.exercise_states(request.user).get(generated_exercises.slug_for(chapter)),
         **_check_context(request, path),
@@ -498,11 +498,114 @@ def flashcards_review(request):
     return render(request, 'learn/review.html', context)
 
 
-def coming_soon(request, section):
-    """Sections from the plan that aren't built yet show what will appear there."""
-    return render(request, 'learn/coming_soon.html', {
-        'section': section, 'player': gamification.player_state(request.user),
+# --- Portfolio (Day 9) ---------------------------------------------------------
+
+@login_required
+def portfolio_settings(request):
+    """The learner's own view: what the public page shows, its link, and GitHub."""
+    mine = portfolio.for_user(request.user)
+    errors = []
+    if request.method == 'POST':
+        errors = portfolio.save_settings(mine, request.POST, request.user)
+        if not errors:
+            return redirect(f'{reverse("learn:portfolio")}?saved=1')
+    account = GitHubAccount.objects.filter(user=request.user).first()
+    return render(request, 'learn/portfolio.html', {
+        'portfolio': mine, 'errors': errors, 'saved': request.GET.get('saved') == '1',
+        'public_url': request.build_absolute_uri(reverse('portfolio_public', args=[mine.handle])),
+        'my_projects': projects.visible_projects(request.user).order_by('-updated_at'),
+        'my_labs': LabProject.objects.filter(user=request.user),
+        'kinds': lab.KINDS, 'github_account': account, 'github_available': github.available(),
+        'github_error': request.session.pop('github_error', ''),
+        'player': gamification.player_state(request.user),
     })
+
+
+def portfolio_public(request, handle):
+    """The public page. Opens without signing in once the learner made it public; the owner can always see it."""
+    page = get_object_or_404(Portfolio.objects.select_related('user'), handle=handle)
+    is_owner = request.user.is_authenticated and request.user.id == page.user_id
+    if not (page.public or is_owner):
+        raise Http404('This portfolio is private')
+    return render(request, 'learn/portfolio_public.html', {
+        **portfolio.page(page), 'is_owner': is_owner,
+        'page_url': request.build_absolute_uri(request.path),
+    })
+
+
+def _safe_next(request, fallback):
+    target = request.GET.get('next') or request.POST.get('next') or ''
+    if url_has_allowed_host_and_scheme(target, {request.get_host()}, require_https=request.is_secure()):
+        return target
+    return reverse(fallback)
+
+
+@login_required
+def github_connect(request):
+    """Send the learner to GitHub to allow Describe to make and write public repos."""
+    next_url = _safe_next(request, 'learn:portfolio')
+    if not github.available():
+        request.session['github_error'] = gettext('GitHub sign-in is not set up on this server yet.')
+        return redirect(next_url)
+    state = github.new_state()
+    request.session['github_oauth'] = {'state': state, 'next': next_url}
+    return redirect(github.authorize_url(request.build_absolute_uri(reverse('learn:github_callback')), state))
+
+
+@login_required
+def github_callback(request):
+    pending = request.session.pop('github_oauth', None) or {}
+    next_url = pending.get('next') or reverse('learn:portfolio')
+    if not pending.get('state') or request.GET.get('state') != pending['state']:
+        request.session['github_error'] = gettext('That GitHub sign-in link expired. Try connecting again.')
+        return redirect(next_url)
+    if request.GET.get('error') or not request.GET.get('code'):
+        request.session['github_error'] = gettext('GitHub was not connected.')
+        return redirect(next_url)
+    try:
+        token = github.exchange_code(request.GET['code'], request.build_absolute_uri(reverse('learn:github_callback')))
+        account = github.connect(request.user, token)
+    except github.GitHubError as error:
+        request.session['github_error'] = str(error)
+        return redirect(next_url)
+    mine = portfolio.for_user(request.user)
+    if not mine.github:
+        mine.github = account.login
+        mine.save(update_fields=['github', 'updated_at'])
+    return redirect(next_url)
+
+
+@login_required
+@require_POST
+def github_disconnect(request):
+    account = GitHubAccount.objects.filter(user=request.user).first()
+    if account:
+        github.revoke(account)
+        account.delete()
+    return redirect(_safe_next(request, 'learn:portfolio'))
+
+
+@login_required
+@require_POST
+def lab_github(request, lab_id):
+    """Push a Lab project's saved files to a public repo of the learner's own."""
+    project = _lab_or_404(request, lab_id)
+    account = GitHubAccount.objects.filter(user=request.user).first()
+    if not account:
+        return JsonResponse({'error': gettext('Connect GitHub first.'), 'reconnect': True}, status=400)
+    data = json.loads(request.body or '{}')
+    repo = github.clean_repo(data.get('repo'))
+    if not repo:
+        return JsonResponse({'error': gettext('Use letters, numbers, dots, dashes or underscores for the repo name.')}, status=400)
+    try:
+        result = github.push(account, project, repo, allow_existing=bool(data.get('add_to_existing')))
+    except github.GitHubError as error:
+        if error.status == 'exists':
+            return JsonResponse({'exists': True, 'repo': repo}, status=409)
+        if error.reconnect:
+            account.delete()
+        return JsonResponse({'error': str(error), 'reconnect': error.reconnect}, status=502)
+    return JsonResponse({'url': result['url'], 'created': result['created']})
 
 
 MILESTONE_XP = 20  # first time each milestone of the learner's own project is ticked off
@@ -657,6 +760,17 @@ def project_update(request, project_id):
 
 @login_required
 @require_POST
+def project_repo(request, project_id):
+    """Where the team keeps the project's code. Any teammate can set it; only https links are kept."""
+    project = _project_or_404(request, project_id)
+    url = request.POST.get('repo_url', '').strip()[:200]
+    project.repo_url = url if re.match(r'^https://[^\s]+$', url) else ''
+    project.save(update_fields=['repo_url', 'updated_at'])
+    return redirect('learn:project_detail', project.id)
+
+
+@login_required
+@require_POST
 def project_delete(request, project_id):
     """The owner deletes the project; a teammate leaves it."""
     project = _project_or_404(request, project_id)
@@ -715,6 +829,9 @@ def lab_project(request, lab_id):
         'player': gamification.player_state(request.user),
         'tutor_topic': topic, 'tutor_lab': True, 'tutor_backend': tutor.backend_label(),
         'tutor_history': _chat_history(request.user, topic), 'can_run': _can_run(request),
+        'github_account': GitHubAccount.objects.filter(user=request.user).first(),
+        'github_available': github.available(), 'github_repo_name': github.suggested_repo(project),
+        'github_error': request.session.pop('github_error', ''),
     })
 
 
@@ -754,6 +871,11 @@ def lab_delete(request, lab_id):
     return redirect('learn:lab')
 
 
+def chapters_media(chapter):
+    """The NotebookLM video and audio links of an exercise's chapter, for the buttons above the exercise."""
+    return media.chapters_with_media().get(chapter.slug) if chapter else None
+
+
 def _exercise_chapter(slug):
     """The featured chapter that lists this exercise, for the breadcrumb."""
     chapters = Chapter.objects.select_related('course__path').filter(course__path__owner__isnull=True)
@@ -770,9 +892,11 @@ def _web_exercise_detail(request, exercise):
         saved = {}
     files = {name: saved.get(name, text) if isinstance(saved, dict) else text for name, text in starter.items()}
     local = exercise.localized(get_language())
+    chapter = getattr(exercise, 'chapter', None) or _exercise_chapter(exercise.slug)
     return render(request, 'learn/web_exercise.html', {
         'exercise': local,
-        'chapter': getattr(exercise, 'chapter', None) or _exercise_chapter(exercise.slug),
+        'chapter': chapter,
+        'media': chapters_media(chapter),
         'progress': progress,
         'files': files,
         'starter_files': starter,
@@ -803,6 +927,7 @@ def exercise_detail(request, slug):
         'previous': exercises[index - 1] if index else None,
         'next': exercises[index + 1] if index is not None and index + 1 < len(exercises) else None,
         'chapter': getattr(exercise, 'chapter', None),
+        'media': chapters_media(getattr(exercise, 'chapter', None) or _exercise_chapter(slug)),
         'can_run': _can_run(request),
         'player': gamification.player_state(request.user),
         'rewards': gamification.exercise_rewards(exercise),

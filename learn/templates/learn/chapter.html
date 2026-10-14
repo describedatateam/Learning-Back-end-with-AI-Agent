@@ -24,6 +24,8 @@
   </section>
   {% endif %}
 
+  {% if media %}{% include "learn/_media.html" %}{% endif %}
+
   <article class="card lesson" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
     {{ lesson|safe }}
     {% if chapter.exercise_idea %}<p class="try">{% icon 'hammer' %}<span><strong>{% translate "Try it" %}:</strong> {{ chapter.exercise_idea }}</span></p>{% endif %}
