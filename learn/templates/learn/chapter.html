@@ -45,6 +45,48 @@
   </section>
   {% endif %}
 
+  {% if check_ai.status == 'ok' %}
+  <section class="card hands-on-card check-ai-card">
+    <span class="metric-icon">{% icon 'shield-check' css='icon-lg' %}</span>
+    <div>
+      <p class="meta">{% translate "Check the AI" %} · {% if check_ai.language == 'python' %}{% translate "checked on the server" %}{% else %}{% translate "runs in your browser" %}{% endif %}</p>
+      <h2><bdi>{{ check_ai.title }}</bdi></h2>
+      <p class="meta">{% translate "An AI assistant wrote this code and one thing is wrong. Find it with the tests and fix it." %}</p>
+    </div>
+    <a class="btn {% if check_state == 'passed' %}secondary{% else %}primary{% endif %}" href="{% url 'learn:exercise' check_slug %}">{% if check_state == 'passed' %}{% icon 'circle-check' %}{% translate "Fixed, open again" %}{% elif check_state %}{% translate "Continue checking" %}{% else %}{% translate "Check the code" %}{% endif %}{% icon 'arrow-right' css='icon-flip' %}</a>
+  </section>
+  {% if check_state == 'passed' %}
+  <section class="card explain-card" id="explain">
+    <p class="notice info">{% icon 'circle-help' %}<span><strong>{% translate "What was wrong" %}{% if flaw_label %} ({{ flaw_label }}){% endif %}:</strong> <span dir="auto">{{ check_ai.explanation }}</span></span></p>
+    <form method="post" class="field">
+      {% csrf_token %}
+      <input type="hidden" name="note" value="explain">
+      <label for="explain-text"><strong>{% translate "Explain your fix" %}</strong> <span class="meta">{% translate "In one or two sentences: why does your change fix it? Explaining it is how you remember it." %}</span></label>
+      <textarea id="explain-text" name="text" rows="3" maxlength="3000" dir="auto">{{ notes.explain }}</textarea>
+      <div class="actions"><button class="btn secondary" type="submit">{% icon 'check' %}{% translate "Save" %}</button>{% if saved == 'explain' %}<span class="meta" role="status">{% translate "Saved." %}</span>{% endif %}</div>
+    </form>
+  </section>
+  {% endif %}
+  {% endif %}
+
+  {% if spec_task %}
+  <section class="card spec-card" id="spec" dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">
+    <p class="meta">{% icon 'notebook-pen' %} {% translate "Spec first" %}</p>
+    <h2>{% translate "Say what should be built before anyone builds it" %}</h2>
+    <p>{{ spec_task.feature }}</p>
+    <ol class="spec-questions">{% for q in spec_task.questions %}<li>{{ q }}</li>{% endfor %}</ol>
+    {% if user.is_authenticated %}
+    <form method="post" class="field">
+      {% csrf_token %}
+      <input type="hidden" name="note" value="spec">
+      <label for="spec-text" class="meta">{% translate "Answer the questions in your own words. Then ask the tutor below to build it from your spec, and check the result against what you wrote." %}</label>
+      <textarea id="spec-text" name="text" rows="8" maxlength="3000" dir="auto">{{ notes.spec }}</textarea>
+      <div class="actions"><button class="btn secondary" type="submit">{% icon 'check' %}{% translate "Save my spec" %}</button>{% if saved == 'spec' %}<span class="meta" role="status">{% translate "Saved." %}</span>{% endif %}</div>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if slides %}
   <h2>{% translate "Slides" %}</h2>
   <section class="card slides" data-slides dir="{% if path.request.language == 'ar' %}rtl{% else %}ltr{% endif %}">

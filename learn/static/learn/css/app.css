@@ -988,3 +988,13 @@ details.hint p { margin: var(--space-2) 0 0; }
 .error-page h1 { margin: 0; font-size: 24px; }
 .error-page h2 { margin: var(--space-3) 0 0; font-size: 20px; }
 .error-page .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+
+/* Learning with AI: Check the AI, explain your fix, spec first */
+.check-ai-card { border-inline-start-color: var(--warn); }
+.explain-card, .spec-card { margin-block: var(--space-4); }
+.explain-card .notice { margin-block: 0 var(--space-3); }
+.explain-card .actions, .spec-card .actions { display: flex; align-items: center; gap: var(--space-3); margin-block-start: var(--space-2); }
+.spec-card h2 { margin: 2px 0 var(--space-2); font-size: 18px; }
+.spec-questions { padding-inline-start: 1.25em; margin-block: var(--space-2) var(--space-3); }
+.spec-questions li { margin-block: 4px; }
+.check-ai-intro { padding: var(--space-2) var(--space-3); background: var(--warn-soft); border-radius: var(--radius-sm); }

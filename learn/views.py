@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils.translation import get_language, gettext
+from django.utils.translation import get_language, gettext, gettext_lazy
 from django.views.decorators.http import require_POST
 
 import markdown
@@ -172,7 +172,7 @@ def _check_context(request, path):
     if not path.owner_id or path.owner_id != request.user.id:
         return {}
     return {'check_url': reverse('learn:check_exercises', args=[path.slug]),
-            'check_pending': len(generated_exercises.pending_chapters(path))}
+            'check_pending': len(generated_exercises.pending(path))}
 
 
 def path_detail(request, slug):
@@ -302,13 +302,17 @@ def check_exercises(request, slug):
     path = get_object_or_404(Path, slug=slug, owner=request.user)
     if request.method == 'POST':
         data = json.loads(request.body or '{}')
-        chapter = next((ch for ch in generated_exercises.pending_chapters(path) if ch.slug == data.get('chapter')), None)
-        if chapter is None:
+        # 'chapter' names the exercise slug (a bare chapter slug still means its hands-on exercise)
+        wanted = data.get('chapter')
+        found = next(((ch, key) for ch, key in generated_exercises.pending(path)
+                      if wanted in (generated_exercises.slug_for(ch, key), ch.slug if key == 'exercise' else None)), None)
+        if found is None:
             return JsonResponse({'error': 'Nothing to check.'}, status=400)
-        status = generated_exercises.record_browser_check(chapter, data.get('solution'), data.get('starter'))
+        chapter, key = found
+        status = generated_exercises.record_browser_check(chapter, data.get('solution'), data.get('starter'), key)
         return JsonResponse({'status': status})
-    return JsonResponse({'exercises': [generated_exercises.browser_check_data(ch)
-                                       for ch in generated_exercises.pending_chapters(path)]})
+    return JsonResponse({'exercises': [generated_exercises.browser_check_data(ch, key)
+                                       for ch, key in generated_exercises.pending(path)]})
 
 
 @login_required
@@ -329,6 +333,10 @@ def lesson_html(text):
 
 
 QUIZ_PASS_SHARE = 2 / 3  # a generated chapter is finished with two thirds of its quiz right
+FLAW_LABELS = {'bug': gettext_lazy('Bug'), 'edge_case': gettext_lazy('Missed edge case'),
+               'security': gettext_lazy('Security flaw'), 'design': gettext_lazy('Design problem')}
+NOTE_KINDS = ('explain', 'spec')  # what a learner can write on a chapter page: why their fix works, a feature spec
+MAX_NOTE_CHARS = 3000
 
 
 def chapter_detail(request, slug, chapter):
@@ -343,12 +351,17 @@ def chapter_detail(request, slug, chapter):
     progress = None
     if request.user.is_authenticated:
         progress = ChapterProgress.objects.filter(user=request.user, chapter=chapter).first()
+    states = catalog.exercise_states(request.user)
     context = {
         'path': path, 'chapter': chapter, 'lesson': lesson_html(chapter.content.get('lesson', '')),
         'slides': chapter.content.get('slides', []), 'quiz': quiz, 'progress': progress,
         'mind_map': chapter.content.get('mind_map', ''), 'media': media.for_chapter(chapter.slug),
         'exercise': chapter.content.get('exercise'), 'exercise_slug': generated_exercises.slug_for(chapter),
-        'exercise_state': catalog.exercise_states(request.user).get(generated_exercises.slug_for(chapter)),
+        'exercise_state': states.get(generated_exercises.slug_for(chapter)),
+        'check_ai': chapter.content.get('check_ai'), 'check_slug': generated_exercises.slug_for(chapter, 'check_ai'),
+        'check_state': states.get(generated_exercises.slug_for(chapter, 'check_ai')),
+        'flaw_label': FLAW_LABELS.get((chapter.content.get('check_ai') or {}).get('flaw_kind'), ''),
+        'spec_task': chapter.content.get('spec_task'), 'notes': progress.notes if progress else {},
         **_check_context(request, path),
         'previous': chapters[index - 1] if index > 0 else None,
         'next': chapters[index + 1] if index + 1 < len(chapters) else None,
@@ -360,6 +373,14 @@ def chapter_detail(request, slug, chapter):
         'deck_added': request.user.is_authenticated and CardReview.objects.filter(
             user=request.user, card__chapter=chapter).exists(),
     }
+    if request.method == 'POST' and request.POST.get('note') in NOTE_KINDS:
+        if not request.user.is_authenticated:
+            return redirect(f'{reverse("login")}?next={request.path}')
+        kind = request.POST['note']
+        progress, _created = ChapterProgress.objects.get_or_create(user=request.user, chapter=chapter)
+        progress.notes = {**progress.notes, kind: request.POST.get('text', '').strip()[:MAX_NOTE_CHARS]}
+        progress.save(update_fields=['notes', 'updated_at'])
+        return redirect(f'{request.path}?saved={kind}#{kind}')
     if request.method == 'POST':
         if not request.user.is_authenticated:
             return redirect(f'{reverse("login")}?next={request.path}')
@@ -383,7 +404,8 @@ def chapter_detail(request, slug, chapter):
         context.update(progress=progress, correct=correct,
                        quiz=[dict(q, result=r) for q, r in zip(quiz, results)], checked=True,
                        just_finished=progress.done and not finished_before)
-    context['skill'] = catalog.skill_view(path, catalog.exercise_states(request.user), catalog.skipped_ids(request.user),
+    context['saved'] = request.GET.get('saved')
+    context['skill'] = catalog.skill_view(path, states, catalog.skipped_ids(request.user),
                                           marks=catalog.chapter_marks(request.user))
     return render(request, 'learn/chapter.html', context)
 
