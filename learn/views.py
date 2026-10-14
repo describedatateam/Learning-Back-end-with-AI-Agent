@@ -19,6 +19,7 @@ from django.views.decorators.http import require_POST
 import markdown
 
 from . import catalog, flashcards, gamification, generated_exercises, generator, github, lab, languages, media, notebook, placement, portfolio, projects, tutor, web_exercises
+from . import case_study as case_study_content
 from .exercises import get_exercise, list_tests, load_exercises, run_selection, run_snippet, run_tests
 from .models import (
     CardReview, Chapter, ChapterProgress, ExerciseProgress, GitHubAccount, LabProject, LearningEvent, NotebookEntry, Path,
@@ -529,6 +530,17 @@ def portfolio_public(request, handle):
         raise Http404('This portfolio is private')
     return render(request, 'learn/portfolio_public.html', {
         **portfolio.page(page), 'is_owner': is_owner,
+        'page_url': request.build_absolute_uri(request.path),
+    })
+
+
+def case_study(request):
+    """How Describe was built (Day 10). Open without signing in, like public portfolios."""
+    return render(request, 'learn/case_study.html', {
+        'facts': case_study_content.FACTS, 'timeline': case_study_content.TIMELINE,
+        'decisions': case_study_content.DECISIONS, 'problems': case_study_content.PROBLEMS,
+        'next_steps': case_study_content.NEXT, 'shots': case_study_content.SHOTS,
+        'numbers': case_study_content.numbers(), 'demo_handle': case_study_content.demo_handle(),
         'page_url': request.build_absolute_uri(request.path),
     })
 

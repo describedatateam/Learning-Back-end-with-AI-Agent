@@ -201,6 +201,20 @@ You can see who used which code, or switch a code off, under **Admin > Invite co
 Ask testers to try it on their phone too: sign up, open **Paths**, pass one exercise or chapter quiz,
 generate a skill path, and ask the tutor one question. Their activity shows up under **Admin > Learning events**.
 
+## Demo account and case study
+
+To show Describe to someone, make a ready-made learner (a week of practice, a project, a Lab page
+and a public portfolio at `/p/demo/`):
+
+```bash
+cd ~/Learning-Back-end-with-AI-Agent
+source .venv/bin/activate
+python manage.py make_demo --password "pick-a-password"
+```
+
+Sign in as `demo` with that password. Running it again resets the demo learner. The case study page,
+`/case-study/`, opens without an account; its numbers leave out staff accounts and the demo learner.
+
 ## Check the live site works
 
 After an update, open these on your phone and laptop:

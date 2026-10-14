@@ -1,0 +1,134 @@
+{% load static i18n ui %}{% get_current_language as LANG %}{% get_current_language_bidi as RTL %}<!doctype html>
+<html lang="{{ LANG }}" dir="{% if RTL %}rtl{% else %}ltr{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% translate "Case study" %} · Describe</title>
+  <meta name="description" content="{% translate 'How Describe, a phone-first coding cohort platform in English and Arabic, was built in ten days with an AI coding agent.' %}">
+  <meta property="og:title" content="{% translate 'Building Describe in ten days' %}">
+  <meta property="og:description" content="{% translate 'A case study: the problem, the decisions, what broke and what the cohort got.' %}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:type" content="article">
+  <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
+</head>
+<body class="public-page">
+  <header class="public-top">
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+    <form class="lang-switch" action="{% url 'set_language' %}" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% if LANG == 'ar' %}<button type="submit" name="language" value="en" lang="en">English</button>{% else %}<button type="submit" name="language" value="ar" lang="ar">العربية</button>{% endif %}
+    </form>
+  </header>
+
+  <main class="narrow folio study">
+    <section class="card study-hero">
+      <p class="study-eyebrow">{% translate "Case study" %}</p>
+      <h1>{% translate "Building Describe in ten days" %}</h1>
+      <p class="study-lead">{% translate "A coding cohort needed somewhere to practise between classes. Describe is a free, phone-first learning platform in English and Arabic, built one day at a time with an AI coding agent." %}</p>
+      <div class="folio-links">
+        {% if user.is_authenticated %}<a class="btn primary" href="{% url 'home' %}">{% icon 'house' %}{% translate "Back to learning" %}</a>
+        {% else %}<a class="btn primary" href="{% url 'login' %}">{% icon 'log-in' %}{% translate "Sign in" %}</a>{% endif %}
+        {% if demo_handle %}<a class="btn" href="{% url 'portfolio_public' demo_handle %}">{% icon 'user' %}{% translate "See a sample portfolio" %}</a>{% endif %}
+        <button class="btn quiet" type="button" data-share="{{ page_url }}">{% icon 'share-2' %}<span>{% translate "Share" %}</span></button>
+      </div>
+    </section>
+
+    <section class="study-facts" aria-label="{% translate 'The brief' %}">
+      {% for fact in facts %}
+      <div class="card study-fact">
+        <span class="metric-icon">{% icon fact.icon %}</span>
+        <h2>{{ fact.title }}</h2>
+        <p class="muted">{{ fact.text }}</p>
+      </div>
+      {% endfor %}
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'activity' %}{% translate "Results so far" %}</h2>
+      <p class="meta">{% translate "Counted live from this site. Staff and demo accounts are left out." %}</p>
+      <div class="folio-stats">
+        <div class="card metric"><div><p class="meta">{% translate "Learners" %}</p><p class="metric-value num">{{ numbers.learners }}</p><p class="meta">{% blocktranslate trimmed count n=numbers.active %}{{ n }} has practised{% plural %}{{ n }} have practised{% endblocktranslate %}</p></div><span class="metric-icon">{% icon 'users' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Exercises passed" %}</p><p class="metric-value num">{{ numbers.passed }}</p></div><span class="metric-icon">{% icon 'code' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Learning actions logged" %}</p><p class="metric-value num">{{ numbers.events }}</p></div><span class="metric-icon">{% icon 'activity' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Flashcard reviews" %}</p><p class="metric-value num">{{ numbers.reviews }}</p></div><span class="metric-icon">{% icon 'layers' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Paths made with AI" %}</p><p class="metric-value num">{{ numbers.generated }}</p></div><span class="metric-icon">{% icon 'sparkles' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Own projects" %}</p><p class="metric-value num">{{ numbers.projects }}</p></div><span class="metric-icon">{% icon 'file-text' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Lab projects" %}</p><p class="metric-value num">{{ numbers.labs }}</p></div><span class="metric-icon">{% icon 'flask-conical' %}</span></div>
+        <div class="card metric"><div><p class="meta">{% translate "Public portfolios" %}</p><p class="metric-value num">{{ numbers.portfolios }}</p></div><span class="metric-icon">{% icon 'globe' %}</span></div>
+      </div>
+      <p class="meta">{% blocktranslate trimmed with jobs=numbers.job_paths skills=numbers.skill_paths chapters=numbers.chapters %}The catalog holds {{ jobs }} job paths, {{ skills }} skill paths and {{ chapters }} chapters, in English and Arabic, on phones and laptops.{% endblocktranslate %}</p>
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'presentation' %}{% translate "What it looks like" %}</h2>
+      <div class="study-shots">
+        {% for shot in shots %}
+        <figure class="card study-shot">
+          <img src="{% static 'learn/case-study/'|add:shot.file|add:'.webp' %}" alt="{{ shot.caption }}" loading="lazy" decoding="async">
+          <figcaption class="meta">{{ shot.caption }}</figcaption>
+        </figure>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'calendar-clock' %}{% translate "How it was built" %}</h2>
+      <p class="muted">{% translate "One day of work per thread, one pull request per day, merged and deployed before the next. Every day ended with three lines in a log: what was built, one decision and one problem. Each screen was checked at phone and laptop width, in English and Arabic." %}</p>
+      <ol class="study-timeline">
+        {% for step in timeline %}
+        <li>
+          <span class="study-day num" aria-hidden="true">{{ step.day }}</span>
+          <div><strong>{% blocktranslate with n=step.day %}Day {{ n }}{% endblocktranslate %}: {{ step.title }}</strong><p class="muted">{{ step.text }}</p></div>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'flag' %}{% translate "Key decisions" %}</h2>
+      <div class="study-grid">
+        {% for item in decisions %}
+        <div class="card study-fact">
+          <span class="metric-icon">{% icon item.icon %}</span>
+          <h3>{{ item.title }}</h3>
+          <p class="muted">{{ item.text }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'hammer' %}{% translate "What broke, and the fix" %}</h2>
+      <div class="study-grid">
+        {% for item in problems %}
+        <div class="card study-fact">
+          <h3>{{ item.title }}</h3>
+          <p class="muted">{{ item.text }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="folio-section">
+      <h2>{% icon 'arrow-right' %}{% translate "What's next" %}</h2>
+      <ul class="card study-next">
+        {% for line in next_steps %}<li>{% icon 'circle' %}<span>{{ line }}</span></li>{% endfor %}
+      </ul>
+    </section>
+
+    <p class="folio-foot meta">{% translate "Built with Django on free hosting, Gemini for learning content and Claude Code as the coding agent." %}</p>
+  </main>
+  <script>
+  document.querySelectorAll('[data-share]').forEach((btn) => btn.addEventListener('click', async () => {
+    const url = btn.dataset.share;
+    try {
+      if (navigator.share) { await navigator.share({ url, title: document.title }); return; }
+      await navigator.clipboard.writeText(url);
+      btn.querySelector('span').textContent = "{{ _('Link copied')|escapejs }}";
+    } catch (e) { /* the learner closed the share sheet */ }
+  }));
+  </script>
+</body>
+</html>

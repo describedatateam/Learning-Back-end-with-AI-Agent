@@ -2966,6 +2966,374 @@ msgstr "مسارات التعلّم"
 msgid "Job path progress"
 msgstr "التقدّم في المسار المهني"
 
+#: learn/case_study.py:15
+#| msgid "Who is it for?"
+msgid "Who it is for"
+msgstr "لمن صُنعت"
+
+#: learn/case_study.py:16
+msgid "A back-end cohort of classmates with mixed levels. Some learn only on a phone, and some prefer Arabic."
+msgstr "دفعة لتعلّم الواجهة الخلفية من زملاء بمستويات مختلفة. بعضهم يتعلّم من الهاتف فقط، وبعضهم يفضّل العربية."
+
+#: learn/case_study.py:17
+msgid "The ask"
+msgstr "المطلوب"
+
+#: learn/case_study.py:18
+msgid "The lead instructor wanted a place to practise between classes: real code checked automatically, a path from basics to a job, and help when stuck."
+msgstr "أراد المدرّب الرئيسي مكانًا للتدرّب بين الحصص: كود حقيقي يُصحَّح تلقائيًا، ومسار من الأساسيات حتى الوظيفة، ومساعدة عند التعثّر."
+
+#: learn/case_study.py:20
+msgid "The limits"
+msgstr "القيود"
+
+#: learn/case_study.py:21
+msgid "Two weeks, no budget, free hosting that blocks most outside websites, and code from learners running on a shared server."
+msgstr "أسبوعان، بلا ميزانية، واستضافة مجانية تحجب معظم المواقع الخارجية، وكود المتعلّمين يعمل على خادم مشترك."
+
+#: learn/case_study.py:26
+msgid "Design system and home page"
+msgstr "نظام التصميم والصفحة الرئيسية"
+
+#: learn/case_study.py:27
+msgid "Shared design tokens, icons with no emojis, and an English and Arabic switch with right-to-left layout."
+msgstr "رموز تصميم مشتركة، وأيقونات بلا رموز تعبيرية، وتبديل بين الإنجليزية والعربية مع اتجاه من اليمين إلى اليسار."
+
+#: learn/case_study.py:28
+msgid "Accounts and safety"
+msgstr "الحسابات والأمان"
+
+#: learn/case_study.py:29
+msgid "Invite-only sign-up, progress per learner, an activity log, and a code runner with no secrets and hard limits."
+msgstr "تسجيل بدعوة فقط، وتقدّم خاص بكل متعلّم، وسجل نشاط، ومشغّل كود بلا أسرار وبحدود صارمة."
+
+#: learn/case_study.py:30
+msgid "Paths and the learning cockpit"
+msgstr "المسارات ولوحة التعلّم"
+
+#: learn/case_study.py:31
+msgid "A DataCamp-style catalog of job and skill paths from a reviewed course map, with a \"you are here\" journey."
+msgstr "دليل مسارات وظيفية ومهارية على طريقة DataCamp مبني على خريطة دورات مراجَعة، مع رحلة «أنت هنا»."
+
+#: learn/case_study.py:32
+#| msgid "Placement test"
+msgid "Placement tests and AI paths"
+msgstr "اختبارات تحديد المستوى ومسارات الذكاء الاصطناعي"
+
+#: learn/case_study.py:33
+msgid "Tests that skip what a learner already knows, and Gemini-written skill paths for any topic."
+msgstr "اختبارات تتخطّى ما يعرفه المتعلّم مسبقًا، ومسارات مهارية يكتبها Gemini لأي موضوع."
+
+#: learn/case_study.py:34
+msgid "Bring it to life"
+msgstr "إضفاء الحيوية"
+
+#: learn/case_study.py:35
+msgid "A capstone illustration on every path card, light motion, the AI tutor on every chapter, and Mermaid diagrams."
+msgstr "رسم للمشروع الختامي على كل بطاقة مسار، وحركة خفيفة، والمعلّم الذكي في كل فصل، ومخططات Mermaid."
+
+#: learn/case_study.py:37
+msgid "Spaced repetition with hands-on cards: predict the output or complete the code, then run it."
+msgstr "تكرار متباعد ببطاقات عملية: توقّع الناتج أو أكمل الكود، ثم شغّله."
+
+#: learn/case_study.py:38
+#| msgid "My project"
+msgid "My project (SRS)"
+msgstr "مشروعي (SRS)"
+
+#: learn/case_study.py:39
+msgid "Describe a project or upload its requirements, then follow it as milestones, alone or as a team."
+msgstr "صِف مشروعًا أو ارفع متطلباته، ثم تابعه على شكل مراحل، وحدك أو مع فريق."
+
+#: learn/case_study.py:40
+msgid "Browser code runner and the Lab"
+msgstr "مشغّل الكود في المتصفح والمختبر"
+
+#: learn/case_study.py:41
+msgid "HTML, CSS, JavaScript, React and Tailwind run in the learner's browser; the Lab is a phone-friendly playground."
+msgstr "تعمل HTML وCSS وJavaScript وReact وTailwind في متصفح المتعلّم، والمختبر مساحة تجريب تناسب الهاتف."
+
+#: learn/case_study.py:42
+#| msgid "Portfolio"
+msgid "Portfolio and GitHub"
+msgstr "معرض الأعمال وGitHub"
+
+#: learn/case_study.py:43
+msgid "A public page per learner, Lab projects pushed to their own GitHub, and NotebookLM videos per chapter."
+msgstr "صفحة عامة لكل متعلّم، ومشاريع المختبر تُرسل إلى حسابه على GitHub، وفيديوهات NotebookLM لكل فصل."
+
+#: learn/case_study.py:44
+msgid "Polish and this case study"
+msgstr "اللمسات الأخيرة ودراسة الحالة هذه"
+
+#: learn/case_study.py:45
+msgid "Phone-width checks on every page, friendly error pages, a one-command demo account and this page."
+msgstr "فحص كل صفحة بعرض الهاتف، وصفحات أخطاء ودّية، وحساب تجريبي بأمر واحد، وهذه الصفحة."
+
+#: learn/case_study.py:49
+msgid "Follow DataCamp's structure"
+msgstr "اتّباع بنية DataCamp"
+
+#: learn/case_study.py:50
+msgid "Job paths, skill paths, courses, chapters and exercises: a shape learners already know, so the cohort could start without a tour."
+msgstr "مسارات وظيفية ومهارية ودورات وفصول وتمارين: شكل يعرفه المتعلّمون مسبقًا، فتبدأ الدفعة دون جولة تعريفية."
+
+#: learn/case_study.py:52
+msgid "Gemini inside the app, NotebookLM by hand"
+msgstr "Gemini داخل التطبيق، وNotebookLM يدويًا"
+
+#: learn/case_study.py:53
+msgid "NotebookLM has no public API, so Gemini writes quizzes, slides and flashcards in the app, and short NotebookLM videos are linked per chapter."
+msgstr "لا يملك NotebookLM واجهة برمجية عامة، لذا يكتب Gemini الاختبارات والشرائح والبطاقات داخل التطبيق، وتُربط فيديوهات NotebookLM القصيرة بكل فصل."
+
+#: learn/case_study.py:55
+msgid "Never trust AI output"
+msgstr "لا ثقة عمياء بمخرجات الذكاء الاصطناعي"
+
+#: learn/case_study.py:56
+msgid "Every AI reply is checked before it is saved. An AI-written exercise only appears after its own solution passes and its starter fails."
+msgstr "يُفحص كل رد من الذكاء الاصطناعي قبل حفظه. ولا يظهر التمرين الذي كتبه إلا بعد أن ينجح حلّه ويفشل الكود المبدئي."
+
+#: learn/case_study.py:58
+msgid "Run front-end code in the browser"
+msgstr "تشغيل كود الواجهة الأمامية في المتصفح"
+
+#: learn/case_study.py:59
+msgid "Learner code runs in a sandboxed frame on their own device, so it costs the free server nothing and cannot touch the site."
+msgstr "يعمل كود المتعلّم داخل إطار معزول على جهازه، فلا يكلّف الخادم المجاني شيئًا ولا يمكنه المساس بالموقع."
+
+#: learn/case_study.py:61
+msgid "Invite-only with a safety net"
+msgstr "بدعوة فقط مع شبكة أمان"
+
+#: learn/case_study.py:62
+msgid "Testers are trusted classmates, so accounts need an invite and Python runs behind an audit hook instead of a paid sandbox."
+msgstr "المختبِرون زملاء موثوقون، لذا تحتاج الحسابات إلى دعوة ويعمل Python خلف خطّاف تدقيق بدل بيئة معزولة مدفوعة."
+
+#: learn/case_study.py:64
+msgid "One stylesheet for both directions"
+msgstr "ملف تنسيق واحد للاتجاهين"
+
+#: learn/case_study.py:65
+msgid "Logical CSS (start and end instead of left and right) means Arabic is never a separate design; code always stays left to right."
+msgstr "خصائص CSS المنطقية (البداية والنهاية بدل اليسار واليمين) تعني أن العربية ليست تصميمًا منفصلًا أبدًا، ويبقى الكود دائمًا من اليسار إلى اليمين."
+
+#: learn/case_study.py:70
+msgid "AI answers that look right but are not"
+msgstr "إجابات ذكاء اصطناعي تبدو صحيحة وليست كذلك"
+
+#: learn/case_study.py:71
+msgid "Flashcard outputs and exercise tests written by AI were often slightly wrong. Every Python card and exercise is now run before saving, and the real output becomes the answer."
+msgstr "كثيرًا ما كانت نواتج البطاقات واختبارات التمارين التي يكتبها الذكاء الاصطناعي خاطئة قليلًا. الآن تُشغَّل كل بطاقة وكل تمرين Python قبل الحفظ، ويصبح الناتج الحقيقي هو الإجابة."
+
+#: learn/case_study.py:73
+msgid "Phones hide the symbols code needs"
+msgstr "الهواتف تخفي الرموز التي يحتاجها الكود"
+
+#: learn/case_study.py:74
+msgid "Phone keyboards bury { } ( ) ; and Tab, and tapping a helper button closed the keyboard. A key bar that keeps focus in the editor fixed both."
+msgstr "تخفي لوحات مفاتيح الهواتف { } ( ) ; وTab، وكان الضغط على زر مساعد يغلق لوحة المفاتيح. شريط مفاتيح يُبقي التركيز في المحرر حلّ المشكلتين."
+
+#: learn/case_study.py:76
+msgid "Mixed Arabic and English text"
+msgstr "نص عربي وإنجليزي مختلط"
+
+#: learn/case_study.py:77
+msgid "Names like Python and Django rendered in a jumbled order inside Arabic sentences; isolating them with bidi markup fixed the reading order."
+msgstr "ظهرت أسماء مثل Python وDjango بترتيب مضطرب داخل الجمل العربية، وعزلها بوسوم الاتجاه أصلح ترتيب القراءة."
+
+#: learn/case_study.py:79
+msgid "A test helper that vanished"
+msgstr "أداة اختبار اختفت"
+
+#: learn/case_study.py:80
+msgid "JavaScript's replace() treats $$ as a pattern, which silently broke every browser test at first; all inserts now use a replacement function."
+msgstr "تعامل الدالة replace() في JavaScript الرمز $$ كنمط، فأفسد ذلك كل اختبارات المتصفح بصمت في البداية، والآن تستخدم كل عمليات الإدراج دالة استبدال."
+
+#: learn/case_study.py:85
+msgid "Review the course map with the instructor, using what the activity log shows about where learners get stuck."
+msgstr "مراجعة خريطة الدورات مع المدرّب، بالاستفادة مما يُظهره سجل النشاط عن مواضع تعثّر المتعلّمين."
+
+#: learn/case_study.py:86
+msgid "Generate a whole job path from a job title."
+msgstr "إنشاء مسار وظيفي كامل من مسمّى وظيفي."
+
+#: learn/case_study.py:87
+msgid "Exercises generated for each learner's level."
+msgstr "تمارين تُنشأ حسب مستوى كل متعلّم."
+
+#: learn/case_study.py:88
+msgid "Arabic versions of the hand-written lessons."
+msgstr "نسخ عربية من الدروس المكتوبة يدويًا."
+
+#: learn/case_study.py:89
+msgid "A real code sandbox if the cohort grows beyond trusted classmates."
+msgstr "بيئة معزولة حقيقية لتشغيل الكود إذا كبرت الدفعة أبعد من الزملاء الموثوقين."
+
+#: learn/case_study.py:93
+msgid "The learning cockpit: one clear next step"
+msgstr "لوحة التعلّم: خطوة تالية واحدة وواضحة"
+
+#: learn/case_study.py:94
+msgid "The Lab on a phone: code, preview and tutor"
+msgstr "المختبر على الهاتف: الكود والمعاينة والمعلّم"
+
+#: learn/case_study.py:95
+msgid "A browser exercise with preview and tests"
+msgstr "تمرين في المتصفح مع معاينة واختبارات"
+
+#: learn/case_study.py:96
+msgid "A learner's public portfolio"
+msgstr "معرض أعمال عام لأحد المتعلّمين"
+
+#: learn/templates/404.html:6
+msgid "Page not found"
+msgstr "الصفحة غير موجودة"
+
+#: learn/templates/404.html:18
+msgid "We couldn't find that page"
+msgstr "لم نجد هذه الصفحة"
+
+#: learn/templates/404.html:19
+msgid "The link may be old, or the page may be private. Check the address, or start again from home."
+msgstr "قد يكون الرابط قديمًا أو تكون الصفحة خاصة. تحقّق من العنوان، أو ابدأ من جديد من الصفحة الرئيسية."
+
+#: learn/templates/404.html:21
+msgid "Go home"
+msgstr "إلى الرئيسية"
+
+#: learn/templates/404.html:22
+#| msgid "Job paths"
+msgid "Browse paths"
+msgstr "تصفّح المسارات"
+
+#: learn/templates/learn/case_study.html:6 learn/templates/learn/case_study.html:27
+msgid "Case study"
+msgstr "دراسة حالة"
+
+#: learn/templates/learn/case_study.html:7
+msgid "How Describe, a phone-first coding cohort platform in English and Arabic, was built in ten days with an AI coding agent."
+msgstr "كيف بُنيت Describe، منصة لدفعات تعلّم البرمجة تبدأ من الهاتف بالعربية والإنجليزية، في عشرة أيام مع وكيل برمجة ذكي."
+
+#: learn/templates/learn/case_study.html:8 learn/templates/learn/case_study.html:28
+msgid "Building Describe in ten days"
+msgstr "بناء Describe في عشرة أيام"
+
+#: learn/templates/learn/case_study.html:9
+msgid "A case study: the problem, the decisions, what broke and what the cohort got."
+msgstr "دراسة حالة: المشكلة، والقرارات، وما تعطّل، وما حصلت عليه الدفعة."
+
+#: learn/templates/learn/case_study.html:29
+msgid "A coding cohort needed somewhere to practise between classes. Describe is a free, phone-first learning platform in English and Arabic, built one day at a time with an AI coding agent."
+msgstr "احتاجت دفعة لتعلّم البرمجة مكانًا للتدرّب بين الحصص. Describe منصة تعلّم مجانية تبدأ من الهاتف بالعربية والإنجليزية، بُنيت يومًا بعد يوم مع وكيل برمجة ذكي."
+
+#: learn/templates/learn/case_study.html:31
+#| msgid "Start learning"
+msgid "Back to learning"
+msgstr "العودة إلى التعلّم"
+
+#: learn/templates/learn/case_study.html:33
+#| msgid "Open my portfolio"
+msgid "See a sample portfolio"
+msgstr "شاهد معرض أعمال نموذجيًا"
+
+#: learn/templates/learn/case_study.html:38
+msgid "The brief"
+msgstr "الموجز"
+
+#: learn/templates/learn/case_study.html:49
+msgid "Results so far"
+msgstr "النتائج حتى الآن"
+
+#: learn/templates/learn/case_study.html:50
+msgid "Counted live from this site. Staff and demo accounts are left out."
+msgstr "تُحسب مباشرة من هذا الموقع، دون حسابات الإدارة والحساب التجريبي."
+
+#: learn/templates/learn/case_study.html:52
+msgid "Learners"
+msgstr "المتعلّمون"
+
+#: learn/templates/learn/case_study.html:52
+#, python-format
+#| msgid "%(n)s chapter"
+#| msgid_plural "%(n)s chapters"
+msgid "%(n)s has practised"
+msgid_plural "%(n)s have practised"
+msgstr[0] "%(n)s تدرّبوا"
+msgstr[1] "تدرّب واحد"
+msgstr[2] "تدرّب اثنان"
+msgstr[3] "%(n)s تدرّبوا"
+msgstr[4] "%(n)s تدرّبوا"
+msgstr[5] "%(n)s تدرّبوا"
+
+#: learn/templates/learn/case_study.html:54
+#| msgid "Learning stats"
+msgid "Learning actions logged"
+msgstr "أنشطة تعلّم مسجّلة"
+
+#: learn/templates/learn/case_study.html:55
+#| msgid "Flashcards"
+msgid "Flashcard reviews"
+msgstr "مراجعات البطاقات"
+
+#: learn/templates/learn/case_study.html:56
+msgid "Paths made with AI"
+msgstr "مسارات صُنعت بالذكاء الاصطناعي"
+
+#: learn/templates/learn/case_study.html:57
+#| msgid "Lab projects"
+msgid "Own projects"
+msgstr "مشاريع خاصة"
+
+#: learn/templates/learn/case_study.html:59
+#| msgid "Portfolio"
+msgid "Public portfolios"
+msgstr "معارض أعمال عامة"
+
+#: learn/templates/learn/case_study.html:61
+#, python-format
+msgid "The catalog holds %(jobs)s job paths, %(skills)s skill paths and %(chapters)s chapters, in English and Arabic, on phones and laptops."
+msgstr "يضم الدليل %(jobs)s مسارات وظيفية و%(skills)s مسارات مهارية و%(chapters)s فصلًا، بالعربية والإنجليزية، على الهواتف والحواسيب."
+
+#: learn/templates/learn/case_study.html:65
+msgid "What it looks like"
+msgstr "كيف تبدو"
+
+#: learn/templates/learn/case_study.html:77
+msgid "How it was built"
+msgstr "كيف بُنيت"
+
+#: learn/templates/learn/case_study.html:78
+msgid "One day of work per thread, one pull request per day, merged and deployed before the next. Every day ended with three lines in a log: what was built, one decision and one problem. Each screen was checked at phone and laptop width, in English and Arabic."
+msgstr "يوم عمل واحد لكل محادثة، وطلب دمج واحد لكل يوم، يُدمج ويُنشر قبل اليوم التالي. انتهى كل يوم بثلاثة أسطر في سجل: ما بُني، وقرار واحد، ومشكلة واحدة. وفُحصت كل شاشة بعرض الهاتف والحاسوب، بالعربية والإنجليزية."
+
+#: learn/templates/learn/case_study.html:83
+#, python-format
+#| msgid "Task %(n)s"
+msgid "Day %(n)s"
+msgstr "اليوم %(n)s"
+
+#: learn/templates/learn/case_study.html:90
+msgid "Key decisions"
+msgstr "قرارات أساسية"
+
+#: learn/templates/learn/case_study.html:103
+msgid "What broke, and the fix"
+msgstr "ما تعطّل وكيف أُصلح"
+
+#: learn/templates/learn/case_study.html:115
+#| msgid "What you get"
+msgid "What's next"
+msgstr "الخطوات التالية"
+
+#: learn/templates/learn/case_study.html:121
+msgid "Built with Django on free hosting, Gemini for learning content and Claude Code as the coding agent."
+msgstr "بُنيت بـ Django على استضافة مجانية، مع Gemini لمحتوى التعلّم وClaude Code وكيلًا للبرمجة."
+
+#: learn/templates/registration/login.html:17
+msgid "How Describe was built"
+msgstr "كيف بُنيت Describe"
+
 #~ msgid "No cards due. Nice. New cards arrive as you finish chapters."
 #~ msgstr "لا توجد بطاقات مستحقة. أحسنت. تصلك بطاقات جديدة كلما أنهيت فصولًا."
 

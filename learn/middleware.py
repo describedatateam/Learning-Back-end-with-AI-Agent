@@ -10,10 +10,11 @@ class LoginRequiredMiddleware:
     Describe runs the Python you submit, so a deployed copy must not be usable
     by strangers; accounts need an invite code. The sign-in and sign-up pages,
     the language switch, the API (which has its own authentication), the
-    health check and public portfolio pages (/p/, private ones are a 404) stay open.
+    health check, public portfolio pages (/p/, private ones are a 404) and the
+    case study page stay open.
     """
 
-    OPEN_PREFIXES = ('/accounts/', '/i18n/', '/admin/', '/api/', '/health/', '/static/', '/p/')
+    OPEN_PREFIXES = ('/accounts/', '/i18n/', '/admin/', '/api/', '/health/', '/static/', '/p/', '/case-study/')
 
     def __init__(self, get_response):
         self.get_response = get_response
