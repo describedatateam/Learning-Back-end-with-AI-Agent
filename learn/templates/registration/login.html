@@ -1,7 +1,7 @@
 {% extends "learn/base.html" %}
 {% load i18n %}
 
-{% block title %}{% translate "Sign in" %} · Describe{% endblock %}
+{% block title %}{% translate "Sign in" %} · Describe Learn{% endblock %}
 {% block style %}{% include "learn/_auth_style.html" %}{% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
       <button class="btn primary" type="submit">{% translate "Sign in" %}</button>
     </form>
     <p class="switch">{% translate "New here and have an invite code?" %} <a href="{% url 'signup' %}">{% translate "Create an account" %}</a></p>
-    <p class="switch"><a href="{% url 'case_study' %}">{% translate "How Describe was built" %}</a></p>
+    <p class="switch"><a href="{% url 'case_study' %}">{% translate "How Describe Learn was built" %}</a></p>
   </section>
 </main>
 {% endblock %}

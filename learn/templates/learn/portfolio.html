@@ -1,7 +1,7 @@
 {% extends "learn/base.html" %}
 {% load i18n ui %}
 
-{% block title %}{% translate "Portfolio" %} · Describe{% endblock %}
+{% block title %}{% translate "Portfolio" %} · Describe Learn{% endblock %}
 
 {% block content %}
 <main class="narrow">
@@ -103,7 +103,7 @@
       {% if github_account %}
       <p class="meta">{% blocktranslate trimmed with login=github_account.login %}Connected as <bdi>{{ login }}</bdi>. Open a Lab project and press GitHub to send its files to a repo of your own.{% endblocktranslate %}</p>
       {% elif github_available %}
-      <p class="meta">{% translate "Connect once, then send any Lab project to a public repo on your GitHub account. Describe can only make and update public repos; it can't see your private ones." %}</p>
+      <p class="meta">{% translate "Connect once, then send any Lab project to a public repo on your GitHub account. Describe Learn can only make and update public repos; it can't see your private ones." %}</p>
       {% else %}
       <p class="meta">{% translate "GitHub sign-in is not set up on this server yet. You can still download any Lab project as a .zip and upload it to GitHub yourself." %}</p>
       {% endif %}

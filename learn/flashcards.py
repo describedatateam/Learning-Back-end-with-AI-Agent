@@ -37,7 +37,7 @@ RUNNABLE = {'python': 'server', 'javascript': 'browser', 'html': 'preview'}  # h
 MAX_CONCEPT_CARDS = 2
 
 CARDS_PROMPT = """\
-You write practice flashcards for Describe, a self-paced learning platform for beginner and junior \
+You write practice flashcards for Describe Learn, a self-paced learning platform for beginner and junior \
 web developers. The learner has studied the chapter below and will review the cards over the coming \
 weeks in a page with a code box they can run, so most cards make them read and write code.
 

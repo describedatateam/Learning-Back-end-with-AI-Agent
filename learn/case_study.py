@@ -1,4 +1,4 @@
-"""The case study page (/case-study/, Day 10): how Describe was built, open without signing in.
+"""The case study page (/case-study/, Day 10): how Describe built Describe Learn, open without signing in.
 
 The words come from plans/case-study-log.md, shortened. The "results" numbers
 are counted live from the site, never typed in, and leave out staff accounts and

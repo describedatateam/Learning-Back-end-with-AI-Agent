@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% translate "Case study" %} · Describe</title>
-  <meta name="description" content="{% translate 'How Describe, a phone-first coding cohort platform in English and Arabic, was built in ten days with an AI coding agent.' %}">
-  <meta property="og:title" content="{% translate 'Building Describe in ten days' %}">
+  <title>{% translate "Case study" %} · Describe Learn</title>
+  <meta name="description" content="{% translate 'How Describe built Describe Learn, a phone-first coding cohort platform in English and Arabic, in ten days with an AI coding agent.' %}">
+  <meta property="og:title" content="{% translate 'Describe Learn: a practice platform built in ten days' %}">
   <meta property="og:description" content="{% translate 'A case study: the problem, the decisions, what broke and what the cohort got.' %}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:type" content="article">
@@ -14,7 +14,7 @@
 </head>
 <body class="public-page">
   <header class="public-top">
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe Learn</span></a>
     <form class="lang-switch" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -24,9 +24,9 @@
 
   <main class="narrow folio study">
     <section class="card study-hero">
-      <p class="study-eyebrow">{% translate "Case study" %}</p>
-      <h1>{% translate "Building Describe in ten days" %}</h1>
-      <p class="study-lead">{% translate "A coding cohort needed somewhere to practise between classes. Describe is a free, phone-first learning platform in English and Arabic, built one day at a time with an AI coding agent." %}</p>
+      <p class="study-eyebrow">{% translate "Case study · a project by Describe" %}</p>
+      <h1>{% translate "Describe Learn: a practice platform built in ten days" %}</h1>
+      <p class="study-lead">{% translate "A coding cohort needed somewhere to practise between classes. Describe built them Describe Learn, a free, phone-first learning platform in English and Arabic, delivered one day at a time with an AI coding agent." %}</p>
       <div class="folio-links">
         {% if user.is_authenticated %}<a class="btn primary" href="{% url 'home' %}">{% icon 'house' %}{% translate "Back to learning" %}</a>
         {% else %}<a class="btn primary" href="{% url 'login' %}">{% icon 'log-in' %}{% translate "Sign in" %}</a>{% endif %}
@@ -118,7 +118,13 @@
       </ul>
     </section>
 
-    <p class="folio-foot meta">{% translate "Built with Django on free hosting, Gemini for learning content and Claude Code as the coding agent." %}</p>
+    <section class="card study-cta">
+      <h2>{% icon 'briefcase' %}{% translate "Need a tool like this?" %}</h2>
+      <p class="muted">{% translate "Describe builds clear reports and simple tools for small teams, in English and Arabic. Tell us what you need and we will tell you honestly if we can help." %}</p>
+      <div class="folio-links"><a class="btn primary" href="https://describe.team" rel="noopener">{% icon 'arrow-right' %}{% translate "Talk to Describe" %}</a></div>
+    </section>
+
+    <p class="folio-foot meta">{% blocktranslate trimmed %}Built by <a href="https://describe.team" rel="noopener">Describe</a> with Django on free hosting, Gemini for learning content and Claude Code as the coding agent.{% endblocktranslate %}</p>
   </main>
   <script>
   document.querySelectorAll('[data-share]').forEach((btn) => btn.addEventListener('click', async () => {

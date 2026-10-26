@@ -80,7 +80,7 @@ def api(token, method, path, data=None):
     body = json.dumps(data).encode() if data is not None else None
     request = Request(f'{API}{path}', data=body, method=method, headers={
         'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'Describe-learning-platform',
+        'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'Describe-Learn',
         **({'Content-Type': 'application/json'} if body else {}),
     })
     try:
@@ -98,7 +98,7 @@ def exchange_code(code, redirect_uri):
     request = Request(TOKEN_URL, method='POST', data=urlencode({
         'client_id': client_id(), 'client_secret': os.environ.get('GITHUB_CLIENT_SECRET', ''),
         'code': code, 'redirect_uri': redirect_uri,
-    }).encode(), headers={'Accept': 'application/json', 'User-Agent': 'Describe-learning-platform'})
+    }).encode(), headers={'Accept': 'application/json', 'User-Agent': 'Describe-Learn'})
     try:
         data = _send(request)
     except HTTPError as error:
@@ -123,7 +123,7 @@ def revoke(account):
     request = Request(f'{API}/applications/{client_id()}/grant', method='DELETE',
                       data=json.dumps({'access_token': account.token}).encode(), headers={
                           'Authorization': f'Basic {basic}', 'Accept': 'application/vnd.github+json',
-                          'Content-Type': 'application/json', 'User-Agent': 'Describe-learning-platform'})
+                          'Content-Type': 'application/json', 'User-Agent': 'Describe-Learn'})
     try:
         _send(request)
     except (HTTPError, GitHubError):
@@ -150,7 +150,7 @@ def clean_repo(name):
 RUN_NOTES = {
     'web': 'Open `index.html` in a browser. To put it online for free, turn on GitHub Pages in this repo\'s '
            'Settings > Pages (branch: the default branch, folder: root).',
-    'react': 'The Describe Lab loads React for you. To run it anywhere else, add these lines to `index.html` and '
+    'react': 'The Describe Learn Lab loads React for you. To run it anywhere else, add these lines to `index.html` and '
              'change `<script src="script.js">` to `<script type="text/babel" src="script.js">`:\n\n'
              '```html\n'
              '<script src="https://unpkg.com/react@18/umd/react.development.js"></script>\n'
@@ -159,7 +159,7 @@ RUN_NOTES = {
              '<link rel="stylesheet" href="style.css">\n'
              '<script type="text/babel" src="script.js"></script>\n'
              '```',
-    'tailwind': 'The Describe Lab loads Tailwind CSS for you. To run it anywhere else, add this line to the top of '
+    'tailwind': 'The Describe Learn Lab loads Tailwind CSS for you. To run it anywhere else, add this line to the top of '
                 '`index.html`:\n\n```html\n<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>\n```',
     'python': 'Run it with `python main.py` (Python 3).',
 }
@@ -170,7 +170,7 @@ def readme(project):
     parts = [f'# {project.title}', '']
     if project.idea:
         parts += [project.idea.strip(), '']
-    parts += [f'A {kind["name"]} project built in the Describe Lab.', '', '## Run it', '', RUN_NOTES[project.kind], '']
+    parts += [f'A {kind["name"]} project built in the Describe Learn Lab.', '', '## Run it', '', RUN_NOTES[project.kind], '']
     return '\n'.join(parts)
 
 
@@ -201,7 +201,7 @@ def push(account, project, repo, allow_existing=False):
         if error.status != 404:
             raise
         info = api(token, 'POST', '/user/repos', {
-            'name': repo, 'description': (project.idea or f'{project.title}, built in the Describe Lab')[:300],
+            'name': repo, 'description': (project.idea or f'{project.title}, built in the Describe Learn Lab')[:300],
             'auto_init': True, 'private': False,
         })
         created = True
@@ -224,7 +224,7 @@ def push(account, project, repo, allow_existing=False):
         'tree': [{'path': name, 'mode': '100644', 'type': 'blob', 'content': text} for name, text in files.items()],
     })
     commit = api(token, 'POST', f'/repos/{owner}/{repo}/git/commits', {
-        'message': f'Update from the Describe Lab: {project.title}', 'tree': tree['sha'], 'parents': [head['sha']],
+        'message': f'Update from the Describe Learn Lab: {project.title}', 'tree': tree['sha'], 'parents': [head['sha']],
     })
     api(token, 'PATCH', f'/repos/{owner}/{repo}/git/refs/heads/{branch}', {'sha': commit['sha']})
     project.github_repo = info['html_url']

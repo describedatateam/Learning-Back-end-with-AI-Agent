@@ -74,7 +74,7 @@ KINDS = {
         'name': 'Python', 'label': 'Python',
         'blurb': _('A script that prints its output.'), 'icon': 'terminal', 'libs': [], 'browser': False,
         'files': {
-            'main.py': 'def greet(name):\n    return f"Hello, {name}!"\n\n\nprint(greet("Describe"))\n',
+            'main.py': 'def greet(name):\n    return f"Hello, {name}!"\n\n\nprint(greet("Describe Learn"))\n',
         },
     },
 }

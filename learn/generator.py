@@ -31,7 +31,7 @@ STOP_WORDS = {'a', 'an', 'and', 'the', 'with', 'for', 'to', 'of', 'in', 'basics'
               'foundations', 'intro', 'introduction', 'beginner', 'beginners', 'programming', 'learn', 'course'}
 
 GENERATE_PROMPT = """\
-You design short, practical skill paths for Describe, a self-paced learning platform \
+You design short, practical skill paths for Describe Learn, a self-paced learning platform \
 for a cohort of beginner and junior web developers (Python, Django, HTML, CSS, JavaScript, SQL). \
 A skill path is made of courses, a course of chapters. Each chapter teaches one idea with a \
 short lesson, a few slides, a quiz and, where the topic can be practised in code, a hands-on exercise \

@@ -1,4 +1,21 @@
-# Django Backend Bootcamp (30 days)
+# Describe Learn
+
+**A project by [Describe](https://describe.team).** Describe Learn is a free, phone-first
+learning platform in English and Arabic, built in ten days with an AI coding agent for a
+back-end coding cohort that needed somewhere to practise between classes.
+
+- **The brief:** real code checked automatically, a path from basics to a job, and help when stuck.
+- **The limits:** two weeks, no budget, free hosting, and learner code running on a shared server.
+- **What was delivered:** job and skill paths, 17 auto-graded Django exercises, a browser Lab,
+  flashcards, an AI tutor, a notebook, team projects and public learner portfolios.
+- **Case study:** `/case-study/` on the live site tells the full story, with usage numbers
+  counted live: <https://wafaalhayek.pythonanywhere.com/case-study/>
+
+Need a tool like this? [Talk to Describe](https://describe.team).
+
+---
+
+## For developers: the Django back-end course inside
 
 A beginner-friendly four-week path from Python web fundamentals to a tested Django REST Framework Task Management API backed by SQLite.
 
@@ -23,10 +40,10 @@ Task filters include status, priority, project, and due_date. Lists support sear
 ordering, and pagination with page_size up to 50. Every query is restricted to the
 authenticated user.
 
-## Describe: interactive exercises
+## Describe Learn: interactive exercises
 
 After `migrate` and `runserver`, open <http://127.0.0.1:8000/> (it goes straight to
-Describe at `/learn/`). Learning needs an account, so first create yours with
+Describe Learn at `/learn/`). Learning needs an account, so first create yours with
 `python manage.py createsuperuser` and sign in. Other learners sign up at
 `/accounts/signup/` with an invite code: make codes in `/admin/` under **Invite codes**
 (each has a number of uses and an optional expiry date). Every account has its own

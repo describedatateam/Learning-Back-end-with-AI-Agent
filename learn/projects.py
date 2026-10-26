@@ -40,7 +40,7 @@ METHODS = ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')
 SECTIONS = ('goals', 'users', 'stories', 'data_models', 'endpoints', 'done_checks')
 
 SRS_PROMPT = """\
-You help beginner and junior web developers on Describe, a learning platform (Python, Django, \
+You help beginner and junior web developers on Describe Learn, a learning platform (Python, Django, \
 HTML, CSS, JavaScript, SQL), plan a project of their own. You write or read a Software \
 Requirements Specification (SRS) and turn it into a step-by-step walkthrough they can tick off.
 

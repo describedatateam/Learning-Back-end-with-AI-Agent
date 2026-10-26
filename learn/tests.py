@@ -2452,7 +2452,7 @@ class CaseStudyTests(TestCase):
     def test_case_study_opens_without_signing_in(self):
         page = self.client.get(reverse('case_study'))
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, 'Building Describe in ten days')
+        self.assertContains(page, 'Describe Learn: a practice platform built in ten days')
         self.assertContains(page, reverse('login'))
         self.assertNotContains(page, '/p/demo/')  # no sample link until make_demo has run
 
@@ -2460,7 +2460,7 @@ class CaseStudyTests(TestCase):
         self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = 'ar'
         page = self.client.get(reverse('case_study'))
         self.assertContains(page, 'dir="rtl"')
-        self.assertContains(page, 'بناء Describe في عشرة أيام')
+        self.assertContains(page, 'Describe Learn: منصة تدريب بُنيت في عشرة أيام')
 
     def test_numbers_count_real_learners_only(self):
         learner = User.objects.create_user('lina', password='pw')
