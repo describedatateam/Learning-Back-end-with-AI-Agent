@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ display_name }} · {% translate "Portfolio" %}</title>
-  <meta name="description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% blocktranslate with name=display_name %}{{ name }}'s learning portfolio on Describe{% endblocktranslate %}{% endif %}">
+  <meta name="description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% blocktranslate with name=display_name %}{{ name }}'s learning portfolio on Describe Learn{% endblocktranslate %}{% endif %}">
   <meta property="og:title" content="{{ display_name }} · {% translate 'Portfolio' %}">
-  <meta property="og:description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% translate 'Paths finished and projects built on Describe' %}{% endif %}">
+  <meta property="og:description" content="{% if portfolio.headline %}{{ portfolio.headline }}{% else %}{% translate 'Paths finished and projects built on Describe Learn' %}{% endif %}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:type" content="profile">
   {% if not portfolio.public %}<meta name="robots" content="noindex">{% endif %}
@@ -15,7 +15,7 @@
 </head>
 <body class="public-page">
   <header class="public-top">
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe</span></a>
+    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe Learn</span></a>
     <form class="lang-switch" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -141,7 +141,7 @@
     </section>
     {% endif %}
 
-    <footer class="folio-foot meta">{% blocktranslate trimmed %}Learning with <a href="/">Describe</a>{% endblocktranslate %}</footer>
+    <footer class="folio-foot meta">{% blocktranslate trimmed %}Learning with <a href="/">Describe Learn</a>{% endblocktranslate %}</footer>
   </main>
 
   {% if labs %}

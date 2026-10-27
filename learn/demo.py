@@ -90,7 +90,7 @@ def build(password=None):
         Portfolio.objects.create(
             user=user, handle=USERNAME, public=True, name='Demo Learner',
             headline='Learning back-end development with Python and Django',
-            about='A sample learner made for demos. Everything here was built on Describe.',
+            about='A sample learner made for demos. Everything here was built on Describe Learn.',
             project_ids=[project.id], lab_ids=[web.id])
     return user, password
 

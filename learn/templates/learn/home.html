@@ -1,7 +1,7 @@
 {% extends "learn/base.html" %}
 {% load i18n ui %}
 
-{% block title %}{% translate "Home" %} · Describe{% endblock %}
+{% block title %}{% translate "Home" %} · Describe Learn{% endblock %}
 
 {% block content %}
 <main class="cockpit">
@@ -10,7 +10,7 @@
     {% if user.is_authenticated %}
     <h1 id="greeting" data-morning="{% blocktranslate %}Good morning, {{ name }}{% endblocktranslate %}" data-afternoon="{% blocktranslate %}Good afternoon, {{ name }}{% endblocktranslate %}" data-evening="{% blocktranslate %}Good evening, {{ name }}{% endblocktranslate %}">{% blocktranslate %}Hello, {{ name }}{% endblocktranslate %}</h1>
     {% else %}
-    <h1>{% translate "Welcome to Describe" %}</h1>
+    <h1>{% translate "Welcome to Describe Learn" %}</h1>
     {% endif %}
     {% endwith %}
     <p class="muted">

@@ -1,6 +1,6 @@
-# Put Describe online with PythonAnywhere
+# Put Describe Learn online with PythonAnywhere
 
-This gets Describe running at `https://yourname.pythonanywhere.com`, so you can
+This gets Describe Learn running at `https://yourname.pythonanywhere.com`, so you can
 use it from any computer or phone. It takes about 20 minutes. Everywhere below,
 replace **`yourname`** with your PythonAnywhere username.
 

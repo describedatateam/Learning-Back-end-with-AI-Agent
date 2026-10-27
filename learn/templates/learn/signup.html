@@ -1,14 +1,14 @@
 {% extends "learn/base.html" %}
 {% load i18n %}
 
-{% block title %}{% translate "Create an account" %} · Describe{% endblock %}
+{% block title %}{% translate "Create an account" %} · Describe Learn{% endblock %}
 {% block style %}{% include "learn/_auth_style.html" %}{% endblock %}
 
 {% block content %}
 <main class="narrow">
   <section class="card auth" aria-labelledby="auth-title">
     <h1 id="auth-title">{% translate "Create an account" %}</h1>
-    <p class="muted">{% translate "Describe is invite only. Use the code you were given." %}</p>
+    <p class="muted">{% translate "Describe Learn is invite only. Use the code you were given." %}</p>
     <form method="post" action="{% url 'signup' %}">
       {% include "learn/_auth_form.html" with show_help=True %}
       <button class="btn primary" type="submit">{% translate "Create account" %}</button>
