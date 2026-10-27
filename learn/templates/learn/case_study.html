@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="{% static 'learn/favicon.svg' %}">
   <title>{% translate "Case study" %} · Describe Learn</title>
   <meta name="description" content="{% translate 'How Describe built Describe Learn, a phone-first coding cohort platform in English and Arabic, in ten days with an AI coding agent.' %}">
   <meta property="og:title" content="{% translate 'Describe Learn: a practice platform built in ten days' %}">
@@ -14,7 +15,7 @@
 </head>
 <body class="public-page">
   <header class="public-top">
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe Learn</span></a>
+    <a class="brand" href="{% url 'home' %}">{% include "learn/_logo.html" %}<span class="brand-name" dir="ltr">Describe <b>Learn</b></span></a>
     <form class="lang-switch" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
