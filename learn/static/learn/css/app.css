@@ -38,7 +38,9 @@ pre { background: var(--code-bg); color: var(--code-text); padding: 12px 14px; b
 }
 .sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 0 var(--space-2); color: #fff; font-weight: 700; font-size: 17px; }
 .sidebar .brand:hover { text-decoration: none; }
-.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 9px; background: var(--accent-bar); color: #fff; font-size: 16px; font-weight: 700; }
+.brand-mark { display: block; width: 32px; height: 32px; flex: none; }
+.brand-name { font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.brand-name b { font-weight: 300; }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
 .sidebar nav a, .sidebar .side-btn {
   display: flex; align-items: center; gap: var(--space-3); min-height: 40px; padding: 0 var(--space-3);
@@ -113,7 +115,7 @@ body.nav-open .scrim { display: block; position: fixed; inset: 0; z-index: 35; b
     padding: var(--space-2) var(--space-3); background: var(--nav-bg); color: #fff;
   }
   .topbar .brand { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; margin-inline-end: auto; }
-  .topbar .brand-mark { width: 26px; height: 26px; font-size: 14px; }
+  .topbar .brand-mark { width: 28px; height: 28px; }
   .topbar .lang-switch button { min-height: 44px; }
   .topbar .icon-btn { width: 44px; height: 44px; }
   .bottom-nav {
@@ -434,7 +436,7 @@ a.card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); tex
 .art .a-tdim { fill: #94a3b8; }
 .art .a-tgood { fill: #34d399; }
 .art .a-cursor { fill: #e2e8f0; }
-.art .a-c1 { fill: #818cf8; } .art .a-c2 { fill: #34d399; opacity: .8; } .art .a-c3 { fill: #94a3b8; opacity: .7; }
+.art .a-c1 { fill: #5B8DF0; } .art .a-c2 { fill: #34d399; opacity: .8; } .art .a-c3 { fill: #94a3b8; opacity: .7; }
 .art .a-branch { fill: none; stroke: var(--muted); stroke-width: 3; stroke-linecap: round; }
 .art .a-feat { stroke: var(--accent-bar); }
 .art .a-commit { fill: var(--surface); stroke: var(--muted); stroke-width: 3; }

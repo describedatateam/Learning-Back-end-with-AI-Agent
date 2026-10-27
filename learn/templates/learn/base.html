@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="{% static 'learn/favicon.svg' %}">
   <title>{% block title %}Describe Learn{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'learn/css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'learn/css/app.css' %}">
@@ -14,7 +15,7 @@
 <body class="{% block body_class %}{% endblock %}">
   {% with here=request.resolver_match.view_name %}
   <aside class="sidebar" id="sidebar" aria-label="{% translate 'Main' %}">
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span class="rail-hide" dir="ltr">Describe Learn</span></a>
+    <a class="brand" href="{% url 'home' %}">{% include "learn/_logo.html" %}<span class="brand-name rail-hide" dir="ltr">Describe <b>Learn</b></span></a>
     <button class="icon-btn rail-toggle" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{% translate 'Open menu' %}">{% icon 'menu' %}</button>
     <nav>
       <a href="{% url 'home' %}"{% if here == 'home' %} aria-current="page"{% endif %} title="{% translate 'Home' %}">{% icon 'house' %}<span class="rail-hide">{% translate 'Home' %}</span></a>
@@ -62,7 +63,7 @@
   <div class="app">
   <header class="topbar">
     <button class="icon-btn" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{% translate 'Open menu' %}">{% icon 'menu' %}</button>
-    <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">D</span><span dir="ltr">Describe Learn</span></a>
+    <a class="brand" href="{% url 'home' %}">{% include "learn/_logo.html" %}<span class="brand-name" dir="ltr">Describe <b>Learn</b></span></a>
     <form class="lang-switch" action="{% url 'set_language' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
